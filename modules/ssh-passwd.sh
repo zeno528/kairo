@@ -71,7 +71,7 @@ menu() {
 }
 
 # 独立运行模式（被 sp 命令直接调用）
-if [ "${VPS_TOOLKIT_MODE}" != "module" ]; then
+if [ "${EKKOBOX_MODE}" != "module" ]; then
     if [ -n "$1" ]; then
         show_logo
         case "$1" in
