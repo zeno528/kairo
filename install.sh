@@ -8,19 +8,20 @@ BIN_DIR="/usr/local/bin"
 REPO="Ekko7778/vps-toolkit"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
 
-scripts=("ssh-passwd.sh")
+declare -A aliases=(
+    ["ssh-passwd.sh"]="sp"
+)
 
 echo ">>> 安装 vps-toolkit..."
 
-for script in "${scripts[@]}"; do
-    name="${script%.sh}"
-    echo "  安装: ${name}"
-    curl -fsSL "${BASE_URL}/${script}" -o "${BIN_DIR}/${name}"
-    chmod +x "${BIN_DIR}/${name}"
+for script in "${!aliases[@]}"; do
+    cmd="${aliases[$script]}"
+    echo "  安装: ${cmd}"
+    curl -fsSL "${BASE_URL}/${script}" -o "${BIN_DIR}/${cmd}"
+    chmod +x "${BIN_DIR}/${cmd}"
 done
 
 echo ">>> 安装完成！可用命令:"
-for script in "${scripts[@]}"; do
-    name="${script%.sh}"
-    echo "  ${name}"
+for cmd in "${aliases[@]}"; do
+    echo "  ${cmd}"
 done
