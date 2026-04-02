@@ -39,7 +39,7 @@ do_off() {
 }
 
 do_status() {
-    current=$(grep -Ei '^#?\s*PasswordAuthentication' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no)')
+    current=$(grep -Ei '^\s*PasswordAuthentication' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no)')
     if [ "$current" = "no" ]; then
         echo "密码登录: 关闭"
     elif [ "$current" = "yes" ]; then
