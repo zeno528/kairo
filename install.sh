@@ -57,12 +57,14 @@ chmod +x "${BIN_DIR}/eb"
 echo "  安装: eb (主菜单)"
 
 # 下载模块
-for f in $(curl -fsSL "${BASE_URL}/modules/" 2>/dev/null | grep -oP '(?<=href=")[^"]+\.sh(?=")' || true); do
-    curl -fsSL "${BASE_URL}/modules/${f}" -o "${LIB_DIR/modules}/${f}"
-    chmod +x "${LIB_DIR/modules}/${f}"
-    alias_name=$(grep -oP '(?<=alias:\s*)\S+' "${LIB_DIR/modules}/${f}" || true)
+MODULES=("modules/ssh-passwd.sh")
+for mod_path in "${MODULES[@]}"; do
+    mod_file=$(basename "$mod_path")
+    curl -fsSL "${BASE_URL}/${mod_path}" -o "${LIB_DIR}/${mod_path}"
+    chmod +x "${LIB_DIR}/${mod_path}"
+    alias_name=$(grep -oP '(?<=alias:\s*)\S+' "${LIB_DIR}/${mod_path}" || true)
     if [ -n "$alias_name" ]; then
-        ln -sf "${LIB_DIR/modules}/${f}" "${BIN_DIR}/${alias_name}"
+        ln -sf "${LIB_DIR}/${mod_path}" "${BIN_DIR}/${alias_name}"
         echo "  安装: ${alias_name}"
     fi
 done

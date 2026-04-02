@@ -76,7 +76,7 @@ while true; do
 
     modules=($(load_modules))
     echo "  可用模块:"
-    local n=1
+    n=1
     for mod in "${modules[@]}"; do
         name=$(get_module_name "$mod")
         alias=$(grep -oP '(?<=alias:\s*)\S+' "$mod" || true)
