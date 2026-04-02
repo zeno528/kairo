@@ -5,6 +5,7 @@
 LIB_DIR="/usr/local/lib/ekkobox"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
+REPO_URL="https://raw.githubusercontent.com/Ekko7778/ekkobox/main"
 
 show_banner() {
     echo '
@@ -12,29 +13,27 @@ show_banner() {
 ██╔════╝██║ ██╔╝██║ ██╔╝██╔════╝
 ███████╗█████╔╝█████╔╝██║
 ██╔══██║██╔═██╗██╔═██╗██║
-██║  ██║██║  ██╗██║  ██╗╚██████╗
+██║  ██║██║  ██╗██║  ██║╚██████╗
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
                  B O X       v'"$VERSION"'
 '
 }
 
-load_modules() {
-    local mods=()
-    for f in "$MODULES_DIR"/*.sh; do
-        [ -f "$f" ] && mods+=("$f")
-    done
-    echo "${mods[@]}"
-}
-
-get_module_name() {
-    local file="$1"
-    grep -oP '模块\s*-\s*\K.+|(?<=#\s).*模块' "$file" | head -1 || basename "$file" .sh
-}
-
 do_update() {
     echo ""
-    echo ">>> 正在更新 EKKOBOX..."
-    curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash
+    echo ">>> 正在检查更新..."
+    # 加随机参数绕过 GitHub 缓存
+    remote_ver=$(curl -fsSL "${REPO_URL}/VERSION?t=$(date +%s)" 2>/dev/null | tr -d '[:space:]')
+    if [ -z "$remote_ver" ]; then
+        echo "  无法连接远程仓库"
+        return
+    fi
+    if [ "$VERSION" = "$remote_ver" ]; then
+        echo "  已是最新版本 v${VERSION}"
+        return
+    fi
+    echo ">>> 发现新版本 v${VERSION} → v${remote_ver}"
+    curl -fsSL "${REPO_URL}/install.sh?t=$(date +%s)" | bash
 }
 
 do_uninstall() {
@@ -68,17 +67,9 @@ do_uninstall() {
 while true; do
     show_banner
 
-    modules=($(load_modules))
-    module_count=${#modules[@]}
-
     echo "  [1] SSH 密码登录管理"
-
-    # 更新和卸载的序号跟在模块后面
-    update_num=$((module_count + 2))
-    uninstall_num=$((module_count + 3))
-
-    echo "  [$((module_count + 2))] 检查更新"
-    echo "  [$((module_count + 3))] 卸载 EKKOBOX"
+    echo "  [2] 检查更新"
+    echo "  [3] 卸载 EKKOBOX"
     echo "  [0] 退出"
     echo ""
     read -p "  请输入选项: " choice
@@ -92,11 +83,11 @@ while true; do
                 menu
             fi
             ;;
-        $update_num)
+        2)
             do_update
             echo ""; read -p "  按回车键继续..."
             ;;
-        $uninstall_num)
+        3)
             do_uninstall
             echo ""; read -p "  按回车键继续..."
             ;;

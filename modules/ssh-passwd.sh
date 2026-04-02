@@ -5,17 +5,6 @@
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
-show_logo() {
-    echo '
-███████╗███████╗███╗   ██╗████████╗███████╗██████╗
-██╔════╝██╔════╝████╗  ██║╚══██╔══╝██╔════╝██╔══██╗
-█████╗  ███████╗██╔██╗ ██║   ██║   █████╗  ██║  ██║
-██╔══╝  ╚════██║██║╚██╗██║   ██║   ██╔══╝  ██║  ██║
-███████╗███████║██║ ╚████║   ██║   ███████╗██████╔╝
-╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═════╝
-'
-}
-
 restart_ssh() {
     systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -52,20 +41,19 @@ do_status() {
 # 二级菜单（被 eb 主菜单调用）
 menu() {
     while true; do
-        show_logo
+        echo ""
         do_status
-        echo '
-  [1] 开启密码登录
-  [2] 关闭密码登录
-  [0] 返回上级
-
-请输入选项: '
-        read -p "" choice
+        echo ""
+        echo "  [1] 开启密码登录"
+        echo "  [2] 关闭密码登录"
+        echo "  [0] 返回上级"
+        echo ""
+        read -p "  请输入选项: " choice
         case "$choice" in
-            1) do_on; echo; read -p "按回车键继续..." ;;
-            2) do_off; echo; read -p "按回车键继续..." ;;
+            1) do_on; echo ""; read -p "  按回车键继续..." ;;
+            2) do_off; echo ""; read -p "  按回车键继续..." ;;
             0) return ;;
-            *) echo "无效选项"; sleep 1 ;;
+            *) echo "  无效选项"; sleep 1 ;;
         esac
     done
 }
@@ -73,7 +61,6 @@ menu() {
 # 独立运行模式（被 sp 命令直接调用）
 if [ "${EKKOBOX_MODE}" != "module" ]; then
     if [ -n "$1" ]; then
-        show_logo
         case "$1" in
             on)     do_on ;;
             off)    do_off ;;
