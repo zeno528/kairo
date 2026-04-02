@@ -49,7 +49,7 @@ do_status() {
     fi
 }
 
-# 二级菜单（被 vps 主菜单调用）
+# 二级菜单（被 eb 主菜单调用）
 menu() {
     while true; do
         show_logo
