@@ -7,7 +7,7 @@ set -e
 
 BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/ekkobox"
-REPO="Ekko7778/vps-toolkit"
+REPO="Ekko7778/ekkobox"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
 
 # 卸载

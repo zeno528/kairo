@@ -5,13 +5,13 @@
 ## 一键安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ekko7778/vps-toolkit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash
 ```
 
 ## 卸载
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ekko7778/vps-toolkit/main/install.sh | bash -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash -s -- uninstall
 ```
 
 ## 可用命令

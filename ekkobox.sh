@@ -33,7 +33,7 @@ get_module_name() {
 
 do_update() {
     echo ">>> 正在更新 EKKOBOX..."
-    curl -fsSL https://raw.githubusercontent.com/Ekko7778/vps-toolkit/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash
 }
 
 do_uninstall() {
