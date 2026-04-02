@@ -1,6 +1,6 @@
 #!/bin/bash
 # EKKOBOX - 运维工具箱主入口
-# 用法: eb 或 eb [update|uninstall]
+# 用法: eb
 
 LIB_DIR="/usr/local/lib/ekkobox"
 MODULES_DIR="${LIB_DIR}/modules"
@@ -19,96 +19,92 @@ show_banner() {
 }
 
 load_modules() {
-    local modules=()
+    local mods=()
     for f in "$MODULES_DIR"/*.sh; do
-        [ -f "$f" ] && modules+=("$f")
+        [ -f "$f" ] && mods+=("$f")
     done
-    echo "${modules[@]}"
+    echo "${mods[@]}"
 }
 
 get_module_name() {
     local file="$1"
-    grep -oP '(?<=模块\s*-\s*)\K.+|(?<=#\s).*模块' "$file" | head -1 || basename "$file" .sh
+    grep -oP '模块\s*-\s*\K.+|(?<=#\s).*模块' "$file" | head -1 || basename "$file" .sh
 }
 
 do_update() {
+    echo ""
     echo ">>> 正在更新 EKKOBOX..."
     curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash
 }
 
 do_uninstall() {
+    echo ""
     echo ">>> 即将卸载 EKKOBOX，以下文件将被删除:"
     echo "  /usr/local/bin/eb"
     echo "  ${LIB_DIR}/"
     for f in "$MODULES_DIR"/*.sh; do
         [ -f "$f" ] || continue
-        local alias
-        alias=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-        [ -n "$alias" ] && echo "  /usr/local/bin/${alias}"
+        alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
+        [ -n "$alias_name" ] && echo "  /usr/local/bin/${alias_name}"
     done
-    read -p "确认卸载? [y/N]: " confirm
+    echo ""
+    read -p "  确认卸载? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         for f in "$MODULES_DIR"/*.sh; do
             [ -f "$f" ] || continue
-            local alias
-            alias=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-            [ -n "$alias" ] && rm -f "/usr/local/bin/${alias}"
+            alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
+            [ -n "$alias_name" ] && rm -f "/usr/local/bin/${alias_name}"
         done
         rm -f /usr/local/bin/eb
         rm -rf "$LIB_DIR"
         echo ">>> 卸载完成"
+        exit 0
     else
         echo "已取消"
     fi
-    exit 0
 }
 
-# 命令行参数
-case "$1" in
-    update)     show_banner; do_update; exit 0 ;;
-    uninstall)  show_banner; do_uninstall; exit 0 ;;
-    version|-v) echo "ekkobox v${VERSION}"; exit 0 ;;
-esac
-
-# 一级菜单
+# 主菜单
 while true; do
     show_banner
 
     modules=($(load_modules))
-    echo "  可用模块:"
-    n=1
-    for mod in "${modules[@]}"; do
-        name=$(get_module_name "$mod")
-        alias=$(grep -oP 'alias:\s*\K\S+' "$mod" 2>/dev/null) || true
-        if [ -n "$alias" ]; then
-            printf "  [%d] %-20s (%s)\n" "$n" "$name" "$alias"
-        else
-            printf "  [%d] %s\n" "$n" "$name"
-        fi
-        ((n++))
-    done
-    echo '
-  [U] 检查更新
-  [0] 退出
-'
-    read -p "请输入选项: " choice
+    module_count=${#modules[@]}
+
+    echo "  [1] SSH 密码登录管理"
+
+    # 更新和卸载的序号跟在模块后面
+    update_num=$((module_count + 2))
+    uninstall_num=$((module_count + 3))
+
+    echo "  [$((module_count + 2))] 检查更新"
+    echo "  [$((module_count + 3))] 卸载 EKKOBOX"
+    echo "  [0] 退出"
+    echo ""
+    read -p "  请输入选项: " choice
 
     case "$choice" in
-        [Uu]) do_update; echo; read -p "按回车键继续..." ;;
-        0)    echo "再见！"; exit 0 ;;
-        *)
-            idx=$((choice - 1))
-            if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#modules[@]}" ]; then
-                export EKKOBOX_MODE="module"
-                source "${modules[$idx]}"
-                unset EKKOBOX_MODE
-                if type menu &>/dev/null; then
-                    menu
-                fi
-                echo; read -p "按回车键返回..."
-            else
-                echo "无效选项"; sleep 1
+        1)
+            export EKKOBOX_MODE="module"
+            source "${MODULES_DIR}/ssh-passwd.sh"
+            unset EKKOBOX_MODE
+            if type menu &>/dev/null; then
+                menu
             fi
+            ;;
+        $update_num)
+            do_update
+            echo ""; read -p "  按回车键继续..."
+            ;;
+        $uninstall_num)
+            do_uninstall
+            echo ""; read -p "  按回车键继续..."
+            ;;
+        0)
+            echo "再见！"; exit 0
+            ;;
+        *)
+            echo "  无效选项"; sleep 1
             ;;
     esac
 done
