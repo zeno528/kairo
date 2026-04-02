@@ -27,7 +27,7 @@ if [ "$1" = "uninstall" ]; then
     echo ">>> 卸载 EKKOBOX v${local_ver}..."
     for f in "$LIB_DIR/modules"/*.sh; do
         [ -f "$f" ] || continue
-        alias_name=$(grep -oP '(?<=alias:\s*)\S+' "$f" || true)
+        alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
         [ -n "$alias_name" ] && rm -f "${BIN_DIR}/${alias_name}"
     done
     rm -f "${BIN_DIR}/eb"
@@ -62,7 +62,7 @@ for mod_path in "${MODULES[@]}"; do
     mod_file=$(basename "$mod_path")
     curl -fsSL "${BASE_URL}/${mod_path}" -o "${LIB_DIR}/${mod_path}"
     chmod +x "${LIB_DIR}/${mod_path}"
-    alias_name=$(grep -oP '(?<=alias:\s*)\S+' "${LIB_DIR}/${mod_path}" 2>/dev/null) || true
+    alias_name=$(grep -oP 'alias:\s*\K\S+' "${LIB_DIR}/${mod_path}" 2>/dev/null) || true
     if [ -n "$alias_name" ]; then
         ln -sf "${LIB_DIR}/${mod_path}" "${BIN_DIR}/${alias_name}"
         echo "  安装: ${alias_name}"
@@ -78,6 +78,6 @@ echo "  主菜单: eb"
 echo "  快捷命令:"
 for f in "$LIB_DIR/modules"/*.sh; do
     [ -f "$f" ] || continue
-    alias_name=$(grep -oP '(?<=alias:\s*)\S+' "$f" 2>/dev/null) || true
+    alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
     [ -n "$alias_name" ] && echo "    ${alias_name}"
 done

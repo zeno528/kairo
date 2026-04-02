@@ -43,7 +43,7 @@ do_uninstall() {
     for f in "$MODULES_DIR"/*.sh; do
         [ -f "$f" ] || continue
         local alias
-        alias=$(grep -oP '(?<=alias:\s*)\S+' "$f" || true)
+        alias=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
         [ -n "$alias" ] && echo "  /usr/local/bin/${alias}"
     done
     read -p "确认卸载? [y/N]: " confirm
@@ -51,7 +51,7 @@ do_uninstall() {
         for f in "$MODULES_DIR"/*.sh; do
             [ -f "$f" ] || continue
             local alias
-            alias=$(grep -oP '(?<=alias:\s*)\S+' "$f" || true)
+            alias=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
             [ -n "$alias" ] && rm -f "/usr/local/bin/${alias}"
         done
         rm -f /usr/local/bin/eb
@@ -79,7 +79,7 @@ while true; do
     n=1
     for mod in "${modules[@]}"; do
         name=$(get_module_name "$mod")
-        alias=$(grep -oP '(?<=alias:\s*)\S+' "$mod" || true)
+        alias=$(grep -oP 'alias:\s*\K\S+' "$mod" 2>/dev/null) || true
         if [ -n "$alias" ]; then
             printf "  [%d] %-20s (%s)\n" "$n" "$name" "$alias"
         else
