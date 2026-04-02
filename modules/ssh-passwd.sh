@@ -1,7 +1,7 @@
 #!/bin/bash
-# ssh-passwd.sh - 通用 SSH 密码登录开关
-# 支持: Debian/Ubuntu/CentOS/AlmaLinux/Arch
-# 用法: ssh-passwd [on|off|status] 或直接运行进入交互菜单
+# ssh-passwd 模块 - SSH 密码登录管理
+# alias: sp
+# 用法: sp [on|off|status]
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
@@ -22,7 +22,7 @@ restart_ssh() {
         echo "SSH 服务已重启"
     else
         echo "错误: 无法重启 SSH 服务" >&2
-        exit 1
+        return 1
     fi
 }
 
@@ -49,32 +49,38 @@ do_status() {
     fi
 }
 
-# 命令行参数模式
-if [ -n "$1" ]; then
-    show_logo
-    case "$1" in
-        on)   do_on ;;
-        off)  do_off ;;
-        status) do_status ;;
-        *)    echo "用法: ssh-passwd [on|off|status]"; exit 1 ;;
-    esac
-    exit 0
-fi
-
-# 交互式菜单模式
-while true; do
-    show_logo
-    do_status
-    echo '
+# 二级菜单（被 vps 主菜单调用）
+menu() {
+    while true; do
+        show_logo
+        do_status
+        echo '
   [1] 开启密码登录
   [2] 关闭密码登录
-  [0] 退出
-'
-    read -p "请输入选项: " choice
-    case "$choice" in
-        1) do_on; echo; read -p "按回车键继续..." ;;
-        2) do_off; echo; read -p "按回车键继续..." ;;
-        0) echo "再见！"; exit 0 ;;
-        *) echo "无效选项"; sleep 1 ;;
-    esac
-done
+  [0] 返回上级
+
+请输入选项: '
+        read -p "" choice
+        case "$choice" in
+            1) do_on; echo; read -p "按回车键继续..." ;;
+            2) do_off; echo; read -p "按回车键继续..." ;;
+            0) return ;;
+            *) echo "无效选项"; sleep 1 ;;
+        esac
+    done
+}
+
+# 独立运行模式（被 sp 命令直接调用）
+if [ "${VPS_TOOLKIT_MODE}" != "module" ]; then
+    if [ -n "$1" ]; then
+        show_logo
+        case "$1" in
+            on)     do_on ;;
+            off)    do_off ;;
+            status) do_status ;;
+            *)      echo "用法: sp [on|off|status]"; exit 1 ;;
+        esac
+        exit 0
+    fi
+    menu
+fi
