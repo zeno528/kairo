@@ -2,9 +2,9 @@
 # EKKOBOX - 运维工具箱主入口
 # 用法: eb 或 eb [update|uninstall]
 
-VERSION="1.0.0"
 LIB_DIR="/usr/local/lib/ekkobox"
 MODULES_DIR="${LIB_DIR}/modules"
+VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
 
 show_banner() {
     echo '
