@@ -80,61 +80,64 @@ do_uninstall() {
     fi
 }
 
+# 加载模块（统一入口）
+_load_module() {
+    local module="$1"
+    local module_file="${MODULES_DIR}/${module}.sh"
+    if [ ! -f "$module_file" ]; then
+        error "模块不存在: $module"
+        return
+    fi
+    export OPSTOOL_MODE="module"
+    source "$module_file"
+    unset OPSTOOL_MODE
+    if type menu &>/dev/null; then menu; fi
+}
+
 # 主菜单
 while true; do
     show_banner
     divider
-    echo -e "  ${C_BOLD}[1]${C_RESET} 🔑  SSH 密码登录管理"
-    echo -e "  ${C_BOLD}[2]${C_RESET} 🗝   SSH 公钥管理"
-    echo -e "  ${C_BOLD}[3]${C_RESET} 📊  系统信息查看"
-    echo -e "  ${C_BOLD}[4]${C_RESET} 📡  端口/进程管理"
-    echo -e "  ${C_BOLD}[5]${C_RESET} 🛡️   防火墙管理"
+    echo -e "  ${C_BOLD} 🔒 SSH${C_RESET}"
+    echo -e "   ${C_BOLD}[1]${C_RESET} 密码登录管理"
+    echo -e "   ${C_BOLD}[2]${C_RESET} 公钥管理"
+    echo ""
+    echo -e "  ${C_BOLD} 🖥  系统${C_RESET}"
+    echo -e "   ${C_BOLD}[3]${C_RESET} 系统信息查看"
+    echo -e "   ${C_BOLD}[4]${C_RESET} 端口/进程管理"
+    echo -e "   ${C_BOLD}[5]${C_RESET} 防火墙管理"
+    echo -e "   ${C_BOLD}[6]${C_RESET} 系统服务管理"
+    echo -e "   ${C_BOLD}[7]${C_RESET} 定时任务"
+    echo -e "   ${C_BOLD}[8]${C_RESET} SSL 证书检查"
+    echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
+    echo ""
+    echo -e "  ${C_BOLD} 🐳 Docker${C_RESET}"
+    echo -e "   ${C_BOLD}[D]${C_RESET} Docker 管理"
     divider
-    echo -e "  ${C_BOLD}[6]${C_RESET} 🔄  检查更新"
-    echo -e "  ${C_BOLD}[7]${C_RESET} 🗑️   卸载 OPSTOOL"
-    echo -e "  ${C_BOLD}[0]${C_RESET} 👋  退出"
+    echo -e "   ${C_BOLD}[U]${C_RESET} 检查更新"
+    echo -e "   ${C_BOLD}[X]${C_RESET} 卸载 OPSTOOL"
+    echo -e "   ${C_BOLD}[0]${C_RESET} 退出"
     divider
     echo ""
     read -p "  请输入选项: " choice
 
     case "$choice" in
-        1)
-            export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/ssh-passwd.sh"
-            unset OPSTOOL_MODE
-            if type menu &>/dev/null; then menu; fi
-            ;;
-        2)
-            export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/ssh-keys.sh"
-            unset OPSTOOL_MODE
-            if type menu &>/dev/null; then menu; fi
-            ;;
-        3)
-            export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/sys-info.sh"
-            unset OPSTOOL_MODE
-            if type menu &>/dev/null; then menu; fi
-            ;;
-        4)
-            export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/port-proc.sh"
-            unset OPSTOOL_MODE
-            if type menu &>/dev/null; then menu; fi
-            ;;
-        5)
-            export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/firewall.sh"
-            unset OPSTOOL_MODE
-            if type menu &>/dev/null; then menu; fi
-            ;;
-        6)
+        1) _load_module ssh-passwd ;;
+        2) _load_module ssh-keys ;;
+        3) _load_module sys-info ;;
+        4) _load_module port-proc ;;
+        5) _load_module firewall ;;
+        6) _load_module services ;;
+        7) _load_module crontab ;;
+        8) _load_module ssl-check ;;
+        9) _load_module security-update ;;
+        [Dd]) _load_module docker ;;
+        [Uu])
             do_update
-            # 更新后重新启动脚本以加载新版本
             echo ""; read -p "  按回车键重启 OPSTOOL..." dummy
             exec "$0"
             ;;
-        7)
+        [Xx])
             do_uninstall; echo ""; read -p "  按回车键继续..."
             ;;
         0)
