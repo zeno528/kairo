@@ -15,25 +15,32 @@ restart_ssh() {
     fi
 }
 
-# 统一设置所有配置文件中的 PasswordAuthentication
-set_password_auth() {
-    local value="$1"
+# 在所有配置文件中设置指定项
+set_sshd_option() {
+    local option="$1"
+    local value="$2"
     # 1. 修改主配置
-    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication '"$value"'/' "$SSHD_CONFIG"
+    sed -i 's/^#\?'"$option"'.*/'"$option"' '"$value"'/' "$SSHD_CONFIG"
     # 2. 修改 sshd_config.d 下的所有 conf 文件（优先级更高，必须一起改）
     if [ -d "$SSHD_CONFIG_D" ]; then
         for conf in "$SSHD_CONFIG_D"/*.conf; do
             [ -f "$conf" ] || continue
-            if grep -qi 'PasswordAuthentication' "$conf"; then
-                sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication '"$value"'/' "$conf"
+            if grep -qi "$option" "$conf"; then
+                sed -i 's/^#\?'"$option"'.*/'"$option"' '"$value"'/' "$conf"
                 echo "  已更新: $conf"
             fi
         done
     fi
 }
 
+set_password_auth() {
+    set_sshd_option "PasswordAuthentication" "$1"
+}
+
 do_on() {
     set_password_auth "yes"
+    # Ubuntu 默认 PermitRootLogin prohibit-password，需要改为 yes 才允许 root 密码登录
+    set_sshd_option "PermitRootLogin" "yes"
     restart_ssh
     echo "密码登录: 已开启"
 }
@@ -60,6 +67,22 @@ do_status() {
         echo "当前密码登录: 开启"
     else
         echo "当前密码登录: 未配置（默认开启）"
+    fi
+
+    # 检查 PermitRootLogin
+    local root_login=""
+    if [ -d "$SSHD_CONFIG_D" ]; then
+        root_login=$(grep -Ei '^\s*PermitRootLogin' "$SSHD_CONFIG_D"/*.conf 2>/dev/null | tail -1 | grep -oiP '(yes|no|prohibit-password|without-password)')
+    fi
+    if [ -z "$root_login" ]; then
+        root_login=$(grep -Ei '^\s*PermitRootLogin' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no|prohibit-password|without-password)')
+    fi
+    if [ "$root_login" = "prohibit-password" ] || [ "$root_login" = "without-password" ]; then
+        echo "Root 密码登录: 禁止（PermitRootLogin $root_login）"
+    elif [ "$root_login" = "yes" ]; then
+        echo "Root 密码登录: 允许"
+    elif [ "$root_login" = "no" ]; then
+        echo "Root 密码登录: 禁止（PermitRootLogin no）"
     fi
 }
 
