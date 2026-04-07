@@ -22,13 +22,5 @@ ot  # 进入主菜单
 
 ## 支持系统
 
-- Debian / Ubuntu
-- CentOS / RHEL / AlmaLinux
-- Arch Linux
-
-## 添加新模块
-
-1. 在 `modules/` 目录创建 `xxx.sh`
-2. 文件头部写 `# alias: xx` 定义快捷命令
-3. 实现 `menu()` 函数作为二级菜单
-4. 提交推送，目标机器重新运行安装命令即可
+- Debian / Ubuntu（主要测试环境）
+- CentOS / RHEL

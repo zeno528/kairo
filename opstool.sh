@@ -98,11 +98,11 @@ _load_module() {
 while true; do
     show_banner
     divider
-    echo -e "  ${C_BOLD} 🔒 SSH${C_RESET}"
+    echo -e "  ${C_GREEN}${C_BOLD}🔒 SSH${C_RESET}"
     echo -e "   ${C_BOLD}[1]${C_RESET} 密码登录管理"
     echo -e "   ${C_BOLD}[2]${C_RESET} 公钥管理"
     echo ""
-    echo -e "  ${C_BOLD} 🖥  系统${C_RESET}"
+    echo -e "  ${C_CYAN}${C_BOLD}🖥  系统${C_RESET}"
     echo -e "   ${C_BOLD}[3]${C_RESET} 系统信息查看"
     echo -e "   ${C_BOLD}[4]${C_RESET} 端口/进程管理"
     echo -e "   ${C_BOLD}[5]${C_RESET} 防火墙管理"
@@ -111,7 +111,7 @@ while true; do
     echo -e "   ${C_BOLD}[8]${C_RESET} SSL 证书检查"
     echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
     echo ""
-    echo -e "  ${C_BOLD} 🐳 Docker${C_RESET}"
+    echo -e "  ${C_YELLOW}${C_BOLD}🐳 Docker${C_RESET}"
     echo -e "   ${C_BOLD}[D]${C_RESET} Docker 管理"
     divider
     echo -e "   ${C_BOLD}[U]${C_RESET} 检查更新"

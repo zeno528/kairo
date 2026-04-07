@@ -91,14 +91,11 @@ do_remote_check() {
 do_batch_check() {
     _check_openssl || return
     echo ""
-    echo -e "  ${C_DIM}输入域名列表，每行一个，输入空行结束${C_RESET}"
+    echo -e "  ${C_DIM}输入域名，空格分隔${C_RESET}"
     echo ""
-    local domains=()
-    while true; do
-        read -p "  域名: " domain
-        [ -z "$domain" ] && break
-        domains+=("$domain")
-    done
+    read -p "  域名: " input
+    [ -z "$input" ] && info "已取消" && return
+    local domains=($input)
     if [ ${#domains[@]} -eq 0 ]; then
         info "已取消"
         return
