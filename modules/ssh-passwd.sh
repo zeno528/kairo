@@ -47,6 +47,8 @@ do_on() {
 
 do_off() {
     set_password_auth "no"
+    # 恢复为仅允许密钥登录，与 Ubuntu 默认安全策略一致
+    set_sshd_option "PermitRootLogin" "prohibit-password"
     restart_ssh
     echo "密码登录: 已关闭"
 }

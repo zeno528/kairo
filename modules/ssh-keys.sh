@@ -136,6 +136,54 @@ do_view() {
     sed -n "${target_line}p" "$AUTHORIZED_KEYS"
 }
 
+do_rename() {
+    echo ""
+    if [ ! -f "$AUTHORIZED_KEYS" ]; then
+        echo "  未找到 authorized_keys 文件"
+        return
+    fi
+
+    do_list
+    echo ""
+    read -p "  输入编号: " num
+    [ -z "$num" ] && echo "  已取消" && return
+
+    [[ ! "$num" =~ ^[0-9]+$ ]] && echo "  错误: 请输入数字" && return
+
+    # 找到对应行号
+    local line_num=0
+    local target_line=0
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        line_num=$((line_num + 1))
+        if [ "$line_num" -eq "$num" ]; then
+            target_line=$((target_line + 1))
+            break
+        fi
+        target_line=$((target_line + 1))
+    done < "$AUTHORIZED_KEYS"
+
+    if [ "$target_line" -eq 0 ]; then
+        echo "  错误: 编号 $num 不存在"
+        return
+    fi
+
+    # 显示当前备注
+    local old_line=$(sed -n "${target_line}p" "$AUTHORIZED_KEYS")
+    local key_part=$(echo "$old_line" | awk '{print $1, $2}')
+    local old_comment=$(echo "$old_line" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+    echo ""
+    echo "  当前备注: ${old_comment:-（无）}"
+
+    read -p "  输入新备注: " new_comment
+    [ -z "$new_comment" ] && echo "  已取消" && return
+
+    # 替换该行
+    local new_line="${key_part} ${new_comment}"
+    sed -i "${target_line}c\\${new_line}" "$AUTHORIZED_KEYS"
+    echo "  备注已修改: ${new_comment}"
+}
+
 menu() {
     while true; do
         echo ""
@@ -143,6 +191,7 @@ menu() {
         echo "  [2] 添加公钥"
         echo "  [3] 删除公钥"
         echo "  [4] 查看公钥详情"
+        echo "  [5] 修改公钥备注"
         echo "  [0] 返回上级"
         echo ""
         read -p "  请输入选项: " choice
@@ -151,6 +200,7 @@ menu() {
             2) do_add; echo ""; read -p "  按回车键继续..." ;;
             3) do_remove; echo ""; read -p "  按回车键继续..." ;;
             4) do_view; echo ""; read -p "  按回车键继续..." ;;
+            5) do_rename; echo ""; read -p "  按回车键继续..." ;;
             0) return ;;
             *) echo "  无效选项"; sleep 1 ;;
         esac
