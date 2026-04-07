@@ -1,26 +1,24 @@
-# EKKOBOX
+# OPSTOOL
 
 通用运维脚本工具箱，一行命令部署。
 
 ## 一键安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | bash
 ```
 
 ## 卸载
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ekko7778/ekkobox/main/install.sh | bash -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | bash -s -- uninstall
 ```
 
 ## 可用命令
 
 | 命令 | 作用 |
 |:-----|:-----|
-| `eb` | 主菜单（一级） |
-| `eb update` | 检查更新 |
-| `eb uninstall` | 卸载 |
+| `ot` | 主菜单（一级） |
 | `sp` | SSH 密码登录管理 |
 
 ## 支持系统

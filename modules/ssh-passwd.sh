@@ -4,10 +4,12 @@
 # 用法: sp [on|off|status]
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
+SSHD_CONFIG_D="/etc/ssh/sshd_config.d"
 
 restart_ssh() {
-    systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null
-    if [ $? -eq 0 ]; then
+    if systemctl restart ssh 2>/dev/null; then
+        echo "SSH 服务已重启"
+    elif systemctl restart sshd 2>/dev/null; then
         echo "SSH 服务已重启"
     else
         echo "错误: 无法重启 SSH 服务" >&2
@@ -15,20 +17,45 @@ restart_ssh() {
     fi
 }
 
+# 统一设置所有配置文件中的 PasswordAuthentication
+set_password_auth() {
+    local value="$1"
+    # 1. 修改主配置
+    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication '"$value"'/' "$SSHD_CONFIG"
+    # 2. 修改 sshd_config.d 下的所有 conf 文件（优先级更高，必须一起改）
+    if [ -d "$SSHD_CONFIG_D" ]; then
+        for conf in "$SSHD_CONFIG_D"/*.conf; do
+            [ -f "$conf" ] || continue
+            if grep -qi 'PasswordAuthentication' "$conf"; then
+                sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication '"$value"'/' "$conf"
+                echo "  已更新: $conf"
+            fi
+        done
+    fi
+}
+
 do_on() {
-    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$SSHD_CONFIG"
+    set_password_auth "yes"
     restart_ssh
     echo "密码登录: 已开启"
 }
 
 do_off() {
-    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' "$SSHD_CONFIG"
+    set_password_auth "no"
     restart_ssh
     echo "密码登录: 已关闭"
 }
 
 do_status() {
-    current=$(grep -Ei '^\s*PasswordAuthentication' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no)')
+    # 优先读取 sshd_config.d 下的配置（后加载，优先级更高）
+    local current=""
+    if [ -d "$SSHD_CONFIG_D" ]; then
+        current=$(grep -Ei '^\s*PasswordAuthentication' "$SSHD_CONFIG_D"/*.conf 2>/dev/null | tail -1 | grep -oiP '(yes|no)')
+    fi
+    # 如果 sshd_config.d 没有配置，则读主配置
+    if [ -z "$current" ]; then
+        current=$(grep -Ei '^\s*PasswordAuthentication' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no)')
+    fi
     if [ "$current" = "no" ]; then
         echo "密码登录: 关闭"
     elif [ "$current" = "yes" ]; then
@@ -59,7 +86,7 @@ menu() {
 }
 
 # 独立运行模式（被 sp 命令直接调用）
-if [ "${EKKOBOX_MODE}" != "module" ]; then
+if [ "${OPSTOOL_MODE}" != "module" ]; then
     if [ -n "$1" ]; then
         case "$1" in
             on)     do_on ;;

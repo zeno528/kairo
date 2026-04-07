@@ -1,21 +1,21 @@
 #!/bin/bash
-# EKKOBOX - 运维工具箱主入口
-# 用法: eb
+# OPSTOOL - 运维工具箱主入口
+# 用法: ot
 
-LIB_DIR="/usr/local/lib/ekkobox"
+LIB_DIR="/usr/local/lib/opstool"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-REPO_URL="https://raw.githubusercontent.com/Ekko7778/ekkobox/main"
+REPO_URL="https://raw.githubusercontent.com/Ekko7778/opstool/main"
 
 show_banner() {
     echo '
-███████╗██╗  ██╗██╗  ██╗ ██████╗
-██╔════╝██║ ██╔╝██║ ██╔╝██╔════╝
-███████╗█████╔╝█████╔╝██║
-██╔══██║██╔═██╗██╔═██╗██║
-██║  ██║██║  ██╗██║  ██║╚██████╗
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
-                 B O X       v'"$VERSION"'
+ ██████╗ ██████╗ ████████╗
+██╔════╝ ██╔══██╗╚══██╔══╝
+██║  ███╗██████╔╝   ██║
+██║   ██║██╔══██╗   ██║
+╚██████╔╝██║  ██║   ██║
+ ╚═════╝ ╚═╝  ╚═╝   ╚═╝
+            T O O L          v'"$VERSION"'
 '
 }
 
@@ -38,8 +38,8 @@ do_update() {
 
 do_uninstall() {
     echo ""
-    echo ">>> 即将卸载 EKKOBOX，以下文件将被删除:"
-    echo "  /usr/local/bin/eb"
+    echo ">>> 即将卸载 OPSTOOL，以下文件将被删除:"
+    echo "  /usr/local/bin/ot"
     echo "  ${LIB_DIR}/"
     for f in "$MODULES_DIR"/*.sh; do
         [ -f "$f" ] || continue
@@ -54,7 +54,7 @@ do_uninstall() {
             alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
             [ -n "$alias_name" ] && rm -f "/usr/local/bin/${alias_name}"
         done
-        rm -f /usr/local/bin/eb
+        rm -f /usr/local/bin/ot
         rm -rf "$LIB_DIR"
         echo ">>> 卸载完成"
         exit 0
@@ -69,16 +69,16 @@ while true; do
 
     echo "  [1] SSH 密码登录管理"
     echo "  [2] 检查更新"
-    echo "  [3] 卸载 EKKOBOX"
+    echo "  [3] 卸载 OPSTOOL"
     echo "  [0] 退出"
     echo ""
     read -p "  请输入选项: " choice
 
     case "$choice" in
         1)
-            export EKKOBOX_MODE="module"
+            export OPSTOOL_MODE="module"
             source "${MODULES_DIR}/ssh-passwd.sh"
-            unset EKKOBOX_MODE
+            unset OPSTOOL_MODE
             if type menu &>/dev/null; then
                 menu
             fi
