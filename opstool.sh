@@ -92,7 +92,7 @@ while true; do
             echo ""; read -p "  按回车键继续..."
             ;;
         0)
-            echo "再见！"; exit 0
+            echo "👋 再见！"; exit 0
             ;;
         *)
             echo "  无效选项"; sleep 1
