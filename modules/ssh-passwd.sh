@@ -1,7 +1,5 @@
 #!/bin/bash
 # ssh-passwd 模块 - SSH 密码登录管理
-# alias: sp
-# 用法: sp [on|off|status]
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
 SSHD_CONFIG_D="/etc/ssh/sshd_config.d"
@@ -85,16 +83,4 @@ menu() {
     done
 }
 
-# 独立运行模式（被 sp 命令直接调用）
-if [ "${OPSTOOL_MODE}" != "module" ]; then
-    if [ -n "$1" ]; then
-        case "$1" in
-            on)     do_on ;;
-            off)    do_off ;;
-            status) do_status ;;
-            *)      echo "用法: sp [on|off|status]"; exit 1 ;;
-        esac
-        exit 0
-    fi
-    menu
-fi
+

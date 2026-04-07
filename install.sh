@@ -62,11 +62,7 @@ for mod_path in "${MODULES[@]}"; do
     mod_file=$(basename "$mod_path")
     curl -fsSL "${BASE_URL}/${mod_path}" -o "${LIB_DIR}/${mod_path}"
     chmod +x "${LIB_DIR}/${mod_path}"
-    alias_name=$(grep -oP 'alias:\s*\K\S+' "${LIB_DIR}/${mod_path}" 2>/dev/null) || true
-    if [ -n "$alias_name" ]; then
-        ln -sf "${LIB_DIR}/${mod_path}" "${BIN_DIR}/${alias_name}"
-        echo "  安装: ${alias_name}"
-    fi
+
 done
 
 # 保存版本号
@@ -75,9 +71,3 @@ echo "$remote_ver" > "$VERSION_FILE"
 echo ">>> 完成！OPSTOOL v${remote_ver}"
 echo ""
 echo "  主菜单: ot"
-echo "  快捷命令:"
-for f in "$LIB_DIR/modules"/*.sh; do
-    [ -f "$f" ] || continue
-    alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-    [ -n "$alias_name" ] && echo "    ${alias_name}"
-done

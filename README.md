@@ -14,12 +14,11 @@ curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | bash -s -- uninstall
 ```
 
-## 可用命令
+## 使用
 
-| 命令 | 作用 |
-|:-----|:-----|
-| `ot` | 主菜单（一级） |
-| `sp` | SSH 密码登录管理 |
+```bash
+ot  # 进入主菜单
+```
 
 ## 支持系统
 
