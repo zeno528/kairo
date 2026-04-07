@@ -22,5 +22,4 @@ ot  # 进入主菜单
 
 ## 支持系统
 
-- Debian / Ubuntu（主要测试环境）
-- CentOS / RHEL
+- Debian / Ubuntu

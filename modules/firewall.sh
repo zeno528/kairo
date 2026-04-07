@@ -1,25 +1,18 @@
 #!/bin/bash
-# firewall 模块 - 防火墙管理
+# firewall 模块 - 防火墙管理（Debian/Ubuntu）
 
-# 检测可用的防火墙工具
-detect_fw() {
-    if command -v ufw &>/dev/null; then
-        echo "ufw"
-    elif command -v firewall-cmd &>/dev/null; then
-        echo "firewalld"
-    elif command -v iptables &>/dev/null; then
-        echo "iptables"
-    else
-        echo ""
-    fi
-}
-
-FW=$(detect_fw)
+# 检测防火墙工具: ufw 优先，备选 iptables
+FW=""
+if command -v ufw &>/dev/null; then
+    FW="ufw"
+elif command -v iptables &>/dev/null; then
+    FW="iptables"
+fi
 
 do_status() {
     echo ""
     if [ -z "$FW" ]; then
-        error "未检测到防火墙工具 (ufw/firewalld/iptables)"
+        error "未检测到防火墙工具 (ufw/iptables)"
         return
     fi
     echo -e "  ${C_BOLD}防火墙${C_RESET}  $FW"
@@ -28,15 +21,6 @@ do_status() {
             echo -e "  ${C_BOLD}状态${C_RESET}  $(ufw status | head -1 | sed 's/Status: //')"
             echo ""
             ufw status numbered 2>/dev/null | tail -n +4
-            ;;
-        firewalld)
-            echo -e "  ${C_BOLD}状态${C_RESET}  $(firewall-cmd --state 2>/dev/null)"
-            echo ""
-            echo -e "  ${C_BOLD}开放服务${C_RESET}"
-            firewall-cmd --list-services 2>/dev/null | tr ' ' '\n' | sed 's/^/    /'
-            echo ""
-            echo -e "  ${C_BOLD}开放端口${C_RESET}"
-            firewall-cmd --list-ports 2>/dev/null | tr ' ' '\n' | sed 's/^/    /'
             ;;
         iptables)
             echo -e "  ${C_BOLD}当前规则${C_RESET}"
@@ -57,11 +41,6 @@ do_open_port() {
         ufw)
             sudo ufw allow "$port/$proto" && success "已开放 $port/$proto"
             ;;
-        firewalld)
-            sudo firewall-cmd --permanent --add-port="$port/$proto" \
-                && sudo firewall-cmd --reload \
-                && success "已开放 $port/$proto"
-            ;;
         iptables)
             sudo iptables -A INPUT -p "$proto" --dport "$port" -j ACCEPT \
                 && success "已开放 $port/$proto (当前会话，重启后失效)"
@@ -81,11 +60,6 @@ do_close_port() {
         ufw)
             sudo ufw delete allow "$port/$proto" && success "已关闭 $port/$proto"
             ;;
-        firewalld)
-            sudo firewall-cmd --permanent --remove-port="$port/$proto" \
-                && sudo firewall-cmd --reload \
-                && success "已关闭 $port/$proto"
-            ;;
         iptables)
             sudo iptables -A INPUT -p "$proto" --dport "$port" -j DROP \
                 && success "已关闭 $port/$proto (当前会话，重启后失效)"
@@ -103,9 +77,6 @@ do_enable() {
             [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
             sudo ufw enable && success "防火墙已开启"
             ;;
-        firewalld)
-            sudo systemctl enable --now firewalld && success "防火墙已开启"
-            ;;
         iptables)
             info "iptables 无全局开关，需手动管理规则"
             ;;
@@ -115,14 +86,11 @@ do_enable() {
 do_disable() {
     [ -z "$FW" ] && error "未检测到防火墙工具" && return
     echo ""
-    read -p "  确认关闭防火墙? [y/N]: " confirm
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     case "$FW" in
         ufw)
+            read -p "  确认关闭防火墙? [y/N]: " confirm
+            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
             sudo ufw disable && success "防火墙已关闭"
-            ;;
-        firewalld)
-            sudo systemctl stop firewalld && sudo systemctl disable firewalld && success "防火墙已关闭"
             ;;
         iptables)
             info "iptables 无全局开关，需手动清空规则"

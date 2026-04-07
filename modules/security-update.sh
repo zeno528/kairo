@@ -1,86 +1,46 @@
 #!/bin/bash
-# security-update 模块 - 安全更新
+# security-update 模块 - 安全更新（Debian/Ubuntu）
 
-_detect_pkg_mgr() {
-    if command -v apt &>/dev/null; then
-        echo "apt"
-    elif command -v yum &>/dev/null; then
-        echo "yum"
-    elif command -v dnf &>/dev/null; then
-        echo "dnf"
-    elif command -v apk &>/dev/null; then
-        echo "apk"
-    else
+# 检查失效源并提示，不阻断更新
+_apt_update_smart() {
+    local update_output
+    update_output=$(sudo apt update 2>&1)
+
+    # 提取失效源地址
+    local broken
+    broken=$(echo "$update_output" | grep -E "Err:.*404|Err:.*does not have a Release file" | grep -oP 'https?://[^ ]+' | sort -u)
+
+    if [ -n "$broken" ]; then
+        echo ""
+        warn "检测到失效软件源:"
+        echo "$broken" | while read -r repo; do
+            echo -e "    ${C_RED}${repo}${C_RESET}"
+        done
+        echo ""
+        echo -e "  ${C_DIM}失效源不影响系统官方源的正常更新${C_RESET}"
+        echo -e "  ${C_DIM}清理方法: sudo rm /etc/apt/sources.list.d/对应文件.list${C_RESET}"
         echo ""
     fi
 }
 
-PKG_MGR=$(_detect_pkg_mgr)
-
 do_check() {
     echo ""
-    case "$PKG_MGR" in
-        apt)
-            echo -e "  ${C_BOLD}可更新的包${C_RESET}"
-            apt list --upgradable 2>/dev/null | grep -v "^Listing" | head -20 | sed 's/^/  /'
-            local total
-            total=$(apt list --upgradable 2>/dev/null | grep -c '/')
-            echo ""
-            info "共 $total 个包可更新"
-            ;;
-        yum)
-            echo -e "  ${C_BOLD}检查更新中...${C_RESET}"
-            sudo yum check-update 2>/dev/null | tail -n +3 | head -20 | sed 's/^/  /'
-            ;;
-        dnf)
-            echo -e "  ${C_BOLD}检查更新中...${C_RESET}"
-            sudo dnf check-update 2>/dev/null | tail -n +3 | head -20 | sed 's/^/  /'
-            ;;
-        apk)
-            echo -e "  ${C_BOLD}检查更新中...${C_RESET}"
-            apk version -l '<' 2>/dev/null | head -20 | sed 's/^/  /'
-            ;;
-        *)
-            error "未检测到包管理器 (apt/yum/dnf/apk)"
-            ;;
-    esac
+    echo -e "  ${C_BOLD}可更新的包${C_RESET}"
+    apt list --upgradable 2>/dev/null | grep -v "^Listing" | head -20 | sed 's/^/  /'
+    local total
+    total=$(apt list --upgradable 2>/dev/null | grep -c '/')
+    echo ""
+    info "共 $total 个包可更新"
 }
 
 do_security_update() {
     echo ""
-    case "$PKG_MGR" in
-        apt)
-            echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
-            echo ""
-            read -p "  确认执行安全更新? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo apt update && sudo apt upgrade -y 2>/dev/null && success "安全更新完成"
-            ;;
-        yum)
-            echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
-            echo ""
-            read -p "  确认执行安全更新? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo yum update --security -y 2>/dev/null && success "安全更新完成"
-            ;;
-        dnf)
-            echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
-            echo ""
-            read -p "  确认执行安全更新? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo dnf upgrade --security -y 2>/dev/null && success "安全更新完成"
-            ;;
-        apk)
-            echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
-            echo ""
-            read -p "  确认执行安全更新? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo apk update && sudo apk upgrade 2>/dev/null && success "安全更新完成"
-            ;;
-        *)
-            error "未检测到包管理器"
-            ;;
-    esac
+    echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
+    echo ""
+    read -p "  确认执行安全更新? [y/N]: " confirm
+    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+    _apt_update_smart
+    sudo apt upgrade -y 2>/dev/null && success "安全更新完成"
 }
 
 do_full_update() {
@@ -89,45 +49,14 @@ do_full_update() {
     echo ""
     read -p "  确认执行完整更新? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    case "$PKG_MGR" in
-        apt)
-            sudo apt update && sudo apt full-upgrade -y 2>/dev/null && success "完整更新完成"
-            ;;
-        yum)
-            sudo yum update -y 2>/dev/null && success "完整更新完成"
-            ;;
-        dnf)
-            sudo dnf upgrade -y 2>/dev/null && success "完整更新完成"
-            ;;
-        apk)
-            sudo apk update && sudo apk upgrade 2>/dev/null && success "完整更新完成"
-            ;;
-        *)
-            error "未检测到包管理器"
-            ;;
-    esac
+    _apt_update_smart
+    sudo apt full-upgrade -y 2>/dev/null && success "完整更新完成"
 }
 
 do_cleanup() {
     echo ""
-    case "$PKG_MGR" in
-        apt)
-            echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
-            sudo apt autoremove -y 2>/dev/null && sudo apt clean 2>/dev/null && success "清理完成"
-            ;;
-        yum)
-            sudo yum autoremove -y 2>/dev/null && sudo yum clean all 2>/dev/null && success "清理完成"
-            ;;
-        dnf)
-            sudo dnf autoremove -y 2>/dev/null && sudo dnf clean all 2>/dev/null && success "清理完成"
-            ;;
-        apk)
-            sudo apk cache clean 2>/dev/null && success "清理完成"
-            ;;
-        *)
-            error "未检测到包管理器"
-            ;;
-    esac
+    echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
+    sudo apt autoremove -y 2>/dev/null && sudo apt clean 2>/dev/null && success "清理完成"
 }
 
 menu() {
