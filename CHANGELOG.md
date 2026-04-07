@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.0.17 (2026-04-08)
+- ✨ refactor(network-test): 重构网络测试脚本，优化测速和 Ping 测试功能。
+
 ## v1.0.16 (2026-04-08)
 - ✨ refactor(network-test): 替换回程路由测试为 backtrace 工具。
 
