@@ -1,6 +1,8 @@
 #!/bin/bash
 # network-test 模块 - 网络测试
 
+BACKTRACE_URL="https://raw.githubusercontent.com/zhanghanyun/backtrace/main/install.sh"
+
 do_speedtest() {
     echo ""
     if command -v speedtest &>/dev/null; then
@@ -14,13 +16,9 @@ do_speedtest() {
     else
         warn "未安装测速工具"
         echo ""
-        echo -e "  ${C_DIM}安装方法:${C_RESET}"
-        echo -e "    sudo apt install speedtest-cli"
+        echo -e "  ${C_DIM}安装: sudo apt install speedtest-cli${C_RESET}"
         echo ""
-        echo -e "  ${C_DIM}或安装 Ookla 官方版:${C_RESET}"
-        echo -e "    sudo apt install curl && curl -fsSL https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash && sudo apt install speedtest"
-        echo ""
-        read -p "  是否现在安装 speedtest-cli? [y/N]: " confirm
+        read -p "  是否现在安装? [y/N]: " confirm
         if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
             sudo apt install -y speedtest-cli 2>/dev/null && speedtest-cli
         else
@@ -29,24 +27,21 @@ do_speedtest() {
     fi
 }
 
-do_traceroute() {
+do_backtrace() {
     echo ""
-    read -p "  输入目标 IP 或域名 (默认 8.8.8.8): " target
-    target=${target:-8.8.8.8}
-    echo ""
-
-    # 优先 traceroute，备选 tracepath（无需 root）
-    if command -v traceroute &>/dev/null; then
-        info "traceroute → $target"
-        echo ""
-        sudo traceroute "$target"
-    elif command -v tracepath &>/dev/null; then
-        info "tracepath → $target"
-        echo ""
-        tracepath "$target"
+    if command -v backtrace &>/dev/null; then
+        backtrace
     else
-        warn "未安装 traceroute 或 tracepath"
-        echo -e "  ${C_DIM}安装: sudo apt install traceroute${C_RESET}"
+        warn "未安装 backtrace"
+        echo -e "  ${C_DIM}项目: https://github.com/zhanghanyun/backtrace${C_RESET}"
+        echo -e "  ${C_DIM}功能: 测试三网回程路由（电信/联通/移动线路类型）${C_RESET}"
+        echo ""
+        read -p "  是否现在安装? [y/N]: " confirm
+        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+            curl -fsSL "$BACKTRACE_URL" | bash && backtrace
+        else
+            info "已取消"
+        fi
     fi
 }
 
@@ -81,29 +76,12 @@ do_ping_test() {
     fi
 }
 
-do_route_test() {
-    echo ""
-    echo -e "  ${C_BOLD}回程路由测试${C_RESET}"
-    echo ""
-    echo -e "  ${C_BOLD}[1]${C_RESET} Google DNS (8.8.8.8)"
-    echo -e "  ${C_BOLD}[2]${C_RESET} Cloudflare (1.1.1.1)"
-    echo -e "  ${C_BOLD}[3]${C_RESET} 自定义目标"
-    echo ""
-    read -p "  选择目标: " choice
-    case "$choice" in
-        1) do_traceroute "8.8.8.8" ;;
-        2) do_traceroute "1.1.1.1" ;;
-        3) do_traceroute ;;
-        *) error "无效选项" ;;
-    esac
-}
-
 menu() {
     while true; do
         title "🌐 网络测试"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 网络测速"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 回程路由测试"
+        echo -e "  ${C_BOLD}[2]${C_RESET} 三网回程路由"
         echo -e "  ${C_BOLD}[3]${C_RESET} Ping 延迟测试"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
@@ -111,7 +89,7 @@ menu() {
         read -p "  请输入选项: " choice
         case "$choice" in
             1) do_speedtest; echo ""; read -p "  按回车键继续..." ;;
-            2) do_route_test; echo ""; read -p "  按回车键继续..." ;;
+            2) do_backtrace; echo ""; read -p "  按回车键继续..." ;;
             3) do_ping_test; echo ""; read -p "  按回车键继续..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;

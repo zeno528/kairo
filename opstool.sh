@@ -110,10 +110,8 @@ while true; do
     echo -e "   ${C_BOLD}[7]${C_RESET} 定时任务"
     echo -e "   ${C_BOLD}[8]${C_RESET} SSL 证书检查"
     echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
-    echo -e "   ${C_BOLD}[A]${C_RESET} 网络测试"
-    echo ""
-    echo -e "  ${C_YELLOW}${C_BOLD}🐳 Docker${C_RESET}"
-    echo -e "   ${C_BOLD}[D]${C_RESET} Docker 管理"
+    echo -e "   ${C_BOLD}[10]${C_RESET} 网络测试"
+    echo -e "   ${C_BOLD}[11]${C_RESET} Docker 管理"
     divider
     echo -e "   ${C_BOLD}[U]${C_RESET} 检查更新"
     echo -e "   ${C_BOLD}[X]${C_RESET} 卸载 OPSTOOL"
@@ -132,8 +130,8 @@ while true; do
         7) _load_module crontab ;;
         8) _load_module ssl-check ;;
         9) _load_module security-update ;;
-        [Aa]) _load_module network-test ;;
-        [Dd]) _load_module docker ;;
+        10) _load_module network-test ;;
+        11) _load_module docker ;;
         [Uu])
             do_update
             echo ""; read -p "  按回车键重启 OPSTOOL..." dummy
