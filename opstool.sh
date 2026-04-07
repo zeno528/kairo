@@ -68,11 +68,12 @@ while true; do
     show_banner
 
     echo "  [1] SSH 密码登录管理"
-    echo "  [2] 系统信息查看"
-    echo "  [3] 端口/进程管理"
-    echo "  [4] 防火墙管理"
-    echo "  [5] 检查更新"
-    echo "  [6] 卸载 OPSTOOL"
+    echo "  [2] SSH 公钥管理"
+    echo "  [3] 系统信息查看"
+    echo "  [4] 端口/进程管理"
+    echo "  [5] 防火墙管理"
+    echo "  [6] 检查更新"
+    echo "  [7] 卸载 OPSTOOL"
     echo "  [0] 退出"
     echo ""
     read -p "  请输入选项: " choice
@@ -88,7 +89,7 @@ while true; do
             ;;
         2)
             export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/sys-info.sh"
+            source "${MODULES_DIR}/ssh-keys.sh"
             unset OPSTOOL_MODE
             if type menu &>/dev/null; then
                 menu
@@ -96,7 +97,7 @@ while true; do
             ;;
         3)
             export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/port-proc.sh"
+            source "${MODULES_DIR}/sys-info.sh"
             unset OPSTOOL_MODE
             if type menu &>/dev/null; then
                 menu
@@ -104,17 +105,25 @@ while true; do
             ;;
         4)
             export OPSTOOL_MODE="module"
-            source "${MODULES_DIR}/firewall.sh"
+            source "${MODULES_DIR}/port-proc.sh"
             unset OPSTOOL_MODE
             if type menu &>/dev/null; then
                 menu
             fi
             ;;
         5)
+            export OPSTOOL_MODE="module"
+            source "${MODULES_DIR}/firewall.sh"
+            unset OPSTOOL_MODE
+            if type menu &>/dev/null; then
+                menu
+            fi
+            ;;
+        6)
             do_update
             echo ""; read -p "  按回车键继续..."
             ;;
-        6)
+        7)
             do_uninstall
             echo ""; read -p "  按回车键继续..."
             ;;
