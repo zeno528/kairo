@@ -55,15 +55,15 @@ do_status() {
         current=$(grep -Ei '^\s*PasswordAuthentication' "$SSHD_CONFIG" | tail -1 | grep -oiP '(yes|no)')
     fi
     if [ "$current" = "no" ]; then
-        echo "密码登录: 关闭"
+        echo "当前密码登录: 关闭"
     elif [ "$current" = "yes" ]; then
-        echo "密码登录: 开启"
+        echo "当前密码登录: 开启"
     else
-        echo "密码登录: 未配置（默认开启）"
+        echo "当前密码登录: 未配置（默认开启）"
     fi
 }
 
-# 二级菜单（被 eb 主菜单调用）
+# 二级菜单（被 ot 主菜单调用）
 menu() {
     while true; do
         echo ""

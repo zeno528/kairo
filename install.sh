@@ -13,7 +13,7 @@ BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
 
 # 获取远程版本号
 get_remote_version() {
-    curl -fsSL "${BASE_URL}/VERSION" 2>/dev/null | tr -d '[:space:]'
+    curl -fsSL "${BASE_URL}/VERSION?t=$(date +%s)" 2>/dev/null | tr -d '[:space:]'
 }
 
 # 获取本地版本号
@@ -52,18 +52,22 @@ fi
 mkdir -p "$LIB_DIR/modules"
 
 # 下载主入口
-curl -fsSL "${BASE_URL}/opstool.sh" -o "${BIN_DIR}/ot"
+curl -fsSL "${BASE_URL}/opstool.sh?t=$(date +%s)" -o "${BIN_DIR}/ot"
 chmod +x "${BIN_DIR}/ot"
 echo "  安装: ot (主菜单)"
 
-# 下载模块
-MODULES=("modules/ssh-passwd.sh")
-for mod_path in "${MODULES[@]}"; do
-    mod_file=$(basename "$mod_path")
-    curl -fsSL "${BASE_URL}/${mod_path}" -o "${LIB_DIR}/${mod_path}"
-    chmod +x "${LIB_DIR}/${mod_path}"
-
-done
+# 动态获取远程模块列表
+MODULES=$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/modules" | grep -oP '"name":\s*"\K[^"]+\.sh')
+if [ -z "$MODULES" ]; then
+    echo "  警告: 无法获取模块列表，跳过模块安装"
+else
+    for mod_name in $MODULES; do
+        mod_path="modules/${mod_name}"
+        curl -fsSL "${BASE_URL}/${mod_path}?t=$(date +%s)" -o "${LIB_DIR}/${mod_path}"
+        chmod +x "${LIB_DIR}/${mod_path}"
+        echo "  安装: ${mod_name}"
+    done
+fi
 
 # 保存版本号
 echo "$remote_ver" > "$VERSION_FILE"
