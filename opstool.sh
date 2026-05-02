@@ -5,7 +5,7 @@
 LIB_DIR="/usr/local/lib/opstool"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-REPO_URL="https://raw.githubusercontent.com/Ekko7778/opstool/main"
+REPO_URL="https://raw.githubusercontent.com/zeno528/opstool/main"
 
 # ── 颜色定义 ──
 C_RESET="\033[0m"
@@ -34,7 +34,7 @@ ${C_BOLD}  █████    ██████╗  ██████╗
 ╚██████╔╝  ██║      ██████╔
  ╚═════╝   ╚═╝      ╚═════╝${C_RESET}
 ${C_DIM}  TOOL${C_RESET}             ${C_GRAY}v${VERSION}${C_RESET}
-${C_DIM}  By Ekko7778  ·  github.com/Ekko7778/opstool${C_RESET}"
+${C_DIM}  By zeno528  ·  github.com/zeno528/opstool${C_RESET}"
 }
 
 do_update() {

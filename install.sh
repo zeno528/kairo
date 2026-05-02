@@ -1,14 +1,14 @@
 #!/bin/bash
 # OPSTOOL 安装/卸载脚本
-# 安装: curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | bash
-# 卸载: curl -fsSL https://raw.githubusercontent.com/Ekko7778/opstool/main/install.sh | bash -s -- uninstall
+# 安装: curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash
+# 卸载: curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash -s -- uninstall
 
 set -e
 
 BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/opstool"
 VERSION_FILE="${LIB_DIR}/VERSION"
-REPO="Ekko7778/opstool"
+REPO="zeno528/opstool"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
 
 # 获取远程版本号
