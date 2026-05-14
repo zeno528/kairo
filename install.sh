@@ -54,19 +54,23 @@ mkdir -p "$LIB_DIR/modules"
 # 下载主入口
 curl -fsSL "${BASE_URL}/opstool.sh?t=$(date +%s)" -o "${BIN_DIR}/ot"
 chmod +x "${BIN_DIR}/ot"
-echo "  安装: ot (主菜单)"
 
 # 动态获取远程模块列表
 MODULES=$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/modules" | grep -oP '"name":\s*"\K[^"]+\.sh')
 if [ -z "$MODULES" ]; then
     echo "  警告: 无法获取模块列表，跳过模块安装"
 else
+    TOTAL=$(echo "$MODULES" | wc -l)
+    COUNT=0
+    printf "  安装: ot (主菜单) [0/%d]" "$TOTAL"
     for mod_name in $MODULES; do
         mod_path="modules/${mod_name}"
         curl -fsSL "${BASE_URL}/${mod_path}?t=$(date +%s)" -o "${LIB_DIR}/${mod_path}"
         chmod +x "${LIB_DIR}/${mod_path}"
-        echo "  安装: ${mod_name}"
+        COUNT=$((COUNT + 1))
+        printf "\r  安装: %-25s [%d/%d]" "$mod_name" "$COUNT" "$TOTAL"
     done
+    echo ""
 fi
 
 # 保存版本号
