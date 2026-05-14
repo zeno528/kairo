@@ -74,23 +74,40 @@ do_remove() {
 
     do_list
     echo ""
-    read -p "  输入要删除的编号: " num
-    [ -z "$num" ] && info "已取消" && return
-    [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
+    read -p "  输入要删除的编号（空格分隔多个）: " input
+    [ -z "$input" ] && info "已取消" && return
 
-    local target_line=$(_get_line_num "$num")
-    if [ "$target_line" -eq 0 ]; then
-        error "编号 $num 不存在"
-        return
-    fi
+    # 解析编号并验证
+    local nums=() invalid=""
+    for n in $input; do
+        [[ ! "$n" =~ ^[0-9]+$ ]] && invalid="$invalid $n" && continue
+        local line=$(_get_line_num "$n")
+        if [ "$line" -eq 0 ]; then
+            invalid="$invalid $n"
+        else
+            nums+=("$n")
+        fi
+    done
+    [ -n "$invalid" ] && warn "跳过无效编号:$invalid"
+    [ ${#nums[@]} -eq 0 ] && error "没有有效的编号" && return
 
-    local key_comment=$(sed -n "${target_line}p" "$AUTHORIZED_KEYS" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+    # 显示待删除列表
     echo ""
-    warn "将删除: ${key_comment:-（无注释）}"
-    read -p "  确认删除? [y/N]: " confirm
+    for n in "${nums[@]}"; do
+        local tl=$(_get_line_num "$n")
+        local kc=$(sed -n "${tl}p" "$AUTHORIZED_KEYS" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        warn "  [$n] ${kc:-（无注释）}"
+    done
+
+    read -p "  确认删除 ${#nums[@]} 个公钥? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        sed -i "${target_line}d" "$AUTHORIZED_KEYS"
-        success "已删除编号 $num"
+        # 从大到小排序，避免删除后行号偏移
+        local sorted=($(printf '%s\n' "${nums[@]}" | sort -rn))
+        for n in "${sorted[@]}"; do
+            local tl=$(_get_line_num "$n")
+            [ "$tl" -gt 0 ] && sed -i "${tl}d" "$AUTHORIZED_KEYS"
+        done
+        success "已删除 ${#nums[@]} 个公钥"
     else
         info "已取消"
     fi
