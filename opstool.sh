@@ -1,11 +1,15 @@
 #!/bin/bash
 # OPSTOOL - 运维工具箱主入口
-# 用法: ot
+# 用法: ot                    # 交互菜单
+#       ot <模块> [操作] [参数]  # CLI 调用
 
 LIB_DIR="/usr/local/lib/opstool"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
 REPO_URL="https://raw.githubusercontent.com/zeno528/opstool/main"
+
+# 非终端模式自动确认
+[ ! -t 0 ] && export AUTO_YES=1
 
 # ── 颜色定义 ──
 C_RESET="\033[0m"
@@ -87,6 +91,10 @@ _load_module() {
     local module="$1"
     local module_file="${MODULES_DIR}/${module}.sh"
     if [ ! -f "$module_file" ]; then
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        module_file="${SCRIPT_DIR}/modules/${module}.sh"
+    fi
+    if [ ! -f "$module_file" ]; then
         error "模块不存在: $module"
         return
     fi
@@ -95,6 +103,49 @@ _load_module() {
     unset OPSTOOL_MODE
     if type menu &>/dev/null; then menu; fi
 }
+
+# ── CLI 参数入口 ──
+if [ $# -gt 0 ]; then
+    case "$1" in
+        update) do_update; exit $? ;;
+        uninstall) do_uninstall; exit $? ;;
+        help|--help|-h)
+            echo "用法: ot                    # 交互菜单"
+            echo "      ot <模块> [操作] [参数]  # CLI 调用"
+            echo "      ot update               # 检查更新"
+            echo "      ot uninstall            # 卸载"
+            echo ""
+            echo "模块: ssh-keys ssh-passwd sys-info port-proc firewall"
+            echo "      services crontab ssl-check security-update network-test docker"
+            exit 0
+            ;;
+        *)
+            _CLI_MODULE="$1"; shift
+            # 查找模块文件
+            _CLI_FILE="${MODULES_DIR}/${_CLI_MODULE}.sh"
+            if [ ! -f "$_CLI_FILE" ]; then
+                SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+                _CLI_FILE="${SCRIPT_DIR}/modules/${_CLI_MODULE}.sh"
+            fi
+            if [ ! -f "$_CLI_FILE" ]; then
+                error "模块不存在: $_CLI_MODULE"; exit 1
+            fi
+            source "$_CLI_FILE"
+            if [ $# -eq 0 ]; then
+                type menu &>/dev/null && menu
+            else
+                _CLI_ACTION="$1"; shift
+                _CLI_FUNC="do_${_CLI_ACTION}"
+                if type "$_CLI_FUNC" &>/dev/null; then
+                    "$_CLI_FUNC" "$@"
+                else
+                    error "操作不存在: $_CLI_ACTION"; exit 1
+                fi
+            fi
+            exit $?
+            ;;
+    esac
+fi
 
 # 主菜单
 while true; do
