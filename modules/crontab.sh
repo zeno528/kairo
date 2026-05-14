@@ -17,9 +17,7 @@ do_list() {
     done
     echo ""
     # 显示注释行
-    local has_comments=0
     crontab -l 2>/dev/null | grep '^#' | grep -v '^#\s*$' | while IFS= read -r line; do
-        has_comments=1
         echo -e "  ${C_DIM}${line}${C_RESET}"
     done
 }

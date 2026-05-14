@@ -25,11 +25,6 @@ get_local_version() {
 if [ "$1" = "uninstall" ]; then
     local_ver=$(get_local_version)
     echo ">>> 卸载 OPSTOOL v${local_ver}..."
-    for f in "$LIB_DIR/modules"/*.sh; do
-        [ -f "$f" ] || continue
-        alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-        [ -n "$alias_name" ] && rm -f "${BIN_DIR}/${alias_name}"
-    done
     rm -f "${BIN_DIR}/ot"
     rm -rf "$LIB_DIR"
     echo ">>> 卸载完成"

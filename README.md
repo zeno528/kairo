@@ -1,6 +1,6 @@
 # OPSTOOL
 
-![Version](https://img.shields.io/badge/version-1.0.26-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
+![Version](https://img.shields.io/badge/version-1.0.27-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
 
 通用运维脚本工具箱，一行命令部署。
 

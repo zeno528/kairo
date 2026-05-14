@@ -64,19 +64,9 @@ do_uninstall() {
     warn "即将卸载 OPSTOOL，以下文件将被删除:"
     echo -e "  ${C_GRAY}/usr/local/bin/ot${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
-    for f in "$MODULES_DIR"/*.sh; do
-        [ -f "$f" ] || continue
-        alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-        [ -n "$alias_name" ] && echo -e "  ${C_GRAY}/usr/local/bin/${alias_name}${C_RESET}"
-    done
     echo ""
     read -p "  确认卸载? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        for f in "$MODULES_DIR"/*.sh; do
-            [ -f "$f" ] || continue
-            alias_name=$(grep -oP 'alias:\s*\K\S+' "$f" 2>/dev/null) || true
-            [ -n "$alias_name" ] && rm -f "/usr/local/bin/${alias_name}"
-        done
         rm -f /usr/local/bin/ot
         rm -rf "$LIB_DIR"
         success "卸载完成"
@@ -100,7 +90,6 @@ _load_module() {
     fi
     export OPSTOOL_MODE="module"
     source "$module_file"
-    unset OPSTOOL_MODE
     if type menu &>/dev/null; then menu; fi
 }
 
