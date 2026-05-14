@@ -76,6 +76,6 @@ fi
 # 保存版本号
 echo "$remote_ver" > "$VERSION_FILE"
 
-echo ">>> 完成！OPSTOOL v${remote_ver}"
+echo -e "\033[1;32m>>> 🎉 完成！OPSTOOL v${remote_ver}\033[0m"
 echo ""
 echo "  主菜单: ot"
