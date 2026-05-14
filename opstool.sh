@@ -29,13 +29,14 @@ show_banner() {
     local W=42 dash="" i
     for ((i=0; i<W; i++)); do dash+="─"; done
     local t1="  O P S T O O L  v${VERSION}"
-    local t2="  github.com/zeno528/opstool"
+    local t2="  https://github.com/zeno528/opstool"
+    local url="${t2#* }"
     local p1="" p2=""
     for ((i=${#t1}; i<W; i++)); do p1+=" "; done
     for ((i=${#t2}; i<W; i++)); do p2+=" "; done
     echo -e "  ╭${dash}╮"
     echo -e "  │${C_BOLD}${C_CYAN}${t1}${C_RESET}${p1}│"
-    echo -e "  │${C_DIM}${t2}${C_RESET}${p2}│"
+    echo -e "  │${C_DIM}\033]8;;${url}\033\\\\${t2}\033]8;;\033\\\\${C_RESET}${p2}│"
     echo -e "  ╰${dash}╯"
 }
 
@@ -100,9 +101,10 @@ _load_module() {
 while true; do
     show_banner
     divider
-    echo -e "  ${C_GREEN}${C_BOLD}🔒 SSH${C_RESET}"
-    echo -e "   ${C_BOLD}[1]${C_RESET} 密码登录管理"
-    echo -e "   ${C_BOLD}[2]${C_RESET} 公钥管理"
+    R=42
+    echo -ne "  ${C_GREEN}${C_BOLD}🔒 SSH${C_RESET}"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新"
+    echo -ne "   ${C_BOLD}[1]${C_RESET} 密码登录管理"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[X]${C_RESET} 卸载 OPSTOOL"
+    echo -ne "   ${C_BOLD}[2]${C_RESET} 公钥管理"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[0]${C_RESET} 退出"
     echo ""
     echo -e "  ${C_CYAN}${C_BOLD}🖥  系统${C_RESET}"
     echo -e "   ${C_BOLD}[3]${C_RESET} 系统信息查看"
@@ -114,10 +116,6 @@ while true; do
     echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
     echo -e "   ${C_BOLD}[10]${C_RESET} 网络测试"
     echo -e "   ${C_BOLD}[11]${C_RESET} Docker 管理"
-    divider
-    echo -e "   ${C_BOLD}[U]${C_RESET} 检查更新"
-    echo -e "   ${C_BOLD}[X]${C_RESET} 卸载 OPSTOOL"
-    echo -e "   ${C_BOLD}[0]${C_RESET} 退出"
     divider
     echo ""
     read -p "  请输入选项: " choice
