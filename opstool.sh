@@ -26,15 +26,17 @@ warn() { echo -e "  ${C_YELLOW}⚠ $1${C_RESET}"; }
 error() { echo -e "  ${C_RED}✘ $1${C_RESET}"; }
 
 show_banner() {
-    echo -e "
-${C_BOLD}  █████    ██████╗  ██████╗
-██═══  ██  ██╔══██╗ ██║
-██║    ██╗ █████╔╝  ██████╗
-██║    ██║ ██╔═         ██║
-╚██████╔╝  ██║      ██████╔
- ╚═════╝   ╚═╝      ╚═════╝${C_RESET}
-${C_DIM}  TOOL${C_RESET}             ${C_GRAY}v${VERSION}${C_RESET}
-${C_DIM}  By zeno528  ·  github.com/zeno528/opstool${C_RESET}"
+    local W=42 dash="" i
+    for ((i=0; i<W; i++)); do dash+="─"; done
+    local t1="  O P S T O O L  v${VERSION}"
+    local t2="  github.com/zeno528/opstool"
+    local p1="" p2=""
+    for ((i=${#t1}; i<W; i++)); do p1+=" "; done
+    for ((i=${#t2}; i<W; i++)); do p2+=" "; done
+    echo -e "  ╭${dash}╮"
+    echo -e "  │${C_BOLD}${C_CYAN}${t1}${C_RESET}${p1}│"
+    echo -e "  │${C_DIM}${t2}${C_RESET}${p2}│"
+    echo -e "  ╰${dash}╯"
 }
 
 do_update() {

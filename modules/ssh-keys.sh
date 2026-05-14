@@ -9,9 +9,9 @@ _get_line_num() {
     local line_num=0
     local file_line=0
     while IFS= read -r line; do
+        file_line=$((file_line + 1))
         [[ -z "$line" || "$line" =~ ^# ]] && continue
         line_num=$((line_num + 1))
-        file_line=$((file_line + 1))
         if [ "$line_num" -eq "$target_num" ]; then
             echo "$file_line"
             return
