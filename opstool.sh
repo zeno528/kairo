@@ -140,7 +140,7 @@ while true; do
             do_uninstall; echo ""; read -p "  按回车键继续..."
             ;;
         0)
-            echo -e "\n  👋 再见！\n"; exit 0
+            echo -e "\n  👋 后会有期！\n"; exit 0
             ;;
         *)
             error "无效选项"; sleep 1
