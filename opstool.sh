@@ -30,17 +30,21 @@ warn() { echo -e "  ${C_YELLOW}⚠ $1${C_RESET}"; }
 error() { echo -e "  ${C_RED}✘ $1${C_RESET}"; }
 
 show_banner() {
-    local W=42 dash="" i
+    local W=42
+    local title=" 🏷️ O P S T O O L "
+    local l1="  v${VERSION}"
+    local l2="  https://github.com/zeno528/opstool"
+    local i fill="" dash="" p1="" p2=""
+    # 顶边：标题嵌进横线 ─ OPSTOOL ─...─
+    local head="─${title}─"
+    for ((i=${#head}; i<W; i++)); do fill+="─"; done
     for ((i=0; i<W; i++)); do dash+="─"; done
-    local t1="  O P S T O O L  v${VERSION}"
-    local t2="  https://github.com/zeno528/opstool"
-    local p1="" p2=""
-    for ((i=${#t1}; i<W; i++)); do p1+=" "; done
-    for ((i=${#t2}; i<W; i++)); do p2+=" "; done
-    echo -e "  ╭${dash}╮"
-    echo -e "  │${C_BOLD}${C_CYAN}${t1}${C_RESET}${p1}│"
-    echo -e "  │${C_DIM}${t2}${C_RESET}${p2}│"
-    echo -e "  ╰${dash}╯"
+    for ((i=${#l1}; i<W; i++)); do p1+=" "; done
+    for ((i=${#l2}; i<W; i++)); do p2+=" "; done
+    echo -e "  ${C_CYAN}╭${head}${fill}╮${C_RESET}"
+    echo -e "  ${C_CYAN}│${C_RESET}${C_BOLD}${C_CYAN}${l1}${C_RESET}${p1}${C_CYAN}│${C_RESET}"
+    echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${l2}${C_RESET}${p2}${C_CYAN}│${C_RESET}"
+    echo -e "  ${C_CYAN}╰${dash}╯${C_RESET}"
 }
 
 do_update() {
