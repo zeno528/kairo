@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.0.35 (2026-07-29)
+- ✨ feat(nginx): 改变确认提示默认值，提升安装/升级便捷性
+
 ## v1.0.34 (2026-07-29)
 - ♻️ refactor(opstool): 将文件下载从 raw CDN 迁移至 GitHub Contents API
 

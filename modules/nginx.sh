@@ -122,8 +122,11 @@ do_install() {
     if [ -z "$local_ver" ]; then
         info "未检测到 Nginx，将从 nginx 官方源（stable / ${codename}）安装"
         echo ""
-        read -p "  确认安装? [y/N]: " confirm
-        [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+        read -p "  确认安装? [Y/n]: " confirm
+        if [ "$confirm" = "n" ] || [ "$confirm" = "N" ]; then
+            info "已取消"
+            return
+        fi
     else
         # 已安装时，先刷新 nginx.org 官方候选版本，才能正确判断是否需要升级。
         _configure_nginx_official_repo "$distro" "$codename" || return
@@ -141,8 +144,11 @@ do_install() {
         fi
 
         echo ""
-        read -p "  是否升级到 v${candidate_ver}? [y/N]: " confirm
-        [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+        read -p "  是否升级到 v${candidate_ver}? [Y/n]: " confirm
+        if [ "$confirm" = "n" ] || [ "$confirm" = "N" ]; then
+            info "已取消"
+            return
+        fi
     fi
 
     # 安装确认后（首次安装）或升级确认后，确保官方源存在并执行安装。
