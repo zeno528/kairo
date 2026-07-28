@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.0.34 (2026-07-29)
+- ♻️ refactor(opstool): 将文件下载从 raw CDN 迁移至 GitHub Contents API
+
 ## v1.0.33 (2026-07-29)
 - ♻️ refactor(opstool): 动态计算分割线宽度以自适应终端尺寸
 

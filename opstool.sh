@@ -6,7 +6,8 @@
 LIB_DIR="/usr/local/lib/opstool"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-REPO_URL="https://raw.githubusercontent.com/zeno528/opstool/main"
+REPO="zeno528/opstool"
+CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
 
 # 非终端模式自动确认
 [ ! -t 0 ] && export AUTO_YES=1
@@ -39,6 +40,13 @@ success() { echo -e "  ${C_GREEN}✔ $1${C_RESET}"; }
 warn() { echo -e "  ${C_YELLOW}⚠ $1${C_RESET}"; }
 error() { echo -e "  ${C_RED}✘ $1${C_RESET}"; }
 
+# 通过 GitHub Contents API 获取 main 分支文件，避免 raw CDN 返回陈旧缓存。
+fetch_remote_file() {
+    local path="$1"
+    curl -fsSL -H "Accept: application/vnd.github.raw+json" \
+        "${CONTENTS_URL}/${path}?ref=main&t=$(date +%s)"
+}
+
 show_banner() {
     local W=42
     local title=" 🏷️ O P S T O O L "
@@ -60,7 +68,7 @@ show_banner() {
 do_update() {
     echo ""
     info "正在检查更新..."
-    remote_ver=$(curl -fsSL "${REPO_URL}/VERSION?t=$(date +%s)" 2>/dev/null | tr -d '[:space:]')
+    remote_ver=$(fetch_remote_file VERSION 2>/dev/null | tr -d '[:space:]')
     if [ -z "$remote_ver" ]; then
         error "无法连接远程仓库"
         return
@@ -70,7 +78,7 @@ do_update() {
         return
     fi
     warn "发现新版本 v${VERSION} → v${remote_ver}"
-    curl -fsSL "${REPO_URL}/install.sh?t=$(date +%s)" | bash
+    fetch_remote_file install.sh | bash
 }
 
 do_uninstall() {

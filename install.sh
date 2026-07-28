@@ -1,7 +1,7 @@
 #!/bin/bash
 # OPSTOOL 安装/卸载脚本
-# 安装: curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash
-# 卸载: curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash -s -- uninstall
+# 安装: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash
+# 卸载: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash -s -- uninstall
 
 set -e
 
@@ -9,11 +9,24 @@ BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/opstool"
 VERSION_FILE="${LIB_DIR}/VERSION"
 REPO="zeno528/opstool"
-BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
+CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
+
+# 通过 GitHub Contents API 下载 main 分支文件，避免 raw CDN 返回陈旧缓存。
+fetch_remote_file() {
+    local path="$1"
+    curl -fsSL -H "Accept: application/vnd.github.raw+json" \
+        "${CONTENTS_URL}/${path}?ref=main&t=$(date +%s)"
+}
+
+download_remote_file() {
+    local path="$1"
+    local destination="$2"
+    fetch_remote_file "$path" > "$destination"
+}
 
 # 获取远程版本号
 get_remote_version() {
-    curl -fsSL "${BASE_URL}/VERSION?t=$(date +%s)" 2>/dev/null | tr -d '[:space:]'
+    fetch_remote_file VERSION 2>/dev/null | tr -d '[:space:]'
 }
 
 # 获取本地版本号
@@ -47,11 +60,11 @@ fi
 mkdir -p "$LIB_DIR/modules"
 
 # 下载主入口
-curl -fsSL "${BASE_URL}/opstool.sh?t=$(date +%s)" -o "${BIN_DIR}/ot"
+download_remote_file opstool.sh "${BIN_DIR}/ot"
 chmod +x "${BIN_DIR}/ot"
 
 # 动态获取远程模块列表
-MODULES=$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/modules" | grep -oP '"name":\s*"\K[^"]+\.sh')
+MODULES=$(curl -fsSL "${CONTENTS_URL}/modules?ref=main&t=$(date +%s)" | grep -oP '"name":\s*"\K[^"]+\.sh')
 if [ -z "$MODULES" ]; then
     echo "  警告: 无法获取模块列表，跳过模块安装"
 else
@@ -60,7 +73,7 @@ else
     printf "  安装: ot (主菜单) [0/%d]" "$TOTAL"
     for mod_name in $MODULES; do
         mod_path="modules/${mod_name}"
-        curl -fsSL "${BASE_URL}/${mod_path}?t=$(date +%s)" -o "${LIB_DIR}/${mod_path}"
+        download_remote_file "$mod_path" "${LIB_DIR}/${mod_path}"
         chmod +x "${LIB_DIR}/${mod_path}"
         COUNT=$((COUNT + 1))
         printf "\r  安装: %-25s [%d/%d]" "$mod_name" "$COUNT" "$TOTAL"

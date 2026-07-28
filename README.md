@@ -1,19 +1,19 @@
 # OPSTOOL
 
-![Version](https://img.shields.io/badge/version-1.0.33-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
+![Version](https://img.shields.io/badge/version-1.0.34-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
 
 通用运维脚本工具箱，一行命令部署。
 
 ## 一键安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash
+curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash
 ```
 
 ## 卸载
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zeno528/opstool/main/install.sh | bash -s -- uninstall
+curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash -s -- uninstall
 ```
 
 ## 使用
