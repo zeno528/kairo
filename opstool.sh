@@ -89,6 +89,7 @@ _load_module() {
         return
     fi
     export OPSTOOL_MODE="module"
+    # shellcheck disable=SC1090
     source "$module_file"
     if type menu &>/dev/null; then menu; fi
 }
@@ -105,7 +106,8 @@ if [ $# -gt 0 ]; then
             echo "      ot uninstall            # 卸载"
             echo ""
             echo "模块: ssh-keys ssh-passwd sys-info port-proc firewall"
-            echo "      services crontab ssl-check security-update network-test docker"
+            echo "      services crontab ssl-check security-update network-test"
+            echo "      docker nginx"
             exit 0
             ;;
         *)
@@ -119,6 +121,7 @@ if [ $# -gt 0 ]; then
             if [ ! -f "$_CLI_FILE" ]; then
                 error "模块不存在: $_CLI_MODULE"; exit 1
             fi
+            # shellcheck disable=SC1090
             source "$_CLI_FILE"
             if [ $# -eq 0 ]; then
                 type menu &>/dev/null && menu
@@ -155,6 +158,8 @@ while true; do
     echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
     echo -e "   ${C_BOLD}[10]${C_RESET} 网络测试"
     echo -e "   ${C_BOLD}[11]${C_RESET} Docker 管理"
+    echo -e "  ${C_CYAN}${C_BOLD}🌐  反代${C_RESET}"
+    echo -e "   ${C_BOLD}[12]${C_RESET} Nginx 管理"
     divider
     echo ""
     read -p "  请输入选项: " choice
@@ -171,9 +176,10 @@ while true; do
         9) _load_module security-update ;;
         10) _load_module network-test ;;
         11) _load_module docker ;;
+        12) _load_module nginx ;;
         [Uu])
             do_update
-            echo ""; read -p "  按回车键重启 OPSTOOL..." dummy
+            echo ""; read -p "  按回车键重启 OPSTOOL..." -r _
             exec "$0"
             ;;
         [Xx])
