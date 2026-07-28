@@ -160,7 +160,9 @@ do_install() {
     fi
 
     info "正在下载并安装 Nginx v${candidate_ver}，耗时取决于服务器网络..."
-    if sudo apt install -y nginx; then
+    info "检测到已有 Nginx 配置时将保留现有文件，不覆盖站点配置"
+    if sudo env DEBIAN_FRONTEND=noninteractive \
+        apt -o Dpkg::Options::=--force-confold install -y nginx; then
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
