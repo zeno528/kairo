@@ -54,6 +54,21 @@ teardown() {
 
 # ─── 纯函数: _has_cert ───────────────────────────────────────
 
+@test "_nginx_version_is_at_least 正确识别相同版本" {
+    run _nginx_version_is_at_least "1.30.4-1~jammy" "1.30.4-1~jammy"
+    [ "$status" -eq 0 ]
+}
+
+@test "_nginx_version_is_at_least 正确识别更高版本" {
+    run _nginx_version_is_at_least "1.30.5-1~jammy" "1.30.4-1~jammy"
+    [ "$status" -eq 0 ]
+}
+
+@test "_nginx_version_is_at_least 正确识别较低版本" {
+    run _nginx_version_is_at_least "1.30.3-1~jammy" "1.30.4-1~jammy"
+    [ "$status" -ne 0 ]
+}
+
 @test "_has_cert 对已存在证书目录返回 0" {
     mkdir -p "${LE_LIVE_DIR}/example.com"
     touch "${LE_LIVE_DIR}/example.com/fullchain.pem"

@@ -26,20 +26,66 @@ _check_systemctl() {
 
 # ─── 安装 / 升级 ─────────────────────────────────────────────
 
-# 检测本地版本与候选版本（origin: nginx.org 才是官方源）
-_get_nginx_versions() {
-    local local_ver candidate_ver origin
-    # nginx -v 输出: nginx version: nginx/1.30.4
-    local_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
-    # apt policy 输出多行，解析 Candidate / Installed / origin
-    local policy
-    policy=$(apt-cache policy nginx 2>/dev/null)
-    candidate_ver=$(echo "$policy" | awk '/Candidate:/{print $2; exit}')
-    if echo "$policy" | grep -q "Installed: (none)"; then
-        local_ver=""
+# 返回已安装的 Debian 包版本；未安装时返回空。
+_get_nginx_installed_version() {
+    dpkg-query -W -f='${Version}' nginx 2>/dev/null || true
+}
+
+# 返回当前 apt 候选版本。
+_get_nginx_candidate_version() {
+    apt-cache policy nginx 2>/dev/null | awk '/Candidate:/{print $2; exit}'
+}
+
+# 使用 Debian 版本规则比较，避免 nginx -v 与 apt 包版本格式不同造成误判。
+_nginx_version_is_at_least() {
+    dpkg --compare-versions "$1" ge "$2"
+}
+
+# 按 nginx.org 官方文档配置 stable apt 源，并刷新 apt 索引。
+_configure_nginx_official_repo() {
+    local distro="$1"
+    local codename="$2"
+    local keyring_package
+
+    case "$distro" in
+        ubuntu) keyring_package="ubuntu-keyring" ;;
+        debian) keyring_package="debian-archive-keyring" ;;
+        *)
+            error "不支持的发行版: ${distro}"
+            return 1
+            ;;
+    esac
+
+    info "配置 nginx 官方 apt 源..."
+
+    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package" &>/dev/null; then
+        error "安装 nginx 官方源依赖失败"
+        return 1
     fi
-    origin=$(echo "$policy" | grep -E "release o=" | grep -oP 'o=\K[^ ]+' | head -1)
-    echo "${local_ver:-未安装}|${candidate_ver:-未安装}|${origin:-未知}"
+
+    if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
+        if ! curl -fsSL "https://nginx.org/keys/nginx_signing.key?t=$(date +%s)" | \
+            gpg --dearmor | \
+            sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null; then
+            error "导入 nginx 官方签名 key 失败"
+            return 1
+        fi
+        success "已导入 nginx 官方签名 key"
+    fi
+
+    if [ ! -f /etc/apt/sources.list.d/nginx.list ]; then
+        printf '%s\n' "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/${distro} ${codename} nginx" | \
+            sudo tee /etc/apt/sources.list.d/nginx.list >/dev/null || return 1
+        success "已添加 nginx 官方源（stable / ${codename}）"
+    fi
+
+    printf '%s\n' "Package: *" "Pin: origin nginx.org" "Pin-Priority: 900" | \
+        sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
+
+    if ! sudo apt update &>/dev/null; then
+        error "刷新 apt 索引失败，无法获取 nginx 官方版本"
+        return 1
+    fi
 }
 
 do_install() {
@@ -66,71 +112,46 @@ do_install() {
             ;;
     esac
 
-    info "检测 Nginx 版本信息..."
-    local ver_info local_ver candidate_ver origin
-    ver_info=$(_get_nginx_versions)
-    local_ver=$(echo "$ver_info" | cut -d'|' -f1)
-    candidate_ver=$(echo "$ver_info" | cut -d'|' -f2)
-    origin=$(echo "$ver_info" | cut -d'|' -f3)
+    local local_ver candidate_ver
+    local_ver=$(_get_nginx_installed_version)
 
-    # 情况 1: 已是候选版本（同版本）→ 跳过
-    if [ -n "$local_ver" ] && [ "$local_ver" = "$candidate_ver" ]; then
-        success "Nginx v${local_ver} 已是最新（来源: ${origin}），无需变动"
-        return
-    fi
-
-    # 情况 2: 未安装 → 加官方源 + 装候选版本
+    # 情况 1: 未安装 → 先确认，再添加官方源并安装。
     if [ -z "$local_ver" ]; then
-        info "首次安装：从 nginx 官方源（${codename}）安装候选版本 v${candidate_ver}"
+        info "未检测到 Nginx，将从 nginx 官方源（stable / ${codename}）安装"
         echo ""
         read -p "  确认安装? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    # 情况 3: 已装但版本落后
     else
-        info "当前 v${local_ver}（来源: ${origin}）"
-        info "源中候选 v${candidate_ver}（来源: ${origin:-nginx.org}）"
-        echo ""
-        if [ "$origin" != "nginx.org" ]; then
-            warn "当前版本来自系统默认源，非 nginx 官方源"
-            echo -e "  ${C_DIM}升级操作会：加 nginx 官方源 + 设 pinning 优先 + 升级到官方版${C_RESET}"
+        # 已安装时，先刷新 nginx.org 官方候选版本，才能正确判断是否需要升级。
+        _configure_nginx_official_repo "$distro" "$codename" || return
+        candidate_ver=$(_get_nginx_candidate_version)
+        if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
+            error "未能获取 nginx 官方候选版本"
+            return
         fi
-        read -p "  是否升级? [y/N]: " confirm
+
+        info "当前版本: v${local_ver}"
+        info "nginx.org 候选版本: v${candidate_ver}"
+        if _nginx_version_is_at_least "$local_ver" "$candidate_ver"; then
+            success "当前 Nginx 已是官方最新版本或更高，无需变动"
+            return
+        fi
+
+        echo ""
+        read -p "  是否升级到 v${candidate_ver}? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     fi
 
-    # 加官方源步骤（按 https://nginx.org/en/linux_packages.html 官方文档执行）
-    info "添加 nginx 官方 apt 源..."
-
-    # 1. 安装前置依赖
-    if ! apt install -y curl gnupg2 ca-certificates lsb-release "ubuntu-keyring" &>/dev/null; then
-        apt install -y curl gnupg2 ca-certificates lsb-release "debian-archive-keyring" &>/dev/null
+    # 安装确认后（首次安装）或升级确认后，确保官方源存在并执行安装。
+    _configure_nginx_official_repo "$distro" "$codename" || return
+    candidate_ver=$(_get_nginx_candidate_version)
+    if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
+        error "未能获取 nginx 官方候选版本"
+        return
     fi
 
-    # 2. 导入 GPG key（如未导入）
-    if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
-        curl -fsSL https://nginx.org/keys/nginx_signing.key | \
-            gpg --dearmor | \
-            sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
-        success "已导入 nginx 官方签名 key"
-    fi
-
-    # 3. 添加 apt 源（如未添加）
-    if [ ! -f /etc/apt/sources.list.d/nginx.list ]; then
-        echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
-http://nginx.org/packages/${distro} ${codename} nginx" | \
-            tee /etc/apt/sources.list.d/nginx.list >/dev/null
-        success "已添加 nginx 官方源（stable / ${codename}）"
-    fi
-
-    # 4. 设置 pinning（让 nginx 官方源优先于系统源）
-    echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900" | \
-        tee /etc/apt/preferences.d/99nginx >/dev/null
-    success "已设置 apt pinning（nginx.org 优先级 900）"
-
-    # 5. 更新源 + 安装/升级
-    apt update &>/dev/null
-    if apt install -y nginx 2>&1 | tail -5 | sed 's/^/    /'; then
-        systemctl enable --now nginx &>/dev/null
+    if sudo apt install -y nginx 2>&1 | tail -5 | sed 's/^/    /'; then
+        sudo systemctl enable --now nginx &>/dev/null
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
         success "Nginx 安装/升级完成，当前版本 v${new_ver}"
