@@ -22,7 +22,17 @@ C_RED="\033[1;31m"
 C_GRAY="\033[37m"
 
 # ── 辅助函数 ──
-divider() { echo -e "  ${C_GRAY}────────────────────────────${C_RESET}"; }
+divider() {
+    local width line
+    width=$(tput cols 2>/dev/null || echo 80)
+    width=$((width - 4))
+    [ "$width" -lt 40 ] && width=40
+    # 与右侧横向菜单的最宽内容对齐，避免铺满整个终端。
+    [ "$width" -gt 60 ] && width=60
+    printf -v line '%*s' "$width" ''
+    line=${line// /─}
+    echo -e "  ${C_GRAY}${line}${C_RESET}"
+}
 title() { echo -e "\n  ${C_CYAN}${C_BOLD}── $1 ──${C_RESET}"; }
 info() { echo -e "  ${C_CYAN}ℹ $1${C_RESET}"; }
 success() { echo -e "  ${C_GREEN}✔ $1${C_RESET}"; }
