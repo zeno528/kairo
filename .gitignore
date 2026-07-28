@@ -1,2 +1,34 @@
 # 项目维护指令（不提交到仓库）
 CLAUDE.md
+
+# === 密钥与配置（公开仓库防御性兜底）===
+.env
+.env.*
+*.pem
+*.key
+authorized_keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+id_ecdsa
+id_ecdsa.pub
+known_hosts
+
+# === 编辑器与 IDE ===
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+*~
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# === 本地测试与日志 ===
+*.local
+*.log
+test.sh
+*.tmp
