@@ -31,8 +31,10 @@ do_list() {
     while IFS= read -r line; do
         [[ -z "$line" || "$line" =~ ^# ]] && continue
         count=$((count + 1))
-        local key_type=$(echo "$line" | awk '{print $1}')
-        local comment=$(echo "$line" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        local key_type
+        local comment
+        key_type=$(awk '{print $1}' <<< "$line")
+        comment=$(awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' <<< "$line" | sed 's/[[:space:]]*$//')
         if [ ${#comment} -gt 50 ]; then
             comment="${comment:0:47}..."
         fi
@@ -79,9 +81,12 @@ do_remove() {
 
     # 解析编号并验证
     local nums=() invalid=""
-    for n in $input; do
+    local input_nums=()
+    read -r -a input_nums <<< "$input"
+    for n in "${input_nums[@]}"; do
         [[ ! "$n" =~ ^[0-9]+$ ]] && invalid="$invalid $n" && continue
-        local line=$(_get_line_num "$n")
+        local line
+        line=$(_get_line_num "$n")
         if [ "$line" -eq 0 ]; then
             invalid="$invalid $n"
         else
@@ -94,17 +99,21 @@ do_remove() {
     # 显示待删除列表
     echo ""
     for n in "${nums[@]}"; do
-        local tl=$(_get_line_num "$n")
-        local kc=$(sed -n "${tl}p" "$AUTHORIZED_KEYS" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        local tl
+        local kc
+        tl=$(_get_line_num "$n")
+        kc=$(sed -n "${tl}p" "$AUTHORIZED_KEYS" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
         warn "  [$n] ${kc:-（无注释）}"
     done
 
     read -p "  确认删除 ${#nums[@]} 个公钥? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         # 从大到小排序，避免删除后行号偏移
-        local sorted=($(printf '%s\n' "${nums[@]}" | sort -rn))
+        local sorted=()
+        mapfile -t sorted < <(printf '%s\n' "${nums[@]}" | sort -rn)
         for n in "${sorted[@]}"; do
-            local tl=$(_get_line_num "$n")
+            local tl
+            tl=$(_get_line_num "$n")
             [ "$tl" -gt 0 ] && sed -i "${tl}d" "$AUTHORIZED_KEYS"
         done
         success "已删除 ${#nums[@]} 个公钥"
@@ -126,7 +135,8 @@ do_view() {
     [ -z "$num" ] && info "已取消" && return
     [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
 
-    local target_line=$(_get_line_num "$num")
+    local target_line
+    target_line=$(_get_line_num "$num")
     if [ "$target_line" -eq 0 ]; then
         error "编号 $num 不存在"
         return
@@ -149,15 +159,19 @@ do_rename() {
     [ -z "$num" ] && info "已取消" && return
     [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
 
-    local target_line=$(_get_line_num "$num")
+    local target_line
+    target_line=$(_get_line_num "$num")
     if [ "$target_line" -eq 0 ]; then
         error "编号 $num 不存在"
         return
     fi
 
-    local old_line=$(sed -n "${target_line}p" "$AUTHORIZED_KEYS")
-    local key_part=$(echo "$old_line" | awk '{print $1, $2}')
-    local old_comment=$(echo "$old_line" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+    local old_line
+    local key_part
+    local old_comment
+    old_line=$(sed -n "${target_line}p" "$AUTHORIZED_KEYS")
+    key_part=$(awk '{print $1, $2}' <<< "$old_line")
+    old_comment=$(awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' <<< "$old_line" | sed 's/[[:space:]]*$//')
     echo ""
     info "当前备注: ${old_comment:-（无）}"
 

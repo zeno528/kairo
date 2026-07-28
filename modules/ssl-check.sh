@@ -95,7 +95,8 @@ do_batch_check() {
     echo ""
     read -p "  域名: " input
     [ -z "$input" ] && info "已取消" && return
-    local domains=($input)
+    local domains=()
+    read -r -a domains <<< "$input"
     if [ ${#domains[@]} -eq 0 ]; then
         info "已取消"
         return
