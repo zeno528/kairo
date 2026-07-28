@@ -57,13 +57,15 @@ _configure_nginx_official_repo() {
     esac
 
     info "配置 nginx 官方 apt 源..."
+    info "正在安装官方源所需依赖..."
 
-    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package" &>/dev/null; then
+    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
         error "安装 nginx 官方源依赖失败"
         return 1
     fi
 
     if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
+        info "正在下载 nginx 官方签名 key..."
         if ! curl -fsSL "https://nginx.org/keys/nginx_signing.key?t=$(date +%s)" | \
             gpg --dearmor | \
             sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null; then
@@ -82,7 +84,8 @@ _configure_nginx_official_repo() {
     printf '%s\n' "Package: *" "Pin: origin nginx.org" "Pin-Priority: 900" | \
         sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
 
-    if ! sudo apt update &>/dev/null; then
+    info "正在刷新软件源，首次运行可能需要 1–2 分钟，请勿中断..."
+    if ! sudo apt update; then
         error "刷新 apt 索引失败，无法获取 nginx 官方版本"
         return 1
     fi
@@ -150,7 +153,8 @@ do_install() {
         return
     fi
 
-    if sudo apt install -y nginx 2>&1 | tail -5 | sed 's/^/    /'; then
+    info "正在下载并安装 Nginx v${candidate_ver}，耗时取决于服务器网络..."
+    if sudo apt install -y nginx; then
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
