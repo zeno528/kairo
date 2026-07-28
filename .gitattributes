@@ -1,0 +1,11 @@
+# 强制 LF 行结尾（避免在 Linux 服务器上偶发问题）
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.conf text eol=lf
+
+# 二进制不换行
+*.png binary
+*.jpg binary
+*.ico binary
