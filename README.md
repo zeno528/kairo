@@ -1,6 +1,6 @@
 # OPSTOOL
 
-![Version](https://img.shields.io/badge/version-1.0.27-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
+![Version](https://img.shields.io/badge/version-1.0.28-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
 
 通用运维脚本工具箱，一行命令部署。
 
@@ -40,6 +40,12 @@ ot  # 进入主菜单
 
 ### Docker
 - **Docker 管理** — 容器列表、启停重启、查看日志、镜像管理
+
+### Nginx 反向代理
+- **安装/升级** — 走 nginx 官方 apt 源（永远拿到最新 stable），已装则自动跳过同版本、旧版本提示升级
+- **站点管理** — 列出/添加/删除反代站点（sites-available + sites-enabled 软链，模板对齐现有写法）
+- **证书** — 一键申请/续期 Let's Encrypt 证书（certbot，优先 snap 路径，按官方推荐）
+- **运维** — 状态总览（含版本/服务/监听端口/证书数）、启停重启重载、开关开机自启、实时日志
 
 ## 支持系统
 
