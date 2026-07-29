@@ -227,6 +227,17 @@ setup() {
     [[ "$output" == *"刷新软件源列表失败，已取消升级"* ]]
 }
 
+@test "完整升级预演只执行 apt 模拟命令" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/security-update.sh"
+        sudo() { printf "sudo %s\\n" "$*"; }
+        do_full_update_preview
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"apt -s full-upgrade"* ]]
+}
+
 @test "services 拒绝可能改变 shell 语义的服务名" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

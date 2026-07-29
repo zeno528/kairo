@@ -61,6 +61,12 @@ do_full_update() {
     _with_spinner "正在升级软件包" sudo apt full-upgrade -y && success "完整更新完成"
 }
 
+do_full_update_preview() {
+    echo ""
+    info "以下仅为预演，不会修改系统"
+    sudo apt -s full-upgrade
+}
+
 do_cleanup() {
     echo ""
     echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
@@ -70,20 +76,22 @@ do_cleanup() {
 menu() {
     while true; do
         title "🛡 软件更新"
+        do_check
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 检查可更新包"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 执行常规升级"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 执行完整升级"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 清理缓存"
+        echo -e "  ${C_BOLD}[U]${C_RESET} 常规升级（不删除已安装软件包）"
+        echo -e "  ${C_BOLD}[F]${C_RESET} 完整升级（可能安装或删除软件包）"
+        echo -e "  ${C_BOLD}[P]${C_RESET} 预演完整升级（不修改系统）"
+        echo -e "  ${C_BOLD}[C]${C_RESET} 清理缓存        ${C_BOLD}[R]${C_RESET} 刷新列表"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择操作: " choice
         case "$choice" in
-            1) do_check; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_security_update; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_full_update; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_cleanup; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            [Uu]) do_security_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            [Ff]) do_full_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            [Pp]) do_full_update_preview; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            [Cc]) do_cleanup; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            [Rr]) continue ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
