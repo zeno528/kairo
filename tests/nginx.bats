@@ -69,6 +69,15 @@ teardown() {
     [ "$status" -ne 0 ]
 }
 
+@test "_get_nginx_release_date 解析 nginx.org 源码包日期" {
+    curl() { printf 'Last-Modified: Wed, 15 Jul 2026 17:24:14 GMT\r\n'; }
+
+    run _get_nginx_release_date "1.30.4"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "2026-07-15" ]
+}
+
 # ─── 纯函数: _has_cert ───────────────────────────────────────
 
 @test "_has_cert 对已存在证书目录返回 0" {

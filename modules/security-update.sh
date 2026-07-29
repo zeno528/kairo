@@ -32,11 +32,14 @@ _apt_update_smart() {
 }
 
 do_check() {
+    local packages total
     echo ""
     echo -e "  ${C_BOLD}可更新的包${C_RESET}"
-    apt list --upgradable 2>/dev/null | grep -v "^Listing" | head -20 | sed 's/^/  /'
-    local total
-    total=$(apt list --upgradable 2>/dev/null | grep -c '/')
+    _start_spinner "正在扫描可更新的软件包"
+    packages=$(apt list --upgradable 2>/dev/null | grep -v "^Listing")
+    _stop_spinner
+    [ -n "$packages" ] && printf '%s\n' "$packages" | head -20 | sed 's/^/  /'
+    total=$(printf '%s\n' "$packages" | grep -c '/')
     echo ""
     info "共 $total 个包可更新"
 }

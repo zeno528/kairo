@@ -227,6 +227,22 @@ setup() {
     [[ "$output" == *"刷新软件源列表失败，已取消升级"* ]]
 }
 
+@test "可更新包扫描显示 spinner 且只查询一次" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/security-update.sh"
+        count_file=$(mktemp)
+        _start_spinner() { printf "spinner: %s\\n" "$1"; }
+        _stop_spinner() { :; }
+        apt() { printf x >> "$count_file"; printf "Listing...\\nfoo/stable 1 amd64 [upgradable from: 0]\\n"; }
+        do_check
+        [ "$(wc -c < "$count_file")" -eq 1 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"spinner: 正在扫描可更新的软件包"* ]]
+    [[ "$output" == *"共 1 个包可更新"* ]]
+}
+
 @test "完整升级预演只执行 apt 模拟命令" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

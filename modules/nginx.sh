@@ -36,6 +36,15 @@ _get_nginx_candidate_version() {
     apt-cache policy nginx 2>/dev/null | awk '/Candidate:/{print $2; exit}'
 }
 
+_get_nginx_release_date() {
+    command -v curl &>/dev/null || return
+    local last_modified
+    last_modified=$(curl --connect-timeout 3 --max-time 5 -fsSI \
+        "https://nginx.org/download/nginx-${1}.tar.gz" 2>/dev/null | \
+        awk -F': ' 'tolower($1) == "last-modified" { print $2; exit }')
+    [ -n "$last_modified" ] && date -d "$last_modified" '+%F' 2>/dev/null
+}
+
 # 使用 Debian 版本规则比较，避免 nginx -v 与 apt 包版本格式不同造成误判。
 _nginx_version_is_at_least() {
     dpkg --compare-versions "$1" ge "$2"
@@ -204,9 +213,12 @@ do_status() {
     _check_systemctl || return
 
     # 版本
-    local ver
+    local ver pkg_ver candidate_ver release_date
     if command -v nginx &>/dev/null; then
         ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
+        pkg_ver=$(_get_nginx_installed_version)
+        candidate_ver=$(_get_nginx_candidate_version)
+        release_date=$(_get_nginx_release_date "$ver")
     else
         ver="未安装"
     fi
@@ -239,7 +251,14 @@ do_status() {
     if [ "$ver" = "未安装" ]; then
         echo -e "  版本:     ${C_YELLOW}${ver}${C_RESET}"
     else
-        echo -e "  版本:     ${C_CYAN}v${ver}${C_RESET}"
+        echo -e "  版本:     ${C_CYAN}v${ver}${C_RESET}${release_date:+ （${release_date} 发布）}"
+        if [ -n "$candidate_ver" ] && [ "$candidate_ver" != "(none)" ]; then
+            if _nginx_version_is_at_least "$pkg_ver" "$candidate_ver"; then
+                echo -e "  官方源:   ${C_GREEN}v${candidate_ver}（当前最新）${C_RESET}"
+            else
+                echo -e "  官方源:   ${C_YELLOW}v${candidate_ver}（可更新）${C_RESET}"
+            fi
+        fi
     fi
     if [ "$svc_state" = "active" ]; then
         echo -e "  服务:     ${C_GREEN}${svc_state}${C_RESET} （${en_state} 开机自启）"

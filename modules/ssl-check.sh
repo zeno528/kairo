@@ -1,11 +1,26 @@
 #!/bin/bash
 # ssl-check 模块 - SSL 证书检查
 
+LE_LIVE_DIR="${LE_LIVE_DIR:-/etc/letsencrypt/live}"
+
 _check_openssl() {
     if ! command -v openssl &>/dev/null; then
         error "未安装 openssl"
         return 1
     fi
+}
+
+_local_cert_files() {
+    [ -d "$LE_LIVE_DIR" ] || return 0
+    find "$LE_LIVE_DIR" -mindepth 2 -maxdepth 2 -type f -name fullchain.pem -print 2>/dev/null
+}
+
+_get_local_cert_days() {
+    local end_date end_epoch
+    end_date=$(openssl x509 -in "$1" -noout -enddate 2>/dev/null | cut -d= -f2)
+    end_epoch=$(date -d "$end_date" +%s 2>/dev/null)
+    [ -n "$end_epoch" ] || { echo "-1"; return; }
+    echo $(( (end_epoch - $(date +%s)) / 86400 ))
 }
 
 # 解析证书日期，返回剩余天数
@@ -43,8 +58,33 @@ _show_cert_info() {
 
 do_local_check() {
     _check_openssl || return
-    echo ""
-    read -p "  输入证书文件路径 (如 /etc/ssl/certs/xxx.pem): " cert_path
+    local certs=() cert_path choice days
+    mapfile -t certs < <(_local_cert_files)
+
+    if [ "${#certs[@]}" -eq 0 ]; then
+        info "未发现 Let's Encrypt 证书"
+        read -p "  输入其他证书文件路径（直接回车取消）: " cert_path
+        [ -z "$cert_path" ] && info "已取消" && return
+    else
+        echo ""
+        echo -e "  ${C_BOLD}已发现的本机证书${C_RESET}"
+        local i
+        for i in "${!certs[@]}"; do
+            printf "  [%d] %s\n" "$((i + 1))" "$(basename "$(dirname "${certs[$i]}")")"
+        done
+        echo "  [0] 手动输入其他路径"
+        echo ""
+        read -p "  选择证书编号（直接回车取消）: " choice
+        [ -z "$choice" ] && info "已取消" && return
+        if [ "$choice" = "0" ]; then
+            read -p "  输入其他证书文件路径: " cert_path
+        elif [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#certs[@]}" ]; then
+            cert_path="${certs[$((choice - 1))]}"
+        else
+            error "编号无效"
+            return 1
+        fi
+    fi
     [ -z "$cert_path" ] && info "已取消" && return
     if [ ! -f "$cert_path" ]; then
         error "文件不存在: $cert_path"
@@ -53,13 +93,7 @@ do_local_check() {
     echo ""
     openssl x509 -in "$cert_path" -noout -subject -issuer -dates 2>/dev/null | sed 's/^/  /'
     echo ""
-    local end_date
-    end_date=$(openssl x509 -in "$cert_path" -noout -enddate 2>/dev/null | cut -d= -f2)
-    local end_epoch
-    end_epoch=$(date -d "$end_date" +%s 2>/dev/null)
-    local now_epoch
-    now_epoch=$(date +%s)
-    local days=$(( (end_epoch - now_epoch) / 86400 ))
+    days=$(_get_local_cert_days "$cert_path")
     if [ "$days" -lt 0 ]; then
         echo -e "  ${C_RED}证书已过期${C_RESET}"
     elif [ "$days" -lt 30 ]; then
@@ -71,8 +105,30 @@ do_local_check() {
 
 do_remote_check() {
     _check_openssl || return
-    echo ""
-    read -p "  输入域名: " domain
+    local certs=() choice
+    mapfile -t certs < <(_local_cert_files)
+    if [ "${#certs[@]}" -gt 0 ]; then
+        echo ""
+        echo -e "  ${C_BOLD}已发现的本机域名${C_RESET}"
+        local i
+        for i in "${!certs[@]}"; do
+            printf "  [%d] %s\n" "$((i + 1))" "$(basename "$(dirname "${certs[$i]}")")"
+        done
+        echo "  [0] 输入其他域名"
+        echo ""
+        read -p "  选择域名编号（直接回车取消）: " choice
+        [ -z "$choice" ] && info "已取消" && return
+        if [ "$choice" = "0" ]; then
+            read -p "  输入域名: " domain
+        elif [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#certs[@]}" ]; then
+            domain=$(basename "$(dirname "${certs[$((choice - 1))]}")")
+        else
+            error "编号无效"
+            return 1
+        fi
+    else
+        read -p "  输入域名: " domain
+    fi
     [ -z "$domain" ] && info "已取消" && return
     kairo_is_host "$domain" || { error "域名或主机名格式不合法"; return 1; }
     read -p "  端口号 (默认 443): " port
@@ -95,31 +151,22 @@ do_remote_check() {
 
 do_batch_check() {
     _check_openssl || return
-    echo ""
-    echo -e "  ${C_DIM}输入域名，空格分隔${C_RESET}"
-    echo ""
-    read -p "  域名: " input
-    [ -z "$input" ] && info "已取消" && return
-    local domains=()
-    read -r -a domains <<< "$input"
-    if [ ${#domains[@]} -eq 0 ]; then
-        info "已取消"
+    local certs=()
+    mapfile -t certs < <(_local_cert_files)
+    if [ "${#certs[@]}" -eq 0 ]; then
+        info "未发现 Let's Encrypt 证书"
         return
     fi
     echo ""
+    info "检查 ${#certs[@]} 个本机证书的到期时间"
     echo -e "  ${C_BOLD}域名${C_RESET}                        ${C_BOLD}剩余天数${C_RESET}  ${C_BOLD}状态${C_RESET}"
     echo -e "  ${C_GRAY}────────────────────────── ─────── ──────${C_RESET}"
-    for domain in "${domains[@]}"; do
-        if ! kairo_is_host "$domain"; then
-            printf "  %-26s ${C_RED}%6s  %s${C_RESET}\n" "$domain" "N/A" "格式不合法"
-            continue
-        fi
-        local days
-        _start_spinner "正在检查 $domain 证书"
-        days=$(_get_cert_days "$domain")
-        _stop_spinner
+    local cert_path domain days
+    for cert_path in "${certs[@]}"; do
+        domain=$(basename "$(dirname "$cert_path")")
+        days=$(_get_local_cert_days "$cert_path")
         if [ "$days" -lt 0 ]; then
-            printf "  %-26s ${C_RED}%6s  %s${C_RESET}\n" "$domain" "N/A" "连接失败/已过期"
+            printf "  %-26s ${C_RED}%6s  %s${C_RESET}\n" "$domain" "N/A" "无法读取"
         elif [ "$days" -lt 30 ]; then
             printf "  %-26s ${C_YELLOW}%6s  %s${C_RESET}\n" "$domain" "$days" "即将过期"
         else
@@ -132,9 +179,9 @@ menu() {
     while true; do
         title "🔒 SSL 证书检查"
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 检查本机证书文件"
+        echo -e "  ${C_BOLD}[1]${C_RESET} 查看本机证书"
         echo -e "  ${C_BOLD}[2]${C_RESET} 检查远程域名证书"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 批量检查证书到期"
+        echo -e "  ${C_BOLD}[3]${C_RESET} 批量检查本机证书到期"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
