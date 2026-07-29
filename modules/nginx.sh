@@ -357,11 +357,11 @@ do_view_conf() {
         done
     fi
     [ ${#items[@]} -eq 0 ] && { info "无站点配置"; return; }
-    echo "  [0] 取消"
+    echo "  [0] 返回上一级"
     echo ""
-    read -p "  选择要查看的站点编号: " sel
+    read -p "  选择要查看的站点编号（0 返回）: " sel
     if [ -z "$sel" ] || [ "$sel" = "0" ]; then
-        info "已取消"
+        info "已返回"
         return
     fi
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
@@ -589,10 +589,10 @@ do_del_proxy() {
     fi
     [ ${#items[@]} -eq 0 ] && { info "无反代站点"; return; }
 
-    echo "  [0] 取消"
+    echo "  [0] 返回上一级"
     echo ""
     read -p "  选择要删除的站点编号: " sel
-    [ "$sel" = "0" ] && info "已取消" && return
+    [ "$sel" = "0" ] && info "已返回" && return
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
         error "无效选择"; return
     fi
@@ -701,11 +701,11 @@ do_cert() {
         done
     fi
     [ ${#items[@]} -eq 0 ] && { info "无反代站点"; return; }
-    echo "  [0] 取消"
+    echo "  [0] 返回上一级"
     echo ""
-    read -p "  选择要申请/续期的站点编号: " sel
+    read -p "  选择要申请/续期的站点编号（0 返回）: " sel
     if [ -z "$sel" ] || [ "$sel" = "0" ]; then
-        info "已取消"
+        info "已返回"
         return
     fi
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
@@ -747,45 +747,64 @@ menu() {
         do_status 2>/dev/null
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET}  安装 / 升级 Nginx (官方源)"
-        echo -e "  ${C_BOLD}[2]${C_RESET}  卸载 Nginx"
-        echo -e "  ${C_BOLD}[3]${C_RESET}  启动 / 停止 / 重启 / 重载"
-        echo -e "  ${C_BOLD}[4]${C_RESET}  开关开机自启"
-        echo -e "  ${C_BOLD}[5]${C_RESET}  测试配置语法 (nginx -t)"
-        echo -e "  ${C_BOLD}[6]${C_RESET}  列出所有反代站点"
-        echo -e "  ${C_BOLD}[7]${C_RESET}  查看站点配置"
-        echo -e "  ${C_BOLD}[8]${C_RESET}  添加反代站点"
-        echo -e "  ${C_BOLD}[9]${C_RESET}  删除反代站点"
-        echo -e "  ${C_BOLD}[10]${C_RESET} 申请 / 续期 Let's Encrypt 证书"
-        echo -e "  ${C_BOLD}[11]${C_RESET} 证书概览 (certbot certificates)"
-        echo -e "  ${C_BOLD}[12]${C_RESET} 实时查看日志 (tail)"
+        echo -e "  ${C_BOLD}[2]${C_RESET}  服务管理"
+        echo -e "  ${C_BOLD}[3]${C_RESET}  反代站点管理"
+        echo -e "  ${C_BOLD}[4]${C_RESET}  HTTPS 证书管理"
+        echo -e "  ${C_BOLD}[5]${C_RESET}  实时查看日志 (tail)"
+        echo -e "  ${C_BOLD}[6]${C_RESET}  卸载 Nginx"
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回上级"
         divider
         echo ""
         read -p "  请输入选项: " choice
         case "$choice" in
             1) do_install; ;;
-            2) do_uninstall; ;;
-            3)
+            2)
                 echo ""
-                echo "  [1] 启动  [2] 停止  [3] 重启  [4] 重载配置"
-                read -p "  选择: " sub
+                echo "  [1] 启动  [2] 停止  [3] 重启"
+                echo "  [4] 重载配置  [5] 开关开机自启"
+                echo "  [6] 测试配置语法  [0] 返回上一级"
+                read -p "  选择服务操作: " sub
                 case "$sub" in
                     1) do_start ;;
                     2) do_stop ;;
                     3) do_restart ;;
                     4) do_reload ;;
-                    *) info "已取消" ;;
+                    5) do_toggle_enable ;;
+                    6) do_test_conf ;;
+                    0) continue ;;
+                    *) error "无效选项"; sleep 1; continue ;;
                 esac
                 echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_toggle_enable; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            5) do_test_conf; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            6) do_list_sites; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            7) do_view_conf; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            8) do_add_proxy; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            9) do_del_proxy; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            10) do_cert; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            11) do_cert_list; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            12) do_logs ;;
+            3)
+                echo ""
+                echo "  [1] 列出所有反代站点  [2] 查看站点配置"
+                echo "  [3] 添加反代站点      [4] 删除反代站点"
+                echo "  [0] 返回上一级"
+                read -p "  选择站点操作: " sub
+                case "$sub" in
+                    1) do_list_sites ;;
+                    2) do_view_conf ;;
+                    3) do_add_proxy ;;
+                    4) do_del_proxy ;;
+                    0) continue ;;
+                    *) error "无效选项"; sleep 1; continue ;;
+                esac
+                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4)
+                echo ""
+                echo "  [1] 申请 / 续期 Let's Encrypt 证书"
+                echo "  [2] 证书概览 (certbot certificates)"
+                echo "  [0] 返回上一级"
+                read -p "  选择证书操作: " sub
+                case "$sub" in
+                    1) do_cert ;;
+                    2) do_cert_list ;;
+                    0) continue ;;
+                    *) error "无效选项"; sleep 1; continue ;;
+                esac
+                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            5) do_logs ;;
+            6) do_uninstall; ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

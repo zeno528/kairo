@@ -92,7 +92,7 @@ teardown() {
     rmdir "${LE_LIVE_DIR}/broken.com"
 }
 
-@test "do_view_conf 仅列出已启用站点且空输入取消" {
+@test "do_view_conf 仅列出已启用站点且空输入返回" {
     mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
     touch "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_AVAIL}/example.com.bak"
     ln -s "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_ENABLED}/example.com"
@@ -103,10 +103,10 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ "example.com" ]]
     [[ ! "$output" =~ "example.com.bak" ]]
-    [[ "$output" =~ "已取消" ]]
+    [[ "$output" =~ "已返回" ]]
 }
 
-@test "do_cert 支持域名站点并允许空输入取消" {
+@test "do_cert 支持域名站点并允许空输入返回" {
     mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
     touch "${NGINX_SITES_AVAIL}/example.com"
     ln -s "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_ENABLED}/example.com"
@@ -117,7 +117,7 @@ teardown() {
     run do_cert <<< ""
     [ "$status" -eq 0 ]
     [[ "$output" =~ "example.com" ]]
-    [[ "$output" =~ "已取消" ]]
+    [[ "$output" =~ "已返回" ]]
 }
 
 # ─── 纯函数: _make_proxy_conf ─────────────────────────────────
@@ -239,6 +239,20 @@ teardown() {
 }
 
 # ─── 公共暴露 ────────────────────────────────────────────────
+
+@test "menu 将 Nginx 操作归类为服务、站点和证书管理" {
+    title() { :; }
+    do_status() { :; }
+    divider() { :; }
+
+    run menu <<< "0"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "服务管理" ]]
+    [[ "$output" =~ "反代站点管理" ]]
+    [[ "$output" =~ "HTTPS 证书管理" ]]
+    [[ ! "$output" =~ "[12]" ]]
+}
 
 @test "nginx.sh 暴露 menu 函数" {
     type menu
