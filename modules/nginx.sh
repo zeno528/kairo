@@ -291,8 +291,8 @@ do_toggle_enable() {
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
         sudo systemctl disable nginx 2>/dev/null && success "已关闭"
     else
-        read -p "  开启开机自启? [y/N]: " confirm
-        [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+        read -p "  开启开机自启? [Y/n]: " confirm
+        [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
         sudo systemctl enable nginx 2>/dev/null && success "已开启"
     fi
 }
@@ -527,8 +527,8 @@ do_add_proxy() {
     echo -e "  ${C_DIM}反代: http://${up_host}:${up_port}${C_RESET}"
     echo -e "  ${C_DIM}域名: ${domain}$([ "$with_www" = "y" ] && echo " + www")${C_RESET}"
     echo ""
-    read -p "  确认添加? [y/N]: " confirm
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+    read -p "  确认添加? [Y/n]: " confirm
+    [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
 
     sudo mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED" || {
         error "无法创建 Nginx 站点目录"

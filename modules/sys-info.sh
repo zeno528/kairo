@@ -41,13 +41,17 @@ do_disk() {
 }
 
 do_network() {
+    local ipv4 ipv6
     echo ""
-    echo -e "  ${C_BOLD}IP 地址${C_RESET}"
     if command -v ip &>/dev/null; then
-        ip -4 addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | while read -r ip; do
-            echo "    $ip"
-        done
+        ipv4=$(ip -o -4 addr show scope global 2>/dev/null | awk '{split($4, a, "/"); print a[1]}')
+        ipv6=$(ip -o -6 addr show scope global 2>/dev/null | awk '{split($4, a, "/"); print a[1]}')
+        echo -e "  ${C_BOLD}IPv4 地址${C_RESET}"
+        [ -n "$ipv4" ] && printf '%s\n' "$ipv4" | sed 's/^/    /' || echo "    （无）"
+        echo -e "  ${C_BOLD}IPv6 地址${C_RESET}"
+        [ -n "$ipv6" ] && printf '%s\n' "$ipv6" | sed 's/^/    /' || echo "    （无）"
     else
+        echo -e "  ${C_BOLD}IP 地址（未分类）${C_RESET}"
         hostname -I 2>/dev/null | tr ' ' '\n' | grep -v '^$' | while read -r ip; do
             echo "    $ip"
         done

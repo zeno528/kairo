@@ -34,8 +34,8 @@ do_add() {
     [ -z "$cmd" ] && info "已取消" && return
     echo ""
     info "将添加: $expr $cmd"
-    read -p "  确认? [y/N]: " confirm
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+    read -p "  确认? [Y/n]: " confirm
+    [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     (crontab -l 2>/dev/null; echo "$expr $cmd") | crontab - && success "定时任务已添加"
 }
 

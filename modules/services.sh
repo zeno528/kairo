@@ -95,8 +95,8 @@ do_toggle_enable() {
     else
         echo -e "  当前: ${C_YELLOW}未启用${C_RESET} 开机自启"
         echo ""
-        read -p "  开启开机自启? [y/N]: " confirm
-        [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+        read -p "  开启开机自启? [Y/n]: " confirm
+        [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
         _with_spinner "正在开启开机自启" sudo systemctl enable "$svc" && success "已开启 $svc 开机自启"
     fi
 }

@@ -267,6 +267,6 @@ deploy_staged_release "$runtime_dir" "$bin_file"
 rm -f -- "${BIN_DIR}/ot"
 rm -rf -- "$LEGACY_LIB_DIR"
 
-echo -e "\033[1;32m>>> 🎉 完成！Kairo v${remote_ver} (${release_sha:0:12})\033[0m"
+echo -e "\033[1;32m>>> 🎉 完成！Kairo v${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
 echo "  主菜单: ka"

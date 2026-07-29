@@ -255,13 +255,20 @@ setup() {
         source "'"$PWD"'/modules/sys-info.sh"
         ip() {
             case "$1" in
-                -4) printf "    inet 192.0.2.10/24\\n" ;;
-                -o) printf "2: eth0@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT\\n" ;;
+                -o) case "$2" in
+                        -4) printf "2: eth0    inet 192.0.2.10/24 scope global eth0\\n" ;;
+                        -6) printf "2: eth0    inet6 2001:db8::10/64 scope global\\n" ;;
+                        link) printf "2: eth0@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT\\n" ;;
+                    esac ;;
             esac
         }
         do_network
     '
     [ "$status" -eq 0 ]
+    [[ "$output" =~ "IPv4 地址" ]]
+    [[ "$output" =~ "192.0.2.10" ]]
+    [[ "$output" =~ "IPv6 地址" ]]
+    [[ "$output" =~ "2001:db8::10" ]]
     [[ "$output" =~ "eth0             UP" ]]
 }
 

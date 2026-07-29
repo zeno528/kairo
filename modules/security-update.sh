@@ -45,8 +45,8 @@ do_security_update() {
     echo ""
     echo -e "  ${C_BOLD}执行常规升级...${C_RESET}"
     echo ""
-    read -p "  确认执行常规升级? [y/N]: " confirm
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
+    read -p "  确认执行常规升级? [Y/n]: " confirm
+    [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     _apt_update_smart || return
     _with_spinner "正在升级软件包" sudo apt upgrade -y && success "常规升级完成"
 }
