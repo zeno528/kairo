@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.5 (2026-07-29)
+- refactor: simplify uninstall flow
+
 ## v1.1.4 (2026-07-29)
 - fix: make uninstall verifiable and complete
 

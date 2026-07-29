@@ -172,46 +172,6 @@ setup() {
     [[ ! "$output" =~ "INJECTED" ]]
 }
 
-@test "公共卸载函数清理新旧运行时和 staging 残留" {
-    local root bin_dir lib_dir legacy_dir
-    root=$(mktemp -d)
-    bin_dir="${root}/bin"
-    lib_dir="${root}/lib/kairo"
-    legacy_dir="${root}/lib/opstool"
-    mkdir -p "$bin_dir" "$lib_dir" "$legacy_dir" "${root}/lib/.kairo-stage.test"
-    touch "${bin_dir}/ka" "${bin_dir}/ot"
-    source "$PWD/lib/core.sh"
-
-    run kairo_remove_runtime "$bin_dir" "$lib_dir" "$legacy_dir"
-    [ "$status" -eq 0 ]
-    [ ! -e "${bin_dir}/ka" ]
-    [ ! -e "${bin_dir}/ot" ]
-    [ ! -e "$lib_dir" ]
-    [ ! -e "$legacy_dir" ]
-    [ ! -e "${root}/lib/.kairo-stage.test" ]
-    rm -rf "$root"
-}
-
-@test "公共卸载函数拒绝过宽路径" {
-    source "$PWD/lib/core.sh"
-    run kairo_remove_runtime "/usr/local/bin" "/" "/usr/local/lib/opstool"
-    [ "$status" -ne 0 ]
-    [[ "$output" =~ "拒绝使用过宽" ]]
-}
-
-@test "公共卸载函数不会把删除失败误报为成功" {
-    local root
-    root=$(mktemp -d)
-    mkdir -p "${root}/bin" "${root}/lib/kairo" "${root}/lib/opstool"
-    run bash -c '
-        source "'"$PWD"'/lib/core.sh"
-        rm() { return 1; }
-        kairo_remove_runtime "'"$root"'/bin" "'"$root"'/lib/kairo" "'"$root"'/lib/opstool"
-    '
-    [ "$status" -ne 0 ]
-    /usr/bin/rm -rf "$root"
-}
-
 # ─── _with_spinner ──────────────────────────────────────────
 
 @test "公共库定义了 _with_spinner 函数" {

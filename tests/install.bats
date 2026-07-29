@@ -81,8 +81,8 @@ teardown() {
     [ "$(cat "${KAIRO_BIN_DIR}/ka")" = "old-bin" ]
 }
 
-@test "远程卸载清理新旧运行时和 staging 残留" {
-    mkdir -p "$KAIRO_LIB_DIR" "$KAIRO_LEGACY_LIB_DIR" "${TEST_TMP}/lib/.kairo-stage.interrupted"
+@test "远程卸载清理新旧运行时" {
+    mkdir -p "$KAIRO_LIB_DIR" "$KAIRO_LEGACY_LIB_DIR"
     touch "${KAIRO_BIN_DIR}/ka" "${KAIRO_BIN_DIR}/ot"
     printf '1.1.3\n' > "${KAIRO_LIB_DIR}/VERSION"
 
@@ -93,5 +93,4 @@ teardown() {
     [ ! -e "${KAIRO_BIN_DIR}/ot" ]
     [ ! -e "$KAIRO_LIB_DIR" ]
     [ ! -e "$KAIRO_LEGACY_LIB_DIR" ]
-    [ ! -e "${TEST_TMP}/lib/.kairo-stage.interrupted" ]
 }

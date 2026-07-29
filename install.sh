@@ -195,29 +195,12 @@ if [ "${1:-}" = "uninstall" ]; then
         echo ">>> 删除运行库失败" >&2
         exit 1
     }
-    orphan_stages=()
-    for stage in "$(dirname "$LIB_DIR")"/.kairo-stage.*; do
-        if [ -e "$stage" ] || [ -L "$stage" ]; then
-            orphan_stages+=("$stage")
-        fi
-    done
-    if [ "${#orphan_stages[@]}" -gt 0 ]; then
-        rm -rf -- "${orphan_stages[@]}" || {
-            echo ">>> 清理安装临时目录失败" >&2
-            exit 1
-        }
-    fi
-    remnants=()
-    for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR" "${orphan_stages[@]}"; do
+    for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
-            remnants+=("$target")
+            echo ">>> 卸载后仍有残留: $target" >&2
+            exit 1
         fi
     done
-    if [ "${#remnants[@]}" -gt 0 ]; then
-        echo ">>> 卸载后仍有残留:" >&2
-        printf '  %s\n' "${remnants[@]}" >&2
-        exit 1
-    fi
     echo ">>> 卸载完成，Kairo 运行文件已全部清理"
     echo ">>> Nginx、SSH、防火墙、证书等业务配置已保留"
     exit 0

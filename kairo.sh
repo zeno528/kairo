@@ -84,26 +84,42 @@ do_update() {
 }
 
 do_uninstall() {
+    local target failed=0
+    local -a elevate=()
+
     echo ""
     warn "即将卸载 KAIRO，以下文件将被删除:"
     echo -e "  ${C_GRAY}${BIN_DIR}/ka${C_RESET}"
     echo -e "  ${C_GRAY}${BIN_DIR}/ot（旧版入口，如存在）${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
     echo -e "  ${C_GRAY}${LEGACY_LIB_DIR}/（旧版运行库，如存在）${C_RESET}"
-    echo -e "  ${C_GRAY}安装中断遗留的 .kairo-stage.* 临时目录${C_RESET}"
     echo ""
     info "Nginx、SSH、防火墙、证书等业务配置不会被删除"
     echo ""
     read -r -p "  确认卸载? [y/N]: " confirm
-    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        if kairo_remove_runtime "$BIN_DIR" "$LIB_DIR" "$LEGACY_LIB_DIR"; then
-            success "卸载完成，Kairo 运行文件已全部清理"
-            exit 0
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return; }
+
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo -v || { error "卸载需要 sudo 权限"; return 1; }
+        elevate=(sudo)
+    fi
+
+    "${elevate[@]}" rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || failed=1
+    "${elevate[@]}" rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || failed=1
+
+    for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            error "仍有残留: $target"
+            failed=1
         fi
-        error "卸载失败，请根据上方残留路径检查权限或文件属性"
+    done
+    if [ "$failed" -ne 0 ]; then
+        error "卸载失败"
         return 1
     fi
-    info "已取消"
+
+    success "卸载完成，Kairo 运行文件已全部清理"
+    exit 0
 }
 
 kairo_module_file() {
