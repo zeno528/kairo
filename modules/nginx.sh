@@ -749,6 +749,7 @@ _select_disabled_site() {
 }
 
 # 禁用站点：移除 sites-enabled 软链（保留 available 配置与证书）。
+# shellcheck disable=SC2120 # CLI 可传站点名；菜单入口会交互选择。
 do_disable_site() {
     _check_nginx || return
     if ! sudo -n true &>/dev/null; then
@@ -776,6 +777,7 @@ do_disable_site() {
 }
 
 # 启用站点：为 sites-available 配置建立 sites-enabled 软链。
+# shellcheck disable=SC2120 # CLI 可传站点名；菜单入口会交互选择。
 do_enable_site() {
     _check_nginx || return
     if ! sudo -n true &>/dev/null; then

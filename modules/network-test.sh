@@ -3,27 +3,46 @@
 
 # 第三方脚本和数据固定到明确 commit，避免上游分支变化后直接执行未知内容。
 BENCH_REF="fdb40962837b2e24bc94b87c2b1786ad2308489a"
-BACKTRACE_REF="55956a8447c0ce3c49c403d61d9837f71d3c2e00"
 NODE_DATA_REF="3443ba80e9114b9732ceadd8d35561c728e8e05f"
 BENCH_URL="https://raw.githubusercontent.com/teddysun/across/${BENCH_REF}/bench.sh"
-BACKTRACE_URL="https://raw.githubusercontent.com/zhanghanyun/backtrace/${BACKTRACE_REF}/install.sh"
+BACKTRACE_RELEASE_URL="https://github.com/zhanghanyun/backtrace/releases/latest/download"
 NODE_BASE_URL="https://raw.githubusercontent.com/spiritLHLS/speedtest.cn-CN-ID/${NODE_DATA_REF}"
 
-do_speedtest() {
+do_speedtest() (
     echo ""
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-speedtest.XXXXXX") || {
+        error "无法创建测速临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+
     _with_spinner "执行测速脚本" bash -c \
         'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$BENCH_URL"
-}
+)
 
-do_backtrace() {
+do_backtrace() (
     echo ""
-    if command -v backtrace &>/dev/null; then
-        _with_spinner "执行回程路由测试" backtrace
-    else
-        _with_spinner "安装并执行回程测试" bash -c \
-            'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash && backtrace' "$BACKTRACE_URL"
-    fi
-}
+    local tmp_dir arch release_url
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-backtrace.XXXXXX") || {
+        error "无法创建回程测试临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+
+    case "$(uname -m)" in
+        x86_64|amd64) arch="amd64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) error "不支持的 CPU 架构: $(uname -m)"; return 1 ;;
+    esac
+    release_url="${BACKTRACE_RELEASE_URL}/backtrace-linux-${arch}.tar.gz"
+    _with_spinner "下载并执行回程测试" bash -c '
+        curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL -o backtrace.tar.gz "$1" &&
+            tar -xzf backtrace.tar.gz && [ -x ./backtrace ] && ./backtrace
+    ' _ "$release_url"
+)
 
 # 获取单个运营商的节点，供并发下载任务调用。
 _fetch_ping_nodes() (

@@ -1,6 +1,6 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.1.32-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.1.33-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
@@ -36,7 +36,7 @@ ka  # 进入主菜单
 - **定时任务** — 查看/添加/删除/编辑 crontab 定时任务
 - **SSL 证书** — 自动发现本机 Let's Encrypt 证书、远程域名证书检查、批量到期检测
 - **软件更新** — 检查可更新包、预演完整升级、执行常规升级/完整升级、清理缓存
-- **网络测试** — 网络测速、三网回程路由、全国节点 Ping 延迟
+- **网络测试** — 网络测速、三网回程路由、全国节点 Ping 延迟；测试文件仅在临时目录中使用，结束后自动清理
 
 ### Docker
 - **Docker 管理** — 容器列表、启停重启、查看日志、镜像管理

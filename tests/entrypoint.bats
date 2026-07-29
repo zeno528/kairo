@@ -397,6 +397,52 @@ setup() {
     [[ "$output" =~ "2.500 ms" ]]
 }
 
+@test "网络测速在专用临时目录运行并清理" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/network-test.sh"
+        test_tmp=$(mktemp -d)
+        trap "rm -rf -- \"\$test_tmp\"" EXIT
+        TMPDIR="$test_tmp"
+        original_dir=$PWD
+        curl() { printf "%s\\n" "touch speedtest-artifact"; }
+        export -f curl
+        do_speedtest
+        [ ! -e "$original_dir/speedtest-artifact" ]
+        [ -z "$(find "$test_tmp" -mindepth 1 -maxdepth 1 -name "kairo-speedtest.*" -print -quit)" ]
+    '
+    [ "$status" -eq 0 ]
+}
+
+@test "回程路由在专用临时目录运行并清理" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/network-test.sh"
+        test_tmp=$(mktemp -d)
+        trap "rm -rf -- \"\$test_tmp\"" EXIT
+        TMPDIR="$test_tmp"
+        export test_tmp
+        mkdir "$test_tmp/payload"
+        printf "%s\\n" "#!/usr/bin/env bash" "exit 0" > "$test_tmp/payload/backtrace"
+        chmod +x "$test_tmp/payload/backtrace"
+        tar -czf "$test_tmp/backtrace.tar.gz" -C "$test_tmp/payload" backtrace
+        curl() {
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "-o" ]; then
+                    cp "$test_tmp/backtrace.tar.gz" "$2"
+                    return
+                fi
+                shift
+            done
+            return 1
+        }
+        export -f curl
+        do_backtrace
+        [ -z "$(find "$test_tmp" -mindepth 1 -maxdepth 1 -name "kairo-backtrace.*" -print -quit)" ]
+    '
+    [ "$status" -eq 0 ]
+}
+
 @test "系统网络信息按接口 flags 显示状态" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
