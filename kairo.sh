@@ -38,7 +38,7 @@ trap 'kairo_cleanup; exit 130' INT TERM
 
 show_banner() {
     local width=42 header="─ Kairo "
-    local version_line="  v${VERSION}"
+    local version_line="  🏷️  v${VERSION}"
     local repo_line="  https://github.com/zeno528/kairo"
     local i dash="" fill="" version_padding="" repo_padding=""
 
