@@ -54,13 +54,22 @@ _nginx_cached_release_date() {
 
 # 把 ver→date 写入本地缓存（覆盖同版本旧记录）。调用方需具备 sudo 权限。
 _nginx_store_release_date() {
-    local ver="$1" date="$2"
+    local ver="$1" date="$2" cache_dir tmp_file
     [ -n "$ver" ] && [ -n "$date" ] || return
-    sudo mkdir -p "$(dirname "$NGINX_RELEASE_CACHE")"
-    {
-        [ -f "$NGINX_RELEASE_CACHE" ] && awk -v v="$ver" '$1 != v' "$NGINX_RELEASE_CACHE"
-        printf '%s %s\n' "$ver" "$date"
-    } | sudo tee "$NGINX_RELEASE_CACHE" >/dev/null
+    cache_dir=$(dirname "$NGINX_RELEASE_CACHE")
+    sudo mkdir -p "$cache_dir" || return 1
+    tmp_file=$(mktemp) || return 1
+    if [ -f "$NGINX_RELEASE_CACHE" ]; then
+        awk -v v="$ver" '$1 != v' "$NGINX_RELEASE_CACHE" > "$tmp_file" || {
+            rm -f -- "$tmp_file"
+            return 1
+        }
+    fi
+    printf '%s %s\n' "$ver" "$date" >> "$tmp_file"
+    sudo install -m 0644 "$tmp_file" "$NGINX_RELEASE_CACHE"
+    local rc=$?
+    rm -f -- "$tmp_file"
+    return "$rc"
 }
 
 # 使用 Debian 版本规则比较，避免 nginx -v 与 apt 包版本格式不同造成误判。
