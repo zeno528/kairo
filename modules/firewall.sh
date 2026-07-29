@@ -23,7 +23,7 @@ do_status() {
             echo -e "  ${C_BOLD}状态${C_RESET}  $status"
             if [ "$status" = "inactive" ]; then
                 warn "防火墙未启用；放行规则会保存，但暂不会影响流量"
-                info "启用前请先确认 SSH 端口已放行，再选择 [4] 开启防火墙"
+                info "启用前请先确认 SSH 端口已放行，再选择 [E] 开启防火墙"
             fi
             echo ""
             ufw status numbered 2>/dev/null | tail -n +4
@@ -87,6 +87,20 @@ do_close_port() {
     esac
 }
 
+do_delete_rule() {
+    local rule="$1"
+    [[ "$rule" =~ ^[1-9][0-9]*$ ]] || { error "规则编号无效"; return 1; }
+    warn "即将删除 ${FW} 规则 #$rule"
+    read -r -p "  确认删除? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    case "$FW" in
+        ufw) sudo ufw --force delete "$rule" ;;
+        iptables) sudo iptables -D INPUT "$rule" ;;
+        *) error "未检测到防火墙工具"; return 1 ;;
+    esac || { error "删除规则失败"; return 1; }
+    success "已删除规则 #$rule"
+}
+
 do_enable() {
     [ -z "$FW" ] && error "未检测到防火墙工具" && return
     echo ""
@@ -122,26 +136,31 @@ do_disable() {
 }
 
 menu() {
+    local choice
     while true; do
         title "🛡 防火墙管理"
+        do_status
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看防火墙状态"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 开放端口（添加放行规则）"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 关闭端口"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 开启防火墙（可能影响 SSH）"
-        echo -e "  ${C_BOLD}[5]${C_RESET} 关闭防火墙"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 删除规则    ${C_BOLD}[O]${C_RESET} 开放端口    ${C_BOLD}[C]${C_RESET} 按端口关闭"
+        echo -e "  ${C_BOLD}[E]${C_RESET} 开启防火墙（可能影响 SSH）    ${C_BOLD}[D]${C_RESET} 关闭防火墙"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择规则或操作: " choice
         case "$choice" in
-            1) do_status; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
-            2) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
-            3) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
-            4) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
-            5) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
+            [Oo]) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Cc]) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Ee]) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Dd]) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            *)
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]]; then
+                    do_delete_rule "$choice"
+                    echo ""; kairo_pause "按 Enter 返回防火墙规则..."
+                else
+                    error "无效选项"; sleep 1
+                fi
+                ;;
         esac
     done
 }

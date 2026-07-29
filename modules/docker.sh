@@ -24,20 +24,16 @@ do_list_containers() {
 
 do_start() {
     _check_docker || return
-    echo ""
-    docker ps -a --format "{{.ID}} {{.Names}} {{.Status}}" 2>/dev/null | grep -v "Up" | sed 's/^/  /'
-    echo ""
-    read -p "  输入容器名或 ID: " name
+    local name="${1:-}"
+    [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
     _with_spinner "正在启动容器 $name" docker start "$name" && success "容器 $name 已启动" || error "启动失败"
 }
 
 do_stop() {
     _check_docker || return
-    echo ""
-    docker ps --format "{{.ID}} {{.Names}} {{.Status}}" 2>/dev/null | sed 's/^/  /'
-    echo ""
-    read -p "  输入容器名或 ID: " name
+    local name="${1:-}"
+    [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
     echo ""
     read -p "  确认停止容器 $name? [y/N]: " confirm
@@ -47,20 +43,16 @@ do_stop() {
 
 do_restart() {
     _check_docker || return
-    echo ""
-    docker ps --format "{{.ID}} {{.Names}} {{.Status}}" 2>/dev/null | sed 's/^/  /'
-    echo ""
-    read -p "  输入容器名或 ID: " name
+    local name="${1:-}"
+    [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
     _with_spinner "正在重启容器 $name" docker restart "$name" && success "容器 $name 已重启" || error "重启失败"
 }
 
 do_logs() {
     _check_docker || return
-    echo ""
-    docker ps --format "{{.ID}} {{.Names}}" 2>/dev/null | sed 's/^/  /'
-    echo ""
-    read -p "  输入容器名或 ID: " name
+    local name="${1:-}"
+    [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
     echo ""
     read -p "  查看行数 (默认 50): " lines
@@ -85,28 +77,45 @@ do_images() {
 }
 
 menu() {
+    local choice name
     while true; do
         title "🐳 Docker 管理"
+        _check_docker || { kairo_pause "按 Enter 返回上级..."; return; }
+        mapfile -t DOCKER_CONTAINERS < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
+        echo ""
+        echo -e "  ${C_BOLD}容器列表${C_RESET}"
+        docker ps -a --format '{{.Names}}\t{{.Status}}\t{{.Image}}' 2>/dev/null |
+            awk -F '\t' '{printf "  [%d] %s  %s  %s\n", NR, $1, $2, $3}'
+        [ ${#DOCKER_CONTAINERS[@]} -eq 0 ] && info "当前没有容器"
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看容器列表"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 启动容器"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 停止容器"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 重启容器"
-        echo -e "  ${C_BOLD}[5]${C_RESET} 查看容器日志"
-        echo -e "  ${C_BOLD}[6]${C_RESET} 镜像管理"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 选择容器    ${C_BOLD}[I]${C_RESET} 镜像管理"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择容器或操作: " choice
         case "$choice" in
-            1) do_list_containers; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_start; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_stop; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_restart; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            5) do_logs; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            6) do_images; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            [Ii]) do_images; echo ""; kairo_pause "按 Enter 返回容器列表..."; continue ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#DOCKER_CONTAINERS[@]} ]; then
+                    name="${DOCKER_CONTAINERS[$((choice - 1))]}"
+                else
+                    error "无效选项"; sleep 1; continue
+                fi
+                ;;
         esac
+        echo ""
+        echo "  ${C_BOLD}${name}${C_RESET}"
+        echo "  [1] 启动  [2] 停止  [3] 重启  [4] 查看日志  [0] 返回列表"
+        read -p "  选择操作: " choice
+        case "$choice" in
+            1) do_start "$name" ;;
+            2) do_stop "$name" ;;
+            3) do_restart "$name" ;;
+            4) do_logs "$name" ;;
+            0) continue ;;
+            *) error "无效选项"; sleep 1; continue ;;
+        esac
+        echo ""; kairo_pause "按 Enter 返回容器列表..."
     done
 }

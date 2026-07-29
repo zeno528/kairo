@@ -40,6 +40,7 @@ do_add() {
 }
 
 do_remove() {
+    local num="${1:-}"
     echo ""
     local tasks
     tasks=$(crontab -l 2>/dev/null | grep -v '^#' | grep -v '^$')
@@ -47,9 +48,11 @@ do_remove() {
         warn "当前没有定时任务"
         return
     fi
-    do_list
-    echo ""
-    read -p "  输入要删除的编号: " num
+    if [ -z "$num" ]; then
+        do_list
+        echo ""
+        read -p "  输入要删除的编号: " num
+    fi
     [ -z "$num" ] && info "已取消" && return
     kairo_is_positive_integer "$num" || { error "请输入正整数"; return 1; }
 
@@ -85,24 +88,28 @@ do_edit() {
 }
 
 menu() {
+    local choice
     while true; do
         title "⏰ 定时任务"
+        do_list
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看当前定时任务"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 添加定时任务"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 删除定时任务"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 编辑定时任务"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 删除任务    ${C_BOLD}[A]${C_RESET} 添加任务    ${C_BOLD}[E]${C_RESET} 编辑全部任务"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择任务或操作: " choice
         case "$choice" in
-            1) do_list; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_add; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_remove; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_edit; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            [Aa]) do_add; echo ""; kairo_pause "按 Enter 返回任务列表..." ;;
+            [Ee]) do_edit; echo ""; kairo_pause "按 Enter 返回任务列表..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                    do_remove "$choice"
+                    echo ""; kairo_pause "按 Enter 返回任务列表..."
+                else
+                    error "无效选项"; sleep 1
+                fi
+                ;;
         esac
     done
 }

@@ -1,23 +1,32 @@
 #!/bin/bash
 # port-proc 模块 - 端口/进程管理
 
+PORT_PROCESS_PIDS=()
+
 do_listen_ports() {
+    local port_filter="${1:-}" name_filter="${2:-}" line addr port pid name i=0
+    PORT_PROCESS_PIDS=()
+    command -v ss &>/dev/null || { error "未找到 ss 命令"; return 1; }
+
     echo ""
-    if command -v ss &>/dev/null; then
-        echo -e "  ${C_BOLD}监听端口${C_RESET}"
-        ss -tlnp 2>/dev/null | awk '
-        NR>1 {
-            state=$1; local_addr=$4; process=$7
-            split(local_addr, a, ":")
-            port=a[length(a)]
-            if (process ~ /\*$/ || process == "") process="-"
-            printf "  %-6s %-22s %s\n", port, state, process
-        }'
-    elif command -v netstat &>/dev/null; then
-        netstat -tlnp 2>/dev/null | awk 'NR>2'
-    else
-        error "未找到 ss 或 netstat 命令"
-    fi
+    echo -e "  ${C_BOLD}监听端口 / 进程${C_RESET}"
+    printf "  ${C_DIM}%-4s %-7s %-8s %s${C_RESET}\n" "编号" "端口" "PID" "进程"
+    while IFS= read -r line; do
+        addr=$(awk '{print $4}' <<< "$line")
+        port=${addr##*:}
+        pid=$(sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' <<< "$line")
+        if [ -z "$pid" ]; then
+            printf "  ${C_DIM}[--]  %-7s %-8s %s${C_RESET}\n" "$port" "-" "（无权限读取进程）"
+            continue
+        fi
+        name=$(ps -p "$pid" -o comm= 2>/dev/null)
+        [ -n "$port_filter" ] && [ "$port" != "$port_filter" ] && continue
+        [ -n "$name_filter" ] && [[ "${name,,}" != *"${name_filter,,}"* ]] && continue
+        i=$((i + 1))
+        PORT_PROCESS_PIDS+=("$pid")
+        printf "  [%d]  %-7s %-8s %s\n" "$i" "$port" "$pid" "${name:-（无权限读取）}"
+    done < <(ss -H -ltnp 2>/dev/null)
+    [ "$i" -eq 0 ] && warn "未找到匹配的监听进程"
 }
 
 do_find_by_port() {
@@ -49,8 +58,9 @@ do_find_by_name() {
 }
 
 do_kill_process() {
+    local pid="${1:-}"
     echo ""
-    read -p "  输入 PID: " pid
+    [ -n "$pid" ] || read -p "  输入 PID: " pid
     [ -z "$pid" ] && info "已取消" && return
     kairo_is_positive_integer "$pid" || { error "PID 必须是正整数"; return 1; }
 
@@ -81,24 +91,38 @@ do_kill_process() {
 }
 
 menu() {
+    local choice port_filter="" name_filter="" pid
     while true; do
         title "📡 端口/进程管理"
+        do_listen_ports "$port_filter" "$name_filter"
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看监听端口"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 按端口查找进程"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 按名称查找进程"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 终止进程"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 选择进程    ${C_BOLD}[P]${C_RESET} 按端口筛选    ${C_BOLD}[N]${C_RESET} 按名称筛选"
+        echo -e "  ${C_BOLD}[R]${C_RESET} 清除筛选"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择进程或操作: " choice
         case "$choice" in
-            1) do_listen_ports; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_find_by_port; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_find_by_name; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_kill_process; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            [Pp]) read -p "  输入端口号: " port_filter; kairo_is_port "$port_filter" || { error "端口必须是 1-65535"; port_filter=""; sleep 1; }; name_filter="" ;;
+            [Nn]) read -p "  输入进程名称: " name_filter; port_filter="" ;;
+            [Rr]) port_filter=""; name_filter="" ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
+                    pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
+                    echo ""
+                    echo "  [1] 查看进程详情  [2] 终止进程  [0] 返回列表"
+                    read -p "  选择操作: " choice
+                    case "$choice" in
+                        1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;
+                        2) do_kill_process "$pid" ;;
+                    esac
+                    echo ""; kairo_pause "按 Enter 返回进程列表..."
+                elif [ "$choice" = "0" ]; then
+                    return
+                else
+                    error "无效选项"; sleep 1
+                fi
+                ;;
         esac
     done
 }

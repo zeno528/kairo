@@ -339,35 +339,46 @@ do_list_sites() {
     fi
 }
 
+_list_manageable_sites() {
+    local link name i=0
+    NGINX_SITE_ITEMS=()
+    echo ""
+    echo -e "  ${C_BOLD}反代站点${C_RESET}"
+    for link in "$NGINX_SITES_ENABLED"/*; do
+        [ -L "$link" ] || continue
+        name=$(basename "$link")
+        [ -f "${NGINX_SITES_AVAIL}/${name}" ] || continue
+        i=$((i + 1))
+        NGINX_SITE_ITEMS+=("$name")
+        if _has_cert "$name"; then
+            echo -e "  [$i] $name ${C_GREEN}(有证书)${C_RESET}"
+        else
+            echo -e "  [$i] $name ${C_YELLOW}(无证书)${C_RESET}"
+        fi
+    done
+    [ "$i" -eq 0 ] && info "无反代站点"
+}
+
+_select_enabled_site() {
+    local sel
+    _list_manageable_sites
+    [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
+    echo "  [0] 返回上一级"
+    read -p "  选择站点编号（0 返回）: " sel
+    [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
+    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
+        error "无效选择"
+        return 1
+    fi
+    NGINX_SELECTED_SITE="${NGINX_SITE_ITEMS[$((sel - 1))]}"
+}
+
 do_view_conf() {
     _check_nginx || return
-    echo ""
-    echo -e "  ${C_BOLD}已启用的反代站点${C_RESET}"
-    local items=()
-    local i=1
-    if [ -d "$NGINX_SITES_ENABLED" ]; then
-        local link target
-        for link in "$NGINX_SITES_ENABLED"/*; do
-            [ -L "$link" ] || continue
-            target=$(readlink -f "$link")
-            [ -f "$target" ] || continue
-            items+=("$target")
-            echo "  [$i] $(basename "$link")"
-            i=$((i + 1))
-        done
-    fi
-    [ ${#items[@]} -eq 0 ] && { info "无站点配置"; return; }
-    echo "  [0] 返回上一级"
-    echo ""
-    read -p "  选择要查看的站点编号（0 返回）: " sel
-    if [ -z "$sel" ] || [ "$sel" = "0" ]; then
-        info "已返回"
-        return
-    fi
-    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
-        error "无效选择"; return
-    fi
-    local target="${items[$((sel - 1))]}"
+    local target="${1:-}"
+    [ -n "$target" ] || { _select_enabled_site || return 0; target="$NGINX_SELECTED_SITE"; }
+    target="${NGINX_SITES_AVAIL}/${target}"
+    [ -f "$target" ] || { error "站点配置不存在"; return 1; }
     echo ""
     echo -e "  ${C_DIM}──── $(basename "$target") ────${C_RESET}"
     cat "$target" 2>/dev/null || sudo cat "$target" 2>/dev/null
@@ -490,7 +501,7 @@ do_add_proxy() {
 
     # 已存在检查
     if [ -L "${NGINX_SITES_ENABLED}/${domain}" ] || [ -f "${NGINX_SITES_AVAIL}/${domain}" ]; then
-        error "反代站点已存在: $domain，请用 [9] 删除后再添加"
+        error "反代站点已存在: $domain，请在站点列表中删除后再添加"
         return
     fi
 
@@ -574,29 +585,9 @@ do_del_proxy() {
         return
     fi
 
-    echo ""
-    echo -e "  ${C_BOLD}现有反代站点${C_RESET}"
-    local items=()
-    local i=1
-    if [ -d "$NGINX_SITES_ENABLED" ]; then
-        local link
-        for link in "$NGINX_SITES_ENABLED"/*; do
-            [ -L "$link" ] || continue
-            items+=("$(basename "$link")")
-            echo "  [$i] $(basename "$link")"
-            i=$((i + 1))
-        done
-    fi
-    [ ${#items[@]} -eq 0 ] && { info "无反代站点"; return; }
-
-    echo "  [0] 返回上一级"
-    echo ""
-    read -p "  选择要删除的站点编号: " sel
-    [ "$sel" = "0" ] && info "已返回" && return
-    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
-        error "无效选择"; return
-    fi
-    local target="${items[$((sel - 1))]}"
+    local target="${1:-}"
+    [ -n "$target" ] || { _select_enabled_site || return 0; target="$NGINX_SELECTED_SITE"; }
+    [ -L "${NGINX_SITES_ENABLED}/${target}" ] || { error "站点不存在: $target"; return 1; }
 
     echo ""
     warn "将删除: ${target}"
@@ -674,50 +665,16 @@ do_cert() {
         return
     fi
 
-    echo ""
-    echo -e "  ${C_BOLD}现有反代站点${C_RESET}"
-    local items=()
-    local -A with_www_map=()
-    local i=1
-    if [ -d "$NGINX_SITES_ENABLED" ]; then
-        local link
-        for link in "$NGINX_SITES_ENABLED"/*; do
-            [ -L "$link" ] || continue
-            local name
-            name=$(basename "$link")
-            items+=("$name")
-            # 检查 conf 是否有 www
-            if grep -q "www.${name}" "${NGINX_SITES_AVAIL}/${name}" 2>/dev/null; then
-                with_www_map["$name"]="y"
-            else
-                with_www_map["$name"]="n"
-            fi
-            if _has_cert "$name"; then
-                echo "  [$i] $name ${C_GREEN}(有证书)${C_RESET}"
-            else
-                echo "  [$i] $name ${C_YELLOW}(无证书)${C_RESET}"
-            fi
-            i=$((i + 1))
-        done
-    fi
-    [ ${#items[@]} -eq 0 ] && { info "无反代站点"; return; }
-    echo "  [0] 返回上一级"
-    echo ""
-    read -p "  选择要申请/续期的站点编号（0 返回）: " sel
-    if [ -z "$sel" ] || [ "$sel" = "0" ]; then
-        info "已返回"
-        return
-    fi
-    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
-        error "无效选择"; return
-    fi
-    local target="${items[$((sel - 1))]}"
-    _do_cert_for_domain "$target" "${with_www_map[$target]}"
+    local target="${1:-}" with_www="n"
+    [ -n "$target" ] || { _select_enabled_site || return 0; target="$NGINX_SELECTED_SITE"; }
+    [ -L "${NGINX_SITES_ENABLED}/${target}" ] || { error "站点不存在: $target"; return 1; }
+    grep -q "www.${target}" "${NGINX_SITES_AVAIL}/${target}" 2>/dev/null && with_www="y"
+    _do_cert_for_domain "$target" "$with_www"
 }
 
 do_cert_list() {
     if ! command -v certbot &>/dev/null; then
-        error "未安装 certbot，请先执行 [10] 申请证书时自动安装"
+        error "未安装 certbot，可在站点操作中申请证书时自动安装"
         return
     fi
     echo ""
@@ -749,9 +706,8 @@ menu() {
         echo -e "  ${C_BOLD}[1]${C_RESET}  安装 / 升级 Nginx (官方源)"
         echo -e "  ${C_BOLD}[2]${C_RESET}  服务管理"
         echo -e "  ${C_BOLD}[3]${C_RESET}  反代站点管理"
-        echo -e "  ${C_BOLD}[4]${C_RESET}  HTTPS 证书管理"
-        echo -e "  ${C_BOLD}[5]${C_RESET}  实时查看日志 (tail)"
-        echo -e "  ${C_BOLD}[6]${C_RESET}  卸载 Nginx"
+        echo -e "  ${C_BOLD}[4]${C_RESET}  实时查看日志 (tail)"
+        echo -e "  ${C_BOLD}[5]${C_RESET}  卸载 Nginx"
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回上级"
         divider
         echo ""
@@ -777,35 +733,36 @@ menu() {
                 esac
                 echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             3)
+                _list_manageable_sites
                 echo ""
-                echo "  [1] 列出所有反代站点          [2] 查看站点配置"
-                echo "  [3] 添加反代站点              [4] 删除反代站点"
-                echo "  [0] 返回上一级"
-                read -p "  选择站点操作: " sub
+                echo "  [编号] 选择站点    [A] 添加站点    [C] 证书概览    [0] 返回上级"
+                read -p "  选择站点或操作: " sub
                 case "$sub" in
-                    1) do_list_sites ;;
-                    2) do_view_conf ;;
-                    3) do_add_proxy ;;
-                    4) do_del_proxy ;;
+                    [Aa]) do_add_proxy; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
+                    [Cc]) do_cert_list; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
                     0) continue ;;
-                    *) error "无效选项"; sleep 1; continue ;;
+                    *)
+                        if [[ "$sub" =~ ^[0-9]+$ ]] && [ "$sub" -ge 1 ] && [ "$sub" -le ${#NGINX_SITE_ITEMS[@]} ]; then
+                            local site="${NGINX_SITE_ITEMS[$((sub - 1))]}"
+                            echo ""
+                            echo "  ${C_BOLD}${site}${C_RESET}"
+                            echo "  [1] 查看配置  [2] 申请 / 续期证书  [3] 删除站点  [0] 返回列表"
+                            read -p "  选择操作: " sub
+                            case "$sub" in
+                                1) do_view_conf "$site" ;;
+                                2) do_cert "$site" ;;
+                                3) do_del_proxy "$site" ;;
+                                0) continue ;;
+                                *) error "无效选项"; sleep 1; continue ;;
+                            esac
+                        else
+                            error "无效选项"; sleep 1; continue
+                        fi
+                        ;;
                 esac
-                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4)
-                echo ""
-                echo "  [1] 申请 / 续期 Let's Encrypt 证书"
-                echo "  [2] 证书概览 (certbot certificates)"
-                echo "  [0] 返回上一级"
-                read -p "  选择证书操作: " sub
-                case "$sub" in
-                    1) do_cert ;;
-                    2) do_cert_list ;;
-                    0) continue ;;
-                    *) error "无效选项"; sleep 1; continue ;;
-                esac
-                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            5) do_logs ;;
-            6) do_uninstall; ;;
+                echo ""; kairo_pause "按 Enter 返回站点列表..." ;;
+            4) do_logs ;;
+            5) do_uninstall; ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

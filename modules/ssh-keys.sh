@@ -87,15 +87,18 @@ do_add() {
 }
 
 do_remove() {
+    local input="${1:-}"
     echo ""
     if [ ! -f "$AUTHORIZED_KEYS" ]; then
         warn "未找到 authorized_keys 文件"
         return
     fi
 
-    do_list
-    echo ""
-    read -p "  输入要删除的编号（空格分隔多个）: " input
+    if [ -z "$input" ]; then
+        do_list
+        echo ""
+        read -p "  输入要删除的编号（空格分隔多个）: " input
+    fi
     [ -z "$input" ] && info "已取消" && return
 
     # 解析编号并验证
@@ -142,15 +145,18 @@ do_remove() {
 }
 
 do_view() {
+    local num="${1:-}"
     echo ""
     if [ ! -f "$AUTHORIZED_KEYS" ]; then
         warn "未找到 authorized_keys 文件"
         return
     fi
 
-    do_list
-    echo ""
-    read -p "  输入编号查看完整公钥: " num
+    if [ -z "$num" ]; then
+        do_list
+        echo ""
+        read -p "  输入编号查看完整公钥: " num
+    fi
     [ -z "$num" ] && info "已取消" && return
     [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
 
@@ -166,15 +172,18 @@ do_view() {
 }
 
 do_rename() {
+    local num="${1:-}"
     echo ""
     if [ ! -f "$AUTHORIZED_KEYS" ]; then
         warn "未找到 authorized_keys 文件"
         return
     fi
 
-    do_list
-    echo ""
-    read -p "  输入编号: " num
+    if [ -z "$num" ]; then
+        do_list
+        echo ""
+        read -p "  输入编号: " num
+    fi
     [ -z "$num" ] && info "已取消" && return
     [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
 
@@ -204,25 +213,37 @@ do_rename() {
 }
 
 menu() {
+    local choice line action
     while true; do
         title "🗝 SSH 公钥管理"
         do_list
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 添加公钥"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 删除公钥"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 查看公钥详情"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 修改公钥备注"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 选择公钥    ${C_BOLD}[A]${C_RESET} 添加公钥"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择公钥或操作: " choice
         case "$choice" in
-            1) do_add; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_remove; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_view; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_rename; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            [Aa]) do_add; echo ""; kairo_pause "按 Enter 返回公钥列表..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            *)
+                [[ "$choice" =~ ^[0-9]+$ ]] || { error "无效选择"; sleep 1; continue; }
+                line=$(_get_line_num "$choice")
+                if [ "$line" -eq 0 ]; then
+                    error "无效选择"; sleep 1; continue
+                fi
+                echo ""
+                echo "  [1] 查看完整公钥  [2] 修改备注  [3] 删除公钥  [0] 返回列表"
+                read -p "  选择操作: " action
+                case "$action" in
+                    1) do_view "$choice" ;;
+                    2) do_rename "$choice" ;;
+                    3) do_remove "$choice" ;;
+                    0) continue ;;
+                    *) error "无效选项"; sleep 1; continue ;;
+                esac
+                echo ""; kairo_pause "按 Enter 返回公钥列表..."
+                ;;
         esac
     done
 }

@@ -240,7 +240,7 @@ teardown() {
 
 # ─── 公共暴露 ────────────────────────────────────────────────
 
-@test "menu 将 Nginx 操作归类为服务、站点和证书管理" {
+@test "menu 将 Nginx 操作归类为服务和站点管理" {
     title() { :; }
     do_status() { :; }
     divider() { :; }
@@ -250,7 +250,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ "服务管理" ]]
     [[ "$output" =~ "反代站点管理" ]]
-    [[ "$output" =~ "HTTPS 证书管理" ]]
+    [[ "$output" =~ "反代站点管理" ]]
     [[ ! "$output" =~ "[12]" ]]
 }
 

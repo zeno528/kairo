@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.23 (2026-07-29)
+- Refactor and enhance modules for improved user experience and functionality
+
 ## v1.1.22 (2026-07-29)
 - 🐛 fix(update): 移除更新过程中的加载指示器
 

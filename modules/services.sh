@@ -8,12 +8,6 @@ _check_systemctl() {
     fi
 }
 
-_show_service_list() {
-    systemctl list-units --type=service --no-pager 2>/dev/null |
-        head -20 |
-        sed 's/^/  /'
-}
-
 _show_service_status() {
     systemctl status "$1" --no-pager -l 2>/dev/null |
         head -15 |
@@ -26,9 +20,15 @@ _valid_service_name() {
 
 do_list() {
     _check_systemctl || return
+    local svc i
+    SERVICE_ITEMS=()
+    mapfile -t SERVICE_ITEMS < <(systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1}' | head -20)
     echo ""
-    echo -e "  ${C_BOLD}已安装的服务${C_RESET}"
-    _with_spinner "正在获取服务列表" _show_service_list
+    echo -e "  ${C_BOLD}已加载的服务${C_RESET}"
+    for i in "${!SERVICE_ITEMS[@]}"; do
+        svc="${SERVICE_ITEMS[$i]}"
+        printf "  [%d] %-34s %s\n" "$((i + 1))" "$svc" "$(systemctl is-active "$svc" 2>/dev/null)"
+    done
     echo ""
     local total
     _start_spinner "正在统计服务数量"
@@ -39,8 +39,8 @@ do_list() {
 
 do_status() {
     _check_systemctl || return
-    echo ""
-    read -p "  输入服务名: " svc
+    local svc="${1:-}"
+    [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
@@ -49,8 +49,8 @@ do_status() {
 
 do_start() {
     _check_systemctl || return
-    echo ""
-    read -p "  输入服务名: " svc
+    local svc="${1:-}"
+    [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc" && success "服务 $svc 已启动" || error "启动失败"
@@ -58,8 +58,8 @@ do_start() {
 
 do_stop() {
     _check_systemctl || return
-    echo ""
-    read -p "  输入服务名: " svc
+    local svc="${1:-}"
+    [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
@@ -70,8 +70,8 @@ do_stop() {
 
 do_restart() {
     _check_systemctl || return
-    echo ""
-    read -p "  输入服务名: " svc
+    local svc="${1:-}"
+    [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc" && success "服务 $svc 已重启" || error "重启失败"
@@ -79,8 +79,8 @@ do_restart() {
 
 do_toggle_enable() {
     _check_systemctl || return
-    echo ""
-    read -p "  输入服务名: " svc
+    local svc="${1:-}"
+    [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
@@ -102,28 +102,42 @@ do_toggle_enable() {
 }
 
 menu() {
+    local choice svc
     while true; do
         title "⚙ 系统服务管理"
+        do_list || { kairo_pause "按 Enter 返回上级..."; return; }
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看服务列表"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 查看服务状态"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 启动服务"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 停止服务"
-        echo -e "  ${C_BOLD}[5]${C_RESET} 重启服务"
-        echo -e "  ${C_BOLD}[6]${C_RESET} 开关开机自启"
+        echo -e "  ${C_BOLD}[编号]${C_RESET} 选择服务    ${C_BOLD}[N]${C_RESET} 输入服务名"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -p "  选择服务或操作: " choice
         case "$choice" in
-            1) do_list; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_status; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_start; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            4) do_stop; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            5) do_restart; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            6) do_toggle_enable; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            [Nn]) read -p "  输入服务名: " svc ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#SERVICE_ITEMS[@]} ]; then
+                    svc="${SERVICE_ITEMS[$((choice - 1))]}"
+                else
+                    error "无效选项"; sleep 1; continue
+                fi
+                ;;
         esac
+        [ -z "${svc:-}" ] && continue
+        echo ""
+        echo "  ${C_BOLD}${svc}${C_RESET}"
+        echo "  [1] 查看状态  [2] 启动  [3] 停止"
+        echo "  [4] 重启      [5] 开关开机自启  [0] 返回列表"
+        read -p "  选择操作: " choice
+        case "$choice" in
+            1) do_status "$svc" ;;
+            2) do_start "$svc" ;;
+            3) do_stop "$svc" ;;
+            4) do_restart "$svc" ;;
+            5) do_toggle_enable "$svc" ;;
+            0) continue ;;
+            *) error "无效选项"; sleep 1; continue ;;
+        esac
+        echo ""; kairo_pause "按 Enter 返回服务列表..."
     done
 }
