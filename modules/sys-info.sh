@@ -14,7 +14,7 @@ do_overview() {
 do_cpu() {
     echo ""
     if command -v lscpu &>/dev/null; then
-        echo -e "  ${C_BOLD}型号${C_RESET}    $(lscpu | grep 'Model name' | sed 's/Model name:[[:space:]]*//')"
+        echo -e "  ${C_BOLD}型号${C_RESET}    $(lscpu | awk -F: '/^Model name:/{sub(/^[[:space:]]*/, "", $2); print $2; exit}')"
         echo -e "  ${C_BOLD}核心${C_RESET}    $(lscpu | grep '^CPU(s):' | awk '{print $2}')"
         echo -e "  ${C_BOLD}线程${C_RESET}    $(lscpu | grep 'Thread(s) per core' | awk '{print $NF}')"
     else
