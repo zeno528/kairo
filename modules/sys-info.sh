@@ -12,11 +12,19 @@ do_overview() {
 }
 
 do_cpu() {
+    local cpu_info model cores threads
     echo ""
     if command -v lscpu &>/dev/null; then
-        echo -e "  ${C_BOLD}型号${C_RESET}    $(lscpu | awk -F: '/^Model name:/{sub(/^[[:space:]]*/, "", $2); print $2; exit}')"
-        echo -e "  ${C_BOLD}核心${C_RESET}    $(lscpu | grep '^CPU(s):' | awk '{print $2}')"
-        echo -e "  ${C_BOLD}线程${C_RESET}    $(lscpu | grep 'Thread(s) per core' | awk '{print $NF}')"
+        cpu_info=$(lscpu | awk -F: '
+            /^Model name:/ {sub(/^[[:space:]]*/, "", $2); model=$2}
+            /^CPU\(s\):/ {sub(/^[[:space:]]*/, "", $2); cores=$2}
+            /^Thread\(s\) per core:/ {sub(/^[[:space:]]*/, "", $2); threads=$2}
+            END {printf "%s\t%s\t%s", model, cores, threads}
+        ')
+        IFS=$'\t' read -r model cores threads <<< "$cpu_info"
+        echo -e "  ${C_BOLD}型号${C_RESET}    $model"
+        echo -e "  ${C_BOLD}核心${C_RESET}    $cores"
+        echo -e "  ${C_BOLD}线程${C_RESET}    $threads"
     else
         echo -e "  ${C_BOLD}型号${C_RESET}    $(cat /proc/cpuinfo | grep 'model name' | head -1 | sed 's/model name[[:space:]]*: *//')"
         echo -e "  ${C_BOLD}核心${C_RESET}    $(nproc)"

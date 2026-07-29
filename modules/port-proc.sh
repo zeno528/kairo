@@ -5,6 +5,8 @@ PORT_PROCESS_PIDS=()
 
 do_listen_ports() {
     local port_filter="${1:-}" name_filter="${2:-}" line addr port pid name i=0
+    local -a ss_fields=()
+    local -A process_names=()
     PORT_PROCESS_PIDS=()
     command -v ss &>/dev/null || { error "未找到 ss 命令"; return 1; }
 
@@ -12,15 +14,23 @@ do_listen_ports() {
     echo -e "  ${C_BOLD}监听端口 / 进程${C_RESET}"
     printf "  ${C_DIM}%-4s %-7s %-8s %s${C_RESET}\n" "编号" "端口" "PID" "进程"
     while IFS= read -r line; do
-        addr=$(awk '{print $4}' <<< "$line")
+        read -r -a ss_fields <<< "$line"
+        addr="${ss_fields[4]:-}"
         port=${addr##*:}
-        pid=$(sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' <<< "$line")
+        [ -n "$port_filter" ] && [ "$port" != "$port_filter" ] && continue
+        if [[ "$line" =~ pid=([0-9]+) ]]; then
+            pid="${BASH_REMATCH[1]}"
+        else
+            pid=""
+        fi
         if [ -z "$pid" ]; then
             printf "  ${C_DIM}[--]  %-7s %-8s %s${C_RESET}\n" "$port" "-" "（无权限读取进程）"
             continue
         fi
-        name=$(ps -p "$pid" -o comm= 2>/dev/null)
-        [ -n "$port_filter" ] && [ "$port" != "$port_filter" ] && continue
+        if [[ -z "${process_names[$pid]+x}" ]]; then
+            process_names["$pid"]=$(ps -p "$pid" -o comm= 2>/dev/null)
+        fi
+        name="${process_names[$pid]}"
         [ -n "$name_filter" ] && [[ "${name,,}" != *"${name_filter,,}"* ]] && continue
         i=$((i + 1))
         PORT_PROCESS_PIDS+=("$pid")

@@ -265,6 +265,91 @@ setup() {
     [[ ! "$output" =~ "INJECTED" ]]
 }
 
+@test "服务列表单次查询同时获得状态和总数" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/services.sh"
+        count_file=$(mktemp)
+        systemctl() {
+            printf x >> "$count_file"
+            printf "%s\n" \
+                "alpha.service loaded active running Alpha" \
+                "beta.service loaded failed failed Beta"
+        }
+        do_list
+        [ "$(wc -c < "$count_file")" -eq 1 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "alpha.service" ]]
+    [[ "$output" =~ "failed" ]]
+    [[ "$output" =~ "共 2 个已加载服务" ]]
+}
+
+@test "端口列表缓存同一 PID 的进程名" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/port-proc.sh"
+        count_file=$(mktemp)
+        ss() {
+            printf "%s\n" \
+                "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=123,fd=6))" \
+                "tcp LISTEN 0 4096 0.0.0.0:8081 0.0.0.0:* users:((\"nginx\",pid=123,fd=7))" \
+                "tcp LISTEN 0 4096 0.0.0.0:9000 0.0.0.0:* users:((\"app\",pid=456,fd=8))"
+        }
+        ps() {
+            printf x >> "$count_file"
+            printf "process"
+        }
+        do_listen_ports
+        [ "$(wc -c < "$count_file")" -eq 2 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "8080" ]]
+    [[ "$output" =~ "9000" ]]
+}
+
+@test "CPU 信息只调用一次 lscpu" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/sys-info.sh"
+        count_file=$(mktemp)
+        lscpu() {
+            printf x >> "$count_file"
+            printf "%s\n" "Model name: Test CPU" "CPU(s): 8" "Thread(s) per core: 2"
+        }
+        top() { printf "%s\n" one two three four five; }
+        do_cpu
+        [ "$(wc -c < "$count_file")" -eq 1 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Test CPU" ]]
+    [[ "$output" =~ "线程" ]]
+}
+
+@test "Ping 测试并发收集节点并清理临时目录" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/network-test.sh"
+        test_tmp=$(mktemp -d)
+        TMPDIR="$test_tmp"
+        curl() {
+            case "$*" in
+                *telecom*) operator="Telecom" ;;
+                *unicom*) operator="Unicom" ;;
+                *) operator="Mobile" ;;
+            esac
+            printf "%s\n" "id,a,b,c,d,host,g,h,city,j,operator,l"
+            printf "1,2,3,4,5,198.51.100.1:443,7,8,Beijing,10,%s,12\n" "$operator"
+        }
+        ping() { printf "%s\n" "rtt min/avg/max/mdev = 1.000/2.500/3.000/0.000 ms"; }
+        do_ping_test
+        [ -z "$(find "$test_tmp" -mindepth 1 -maxdepth 1 -name "kairo-ping.*" -print -quit)" ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Telecom" ]]
+    [[ "$output" =~ "2.500 ms" ]]
+}
+
 @test "系统网络信息按接口 flags 显示状态" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

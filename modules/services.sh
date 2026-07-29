@@ -20,20 +20,21 @@ _valid_service_name() {
 
 do_list() {
     _check_systemctl || return
-    local svc i
+    local svc state i total
+    local -a service_rows=()
     SERVICE_ITEMS=()
-    mapfile -t SERVICE_ITEMS < <(systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1}' | head -20)
+    mapfile -t service_rows < <(systemctl list-units --type=service --no-pager --no-legend 2>/dev/null |
+        awk '$2 == "loaded" { print $1 "\t" $3 }')
+    total=${#service_rows[@]}
     echo ""
     echo -e "  ${C_BOLD}已加载的服务${C_RESET}"
-    for i in "${!SERVICE_ITEMS[@]}"; do
-        svc="${SERVICE_ITEMS[$i]}"
-        printf "  [%d] %-34s %s\n" "$((i + 1))" "$svc" "$(systemctl is-active "$svc" 2>/dev/null)"
+    for i in "${!service_rows[@]}"; do
+        [ "$i" -lt 20 ] || break
+        IFS=$'\t' read -r svc state <<< "${service_rows[$i]}"
+        SERVICE_ITEMS+=("$svc")
+        printf "  [%d] %-34s %s\n" "$((i + 1))" "$svc" "$state"
     done
     echo ""
-    local total
-    _start_spinner "正在统计服务数量"
-    total=$(systemctl list-units --type=service --no-pager 2>/dev/null | grep -c 'loaded')
-    _stop_spinner
     info "共 $total 个已加载服务（显示前 20 个）"
 }
 

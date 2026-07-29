@@ -15,6 +15,9 @@ API_URL="https://api.github.com/repos/${REPO}"
 RAW_URL="https://raw.githubusercontent.com/${REPO}"
 MANIFEST_PATH="manifest.txt"
 STAGE_DIR=""
+DOWNLOAD_JOBS=4
+DOWNLOAD_PIDS=()
+DOWNLOAD_PATHS=()
 
 cleanup_stage() {
     if [ -n "$STAGE_DIR" ] && [ -d "$STAGE_DIR" ]; then
@@ -87,6 +90,24 @@ download_remote_file() {
         return 1
     fi
     mv -- "$tmp_file" "$destination"
+}
+
+wait_download_batch() {
+    local index failed=0
+
+    for index in "${!DOWNLOAD_PIDS[@]}"; do
+        if wait "${DOWNLOAD_PIDS[$index]}"; then
+            COUNT=$((COUNT + 1))
+            printf "\r  下载: %-25s [%d/%d]" "${DOWNLOAD_PATHS[$index]}" "$COUNT" "$TOTAL"
+        else
+            echo ""
+            echo ">>> 下载失败: ${DOWNLOAD_PATHS[$index]}，未修改现有安装" >&2
+            failed=1
+        fi
+    done
+    DOWNLOAD_PIDS=()
+    DOWNLOAD_PATHS=()
+    return "$failed"
 }
 
 get_local_version() {
@@ -231,13 +252,14 @@ while IFS= read -r path; do
         kairo.sh) destination="$bin_file" ;;
         *) destination="${runtime_dir}/${path}" ;;
     esac
-    if ! download_remote_file "$path" "$destination" "$release_sha"; then
-        echo ">>> 下载失败: $path，未修改现有安装" >&2
-        exit 1
+    download_remote_file "$path" "$destination" "$release_sha" &
+    DOWNLOAD_PIDS+=("$!")
+    DOWNLOAD_PATHS+=("$path")
+    if [ "${#DOWNLOAD_PIDS[@]}" -ge "$DOWNLOAD_JOBS" ]; then
+        wait_download_batch || exit 1
     fi
-    COUNT=$((COUNT + 1))
-    printf "\r  下载: %-25s [%d/%d]" "$path" "$COUNT" "$TOTAL"
 done < "${STAGE_DIR}/manifest.normalized"
+wait_download_batch || exit 1
 echo ""
 
 remote_ver=$(tr -d '[:space:]' < "${runtime_dir}/VERSION")

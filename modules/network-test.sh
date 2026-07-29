@@ -25,64 +25,98 @@ do_backtrace() {
     fi
 }
 
+# 获取单个运营商的节点，供并发下载任务调用。
+_fetch_ping_nodes() (
+    local csv_url="$1"
+    local host city operator ip
+
+    set -o pipefail
+    curl --connect-timeout 5 --max-time 10 --retry 1 -fsSL "$csv_url" 2>/dev/null |
+        tail -n +2 |
+        while IFS=, read -r _ _ _ _ _ host _ _ city _ operator _; do
+            [ -z "$host" ] && continue
+            ip=${host%%:*}
+            [ -z "$ip" ] && continue
+            printf '%s,%s,%s\n' "$ip" "$city" "$operator"
+        done
+)
+
+_ping_node() {
+    local ip="$1"
+    local city="$2"
+    local operator="$3"
+    local latency
+
+    latency=$(ping -c 1 -W 2 "$ip" 2>/dev/null | awk -F'/' 'END{print $5}')
+    [ -n "$latency" ] && printf '%s,%s,%s\n' "$latency" "$city" "$operator"
+    return 0
+}
+
 # 从 speedtest.cn 节点列表获取 IP 并 ping，按延迟排序
-do_ping_test() {
+do_ping_test() (
     echo ""
     echo -e "  ${C_BOLD}全国节点 Ping 延迟测试${C_RESET}"
     echo -e "  ${C_DIM}正在获取节点列表...${C_RESET}"
 
-    local tmp_dir="/tmp/kairo-ping-$$"
-    mkdir -p "$tmp_dir"
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-ping.XXXXXX") || {
+        error "无法创建临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
 
-    # 并行拉取三网节点 CSV，提取 host 和城市信息
-    (
-        for isp in telecom unicom mobile; do
-            local csv_url="${NODE_BASE_URL}/${isp}.csv"
-            curl --connect-timeout 5 --max-time 10 --retry 1 -fsSL "$csv_url" 2>/dev/null |
-                tail -n +2 |
-                while IFS=, read -r _ _ _ _ _ host _ _ city _ operator _; do
-                [ -z "$host" ] && continue
-                # 提取 IP（从 host 中取第一个）
-                local ip
-                ip=$(echo "$host" | cut -d: -f1)
-                [ -z "$ip" ] && continue
-                echo "${ip},${city},${operator}"
-                done
-        done
-    ) | shuf | head -30 > "${tmp_dir}/nodes.csv"
+    # 三网节点列表相互独立，后台并发下载以避免串行等待。
+    local isp csv_url pid fetch_failed=0
+    local -a fetch_pids=()
+    for isp in telecom unicom mobile; do
+        csv_url="${NODE_BASE_URL}/${isp}.csv"
+        _fetch_ping_nodes "$csv_url" > "${tmp_dir}/${isp}.csv" &
+        fetch_pids+=("$!")
+    done
+    for pid in "${fetch_pids[@]}"; do
+        wait "$pid" || fetch_failed=1
+    done
+    [ "$fetch_failed" -eq 0 ] || warn "部分节点列表获取失败，将使用已获取的数据"
+
+    cat "${tmp_dir}"/*.csv | shuf -n 30 > "${tmp_dir}/nodes.csv"
 
     local total
     total=$(wc -l < "${tmp_dir}/nodes.csv")
     if [ "$total" -eq 0 ]; then
         error "无法获取节点列表"
-        rm -rf "$tmp_dir"
-        return
+        return 1
     fi
 
     info "测试 $total 个节点..."
     echo ""
 
-    # 逐个 ping，收集结果
-    local results=""
+    # 限制并发数，缩短不可达节点的总等待时间而不制造 ICMP 突发。
+    local max_ping_jobs=6
+    local -a ping_pids=()
     local i=0
     while IFS=, read -r ip city operator; do
         i=$((i + 1))
         [ -z "$ip" ] && continue
-        printf "\r  ${C_DIM}测试中 %d/%d...${C_RESET}" "$i" "$total"
-        local latency
-        latency=$(ping -c 1 -W 2 "$ip" 2>/dev/null | awk -F'/' 'END{print $5}')
-        if [ -n "$latency" ]; then
-            results="${results}${latency},${city},${operator}\n"
+        printf "\r  ${C_DIM}已提交 %d/%d 个测试...${C_RESET}" "$i" "$total"
+        _ping_node "$ip" "$city" "$operator" > "${tmp_dir}/result-${i}" &
+        ping_pids+=("$!")
+        if [ "${#ping_pids[@]}" -ge "$max_ping_jobs" ]; then
+            wait "${ping_pids[0]}"
+            ping_pids=("${ping_pids[@]:1}")
         fi
     done < "${tmp_dir}/nodes.csv"
+    for pid in "${ping_pids[@]}"; do
+        wait "$pid"
+    done
 
     echo ""
     echo ""
 
+    local results
+    results=$(cat "${tmp_dir}"/result-*)
     if [ -z "$results" ]; then
         error "所有节点均不可达"
-        rm -rf "$tmp_dir"
-        return
+        return 1
     fi
 
     # 按延迟排序，显示前 15 个
@@ -98,9 +132,7 @@ do_ping_test() {
         fi
         printf "  %-6s %-8s ${color}%s ms${C_RESET}\n" "${operator:-未知}" "${city:-未知}" "$latency"
     done
-
-    rm -rf "$tmp_dir"
-}
+)
 
 menu() {
     while true; do
