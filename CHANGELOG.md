@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.0.41 (2026-07-29)
+- fix(nginx): keep status summary on one line
+
 ## v1.0.40 (2026-07-29)
 - ✨ feat(opstool): 为所有慢操作添加旋转指示器避免误判卡死
 

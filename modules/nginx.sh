@@ -202,17 +202,28 @@ do_status() {
 
     # 版本
     local ver
-    ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
+    if command -v nginx &>/dev/null; then
+        ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
+    else
+        ver="未安装"
+    fi
 
     # 服务状态
     local svc_state
-    svc_state=$(systemctl is-active nginx 2>/dev/null || echo "未运行")
+    svc_state=$(systemctl is-active nginx 2>/dev/null)
+    svc_state=${svc_state:-未运行}
     local en_state
-    en_state=$(systemctl is-enabled nginx 2>/dev/null || echo "未启用")
+    en_state=$(systemctl is-enabled nginx 2>/dev/null)
+    en_state=${en_state:-未启用}
 
     # 监听端口
     local listen
-    listen=$(ss -tlnp 2>/dev/null | grep -E ':(80|443)\s' | awk '{print $4}' | sed 's/^/  /')
+    listen=$(ss -tlnp 2>/dev/null | awk '
+        $4 ~ /:(80|443)$/ {
+            addresses = addresses (addresses ? ", " : "") $4
+        }
+        END { print addresses }
+    ')
 
     # 站点统计
     local site_count conf_count cert_count
@@ -222,7 +233,11 @@ do_status() {
 
     echo ""
     echo -e "  ${C_BOLD}Nginx 状态${C_RESET}"
-    echo -e "  版本:     ${C_CYAN}v${ver}${C_RESET}"
+    if [ "$ver" = "未安装" ]; then
+        echo -e "  版本:     ${C_YELLOW}${ver}${C_RESET}"
+    else
+        echo -e "  版本:     ${C_CYAN}v${ver}${C_RESET}"
+    fi
     if [ "$svc_state" = "active" ]; then
         echo -e "  服务:     ${C_GREEN}${svc_state}${C_RESET} （${en_state} 开机自启）"
     else
