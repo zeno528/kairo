@@ -342,15 +342,17 @@ do_list_sites() {
 do_view_conf() {
     _check_nginx || return
     echo ""
-    echo -e "  ${C_BOLD}现有反代站点${C_RESET}"
+    echo -e "  ${C_BOLD}已启用的反代站点${C_RESET}"
     local items=()
     local i=1
-    if [ -d "$NGINX_SITES_AVAIL" ]; then
-        local f
-        for f in "$NGINX_SITES_AVAIL"/*; do
-            [ -f "$f" ] || continue
-            items+=("$f")
-            echo "  [$i] $(basename "$f")"
+    if [ -d "$NGINX_SITES_ENABLED" ]; then
+        local link target
+        for link in "$NGINX_SITES_ENABLED"/*; do
+            [ -L "$link" ] || continue
+            target=$(readlink -f "$link")
+            [ -f "$target" ] || continue
+            items+=("$target")
+            echo "  [$i] $(basename "$link")"
             i=$((i + 1))
         done
     fi
@@ -358,7 +360,10 @@ do_view_conf() {
     echo "  [0] 取消"
     echo ""
     read -p "  选择要查看的站点编号: " sel
-    [ "$sel" = "0" ] && info "已取消" && return
+    if [ -z "$sel" ] || [ "$sel" = "0" ]; then
+        info "已取消"
+        return
+    fi
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
         error "无效选择"; return
     fi
@@ -671,7 +676,8 @@ do_cert() {
 
     echo ""
     echo -e "  ${C_BOLD}现有反代站点${C_RESET}"
-    local items=() with_www_map=()
+    local items=()
+    local -A with_www_map=()
     local i=1
     if [ -d "$NGINX_SITES_ENABLED" ]; then
         local link
@@ -698,7 +704,10 @@ do_cert() {
     echo "  [0] 取消"
     echo ""
     read -p "  选择要申请/续期的站点编号: " sel
-    [ "$sel" = "0" ] && info "已取消" && return
+    if [ -z "$sel" ] || [ "$sel" = "0" ]; then
+        info "已取消"
+        return
+    fi
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
         error "无效选择"; return
     fi

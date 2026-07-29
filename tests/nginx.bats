@@ -92,6 +92,34 @@ teardown() {
     rmdir "${LE_LIVE_DIR}/broken.com"
 }
 
+@test "do_view_conf 仅列出已启用站点且空输入取消" {
+    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    touch "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_AVAIL}/example.com.bak"
+    ln -s "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_ENABLED}/example.com"
+    nginx() { :; }
+    info() { printf '%s\n' "$1"; }
+
+    run do_view_conf <<< ""
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "example.com" ]]
+    [[ ! "$output" =~ "example.com.bak" ]]
+    [[ "$output" =~ "已取消" ]]
+}
+
+@test "do_cert 支持域名站点并允许空输入取消" {
+    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    touch "${NGINX_SITES_AVAIL}/example.com"
+    ln -s "${NGINX_SITES_AVAIL}/example.com" "${NGINX_SITES_ENABLED}/example.com"
+    nginx() { :; }
+    info() { printf '%s\n' "$1"; }
+    sudo() { [ "$1" = "-n" ] && return 0; command sudo "$@"; }
+
+    run do_cert <<< ""
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "example.com" ]]
+    [[ "$output" =~ "已取消" ]]
+}
+
 # ─── 纯函数: _make_proxy_conf ─────────────────────────────────
 
 @test "_make_proxy_conf 生成 80 → 443 重定向块" {

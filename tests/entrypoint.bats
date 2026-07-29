@@ -224,6 +224,22 @@ setup() {
     [[ ! "$output" =~ "INJECTED" ]]
 }
 
+@test "系统网络信息按接口 flags 显示状态" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/sys-info.sh"
+        ip() {
+            case "$1" in
+                -4) printf "    inet 192.0.2.10/24\\n" ;;
+                -o) printf "2: eth0@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT\\n" ;;
+            esac
+        }
+        do_network
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "eth0             UP" ]]
+}
+
 # ─── _with_spinner ──────────────────────────────────────────
 
 @test "公共库定义了 _with_spinner 函数" {

@@ -55,7 +55,12 @@ do_network() {
     echo ""
     echo -e "  ${C_BOLD}网卡状态${C_RESET}"
     if command -v ip &>/dev/null; then
-        ip link show 2>/dev/null | grep -E '^[0-9]' | awk '{printf "    %-16s %s\n", $2, ($2 ~ /UP/ ? "UP" : "DOWN")}'
+        ip -o link show 2>/dev/null | awk -F': ' '{
+            name=$2
+            sub(/@.*/, "", name)
+            state=($0 ~ /<[^>]*UP[^>]*>/ ? "UP" : "DOWN")
+            printf "    %-16s %s\n", name, state
+        }'
     else
         cat /proc/net/dev | tail -n +3 | awk -F: '{printf "    %-16s UP\n", $1}' | sed 's/ //g'
     fi
