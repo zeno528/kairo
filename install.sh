@@ -279,8 +279,6 @@ if [ "$local_ver" = "未安装" ]; then
     echo ">>> 首次安装 Kairo v${remote_ver}..."
 elif [ "$local_ver" = "$remote_ver" ]; then
     echo ">>> 校验并修复 Kairo v${remote_ver}..."
-else
-    echo ">>> 更新 Kairo v${local_ver} → v${remote_ver}..."
 fi
 
 chmod 644 "${runtime_dir}/VERSION"
@@ -290,6 +288,11 @@ deploy_staged_release "$runtime_dir" "$bin_file"
 rm -f -- "${BIN_DIR}/ot"
 rm -rf -- "$LEGACY_LIB_DIR"
 
-echo -e "\033[1;32m>>> 🎉 完成！Kairo v${remote_ver} (${release_sha:0:7})\033[0m"
+if [ "$local_ver" != "未安装" ] && [ "$local_ver" != "$remote_ver" ]; then
+    transition="v${local_ver} → "
+else
+    transition=""
+fi
+echo -e ">>> 🎉 完成！Kairo ${transition}\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
 echo "  主菜单: ka"

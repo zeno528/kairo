@@ -49,7 +49,7 @@ kairo_module_supports_action() {
     return 1
 }
 
-kairo_register_group ssh "🧑‍💻 SSH"
+kairo_register_group ssh "🔒 SSH"
 kairo_register_group system "💻  系统"
 kairo_register_group proxy "🌐  反代"
 

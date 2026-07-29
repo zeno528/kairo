@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Kairo 公共运行时：UI、异步提示和远程文件获取。
 
-C_RESET="\033[0m"
-C_BOLD="\033[1m"
+C_RESET=$'\033[0m'
+C_BOLD=$'\033[1m'
 # shellcheck disable=SC2034 # 由模块和主入口使用。
-C_DIM="\033[2m"
-C_GREEN="\033[1;32m"
-C_CYAN="\033[1;36m"
-C_YELLOW="\033[1;33m"
-C_RED="\033[1;31m"
-C_GRAY="\033[37m"
+C_DIM=$'\033[2m'
+C_GREEN=$'\033[1;32m'
+C_CYAN=$'\033[1;36m'
+C_YELLOW=$'\033[1;33m'
+C_RED=$'\033[1;31m'
+C_GRAY=$'\033[37m'
 
 divider() {
     local width line

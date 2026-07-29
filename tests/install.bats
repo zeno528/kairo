@@ -23,6 +23,10 @@ if [ -n "${MOCK_CORRUPT_PATH:-}" ] && [ "$path" = "$MOCK_CORRUPT_PATH" ]; then
     printf 'this is not valid bash (\n'
     exit 0
 fi
+if [ "$path" = "VERSION" ] && [ -n "${MOCK_REMOTE_VERSION:-}" ]; then
+    printf '%s\n' "$MOCK_REMOTE_VERSION"
+    exit 0
+fi
 cat "${MOCK_REPO_ROOT}/${path}"
 MOCK
     chmod +x "${TEST_TMP}/mock-bin/curl"
@@ -53,6 +57,19 @@ teardown() {
     [[ "$output" =~ "校验并修复" ]]
     [ -s "${KAIRO_LIB_DIR}/lib/core.sh" ]
     [ ! -e "${KAIRO_LIB_DIR}/modules/removed-module.sh" ]
+}
+
+@test "升级完成提示显示旧版本到新版本" {
+    mkdir -p "$KAIRO_LIB_DIR"
+    printf '1.1.30\n' > "${KAIRO_LIB_DIR}/VERSION"
+    export MOCK_REMOTE_VERSION="1.1.31"
+
+    run bash "$PWD/install.sh"
+
+    [ "$status" -eq 0 ]
+    plain_output=$(printf '%s' "$output" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+    [[ "$plain_output" =~ "Kairo v1.1.30 → v1.1.31" ]]
+    [ "$(tr -d '[:space:]' < "${KAIRO_LIB_DIR}/VERSION")" = "1.1.31" ]
 }
 
 @test "下载中途失败时保留现有安装" {
