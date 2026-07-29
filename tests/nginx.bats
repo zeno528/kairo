@@ -398,12 +398,17 @@ teardown() {
     sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
     nginx() { :; }
     title() { :; }
+    C_RESET=""; C_BOLD=""; C_DIM=""; C_GREEN=""; C_YELLOW=""
     run do_security_scan
     [ "$status" -eq 0 ]
     [[ "$output" =~ "server_tokens off" ]]
     [[ "$output" =~ "example.com" ]]
     [[ "$output" =~ "NoSniff" ]]
     [[ "$output" =~ "Frame" ]]
+    local expected_header
+    expected_header=$(printf '  %-28s %-4s %-5s %-8s %-7s %-6s %s' \
+        "站点" "TLS" "HSTS" "NoSniff" "Frame" "Body" "证书")
+    [[ "$output" == *"$expected_header"* ]]
 }
 
 @test "do_disable_site 移除软链但保留配置" {

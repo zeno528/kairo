@@ -997,7 +997,9 @@ $(sudo cat "$gf" 2>/dev/null)"
     # 逐站点
     echo ""
     echo -e "  ${C_BOLD}站点（sites-enabled）${C_RESET}"
-    printf "  ${C_DIM}%-24s %-4s %-5s %-8s %-7s %-6s %s${C_RESET}\n" \
+    # "站点" 是两个双宽字符；printf 按 UTF-8 字节而非终端显示宽度计数，
+    # 因此这里用 28（而非数据行的 26）让后续列与 ASCII 站点名对齐。
+    printf "  ${C_DIM}%-28s %-4s %-5s %-8s %-7s %-6s %s${C_RESET}\n" \
         "站点" "TLS" "HSTS" "NoSniff" "Frame" "Body" "证书"
     printf "  ${C_DIM}%-26s %-4s %-5s %-8s %-7s %-6s %s${C_RESET}\n" \
         "──────────────────────────" "────" "─────" "────────" "───────" "──────" "────"
