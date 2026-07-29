@@ -161,6 +161,58 @@ setup() {
     rm -rf "$test_home"
 }
 
+@test "SSH 公钥重命名保留反斜杠和 sed 特殊字符" {
+    local test_home
+    test_home=$(mktemp -d)
+    run env HOME="$test_home" bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-keys.sh"
+        mkdir -p "$HOME/.ssh"
+        printf "%s\\n" "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest old" > "$AUTHORIZED_KEYS"
+        printf "%s\\n" 1 "build\\\\cache/&" | do_rename
+        cat "$AUTHORIZED_KEYS"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'build\\cache/&'* ]]
+    rm -rf "$test_home"
+}
+
+@test "iptables 关闭端口删除对应 ACCEPT 规则" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        FW=iptables
+        sudo() { "$@"; }
+        iptables() { printf "iptables %s\\n" "$*"; }
+        printf "%s\\n" 8080 tcp y | do_close_port
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"iptables -D INPUT -p tcp --dport 8080 -j ACCEPT"* ]]
+    [[ "$output" == *"已移除 8080/tcp 的放行规则"* ]]
+}
+
+@test "iptables 全局启停返回失败而非伪成功" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        FW=iptables
+        do_enable
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"不支持全局开启"* ]]
+}
+
+@test "软件源刷新失败时常规升级中止" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/security-update.sh"
+        sudo() { return 42; }
+        printf "%s\\n" y | do_security_update
+    '
+    [ "$status" -eq 42 ]
+    [[ "$output" == *"刷新软件源列表失败，已取消升级"* ]]
+}
+
 @test "services 拒绝可能改变 shell 语义的服务名" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

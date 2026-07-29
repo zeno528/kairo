@@ -61,7 +61,7 @@ kairo_register_module firewall system "防火墙管理" "status open_port close_
 kairo_register_module services system "系统服务管理" "list status start stop restart toggle_enable"
 kairo_register_module crontab system "定时任务" "list add remove edit"
 kairo_register_module ssl-check system "SSL 证书检查" "local_check remote_check batch_check"
-kairo_register_module security-update system "安全更新" "check security_update full_update cleanup"
+kairo_register_module security-update system "软件更新" "check security_update full_update cleanup"
 kairo_register_module network-test system "网络测试" "speedtest backtrace ping_test"
 kairo_register_module docker system "Docker 管理" "list_containers start stop restart logs images"
 kairo_register_module nginx proxy "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs"

@@ -1,11 +1,12 @@
 #!/bin/bash
-# security-update 模块 - 安全更新（Debian/Ubuntu）
+# security-update 模块 - 软件更新（Debian/Ubuntu）
 
 # 检查失效源并提示，不阻断更新
 _apt_update_smart() {
-    local update_output
+    local update_output update_status
     _start_spinner "正在更新软件源列表"
     update_output=$(sudo apt update 2>&1)
+    update_status=$?
     _stop_spinner
 
     # 提取失效源地址
@@ -23,6 +24,11 @@ _apt_update_smart() {
         echo -e "  ${C_DIM}清理方法: sudo rm /etc/apt/sources.list.d/对应文件.list${C_RESET}"
         echo ""
     fi
+
+    if [ "$update_status" -ne 0 ]; then
+        error "刷新软件源列表失败，已取消升级"
+        return "$update_status"
+    fi
 }
 
 do_check() {
@@ -37,21 +43,21 @@ do_check() {
 
 do_security_update() {
     echo ""
-    echo -e "  ${C_BOLD}执行安全更新...${C_RESET}"
+    echo -e "  ${C_BOLD}执行常规升级...${C_RESET}"
     echo ""
-    read -p "  确认执行安全更新? [y/N]: " confirm
+    read -p "  确认执行常规升级? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    _apt_update_smart
-    _with_spinner "正在升级软件包" sudo apt upgrade -y && success "安全更新完成"
+    _apt_update_smart || return
+    _with_spinner "正在升级软件包" sudo apt upgrade -y && success "常规升级完成"
 }
 
 do_full_update() {
     echo ""
-    warn "完整更新包含所有包，不仅仅是安全更新"
+    warn "完整升级可能安装新包或移除冲突包"
     echo ""
-    read -p "  确认执行完整更新? [y/N]: " confirm
+    read -p "  确认执行完整升级? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    _apt_update_smart
+    _apt_update_smart || return
     _with_spinner "正在升级软件包" sudo apt full-upgrade -y && success "完整更新完成"
 }
 
@@ -63,11 +69,11 @@ do_cleanup() {
 
 menu() {
     while true; do
-        title "🛡 安全更新"
+        title "🛡 软件更新"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 检查可更新包"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 执行安全更新"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 执行完整更新"
+        echo -e "  ${C_BOLD}[2]${C_RESET} 执行常规升级"
+        echo -e "  ${C_BOLD}[3]${C_RESET} 执行完整升级"
         echo -e "  ${C_BOLD}[4]${C_RESET} 清理缓存"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider

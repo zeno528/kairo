@@ -116,7 +116,7 @@ do_install() {
             ;;
     esac
 
-    local local_ver candidate_ver
+    local local_ver candidate_ver repo_configured=0
     local_ver=$(_get_nginx_installed_version)
 
     # 情况 1: 未安装 → 先确认，再添加官方源并安装。
@@ -131,6 +131,7 @@ do_install() {
     else
         # 已安装时，先刷新 nginx.org 官方候选版本，才能正确判断是否需要升级。
         _configure_nginx_official_repo "$distro" "$codename" || return
+        repo_configured=1
         candidate_ver=$(_get_nginx_candidate_version)
         if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
             error "未能获取 nginx 官方候选版本"
@@ -152,9 +153,11 @@ do_install() {
         fi
     fi
 
-    # 安装确认后（首次安装）或升级确认后，确保官方源存在并执行安装。
-    _configure_nginx_official_repo "$distro" "$codename" || return
-    candidate_ver=$(_get_nginx_candidate_version)
+    # 首次安装在确认后配置官方源；升级路径已刷新过，无需重复 apt update。
+    if [ "$repo_configured" -eq 0 ]; then
+        _configure_nginx_official_repo "$distro" "$codename" || return
+        candidate_ver=$(_get_nginx_candidate_version)
+    fi
     if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
         error "未能获取 nginx 官方候选版本"
         return

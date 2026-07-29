@@ -194,10 +194,11 @@ do_rename() {
     echo ""
     info "当前备注: ${old_comment:-（无）}"
 
-    read -p "  输入新备注: " new_comment
+    read -r -p "  输入新备注: " new_comment
     [ -z "$new_comment" ] && info "已取消" && return
 
     local new_line="${key_part} ${new_comment}"
+    new_line=${new_line//\\/\\\\}
     sed -i "${target_line}c\\${new_line}" "$AUTHORIZED_KEYS"
     success "备注已修改: ${new_comment}"
 }

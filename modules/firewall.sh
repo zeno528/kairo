@@ -68,8 +68,12 @@ do_close_port() {
             sudo ufw delete allow "$port/$proto" && success "已关闭 $port/$proto"
             ;;
         iptables)
-            sudo iptables -A INPUT -p "$proto" --dport "$port" -j DROP \
-                && success "已关闭 $port/$proto (当前会话，重启后失效)"
+            if sudo iptables -D INPUT -p "$proto" --dport "$port" -j ACCEPT; then
+                success "已移除 $port/$proto 的放行规则（当前会话，重启后失效）"
+            else
+                error "未找到 $port/$proto 的 INPUT ACCEPT 规则"
+                return 1
+            fi
             ;;
     esac
 }
@@ -85,7 +89,8 @@ do_enable() {
             sudo ufw enable && success "防火墙已开启"
             ;;
         iptables)
-            info "iptables 无全局开关，需手动管理规则"
+            error "iptables 不支持全局开启；请手动管理规则"
+            return 1
             ;;
     esac
 }
@@ -100,7 +105,8 @@ do_disable() {
             sudo ufw disable && success "防火墙已关闭"
             ;;
         iptables)
-            info "iptables 无全局开关，需手动清空规则"
+            error "iptables 不支持全局关闭；请手动管理规则"
+            return 1
             ;;
     esac
 }
