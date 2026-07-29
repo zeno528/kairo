@@ -177,6 +177,20 @@ setup() {
     rm -rf "$test_home"
 }
 
+@test "SSH 密码登录切换需要明确确认" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        set_password_auth() { printf "CHANGED\\n"; }
+        restart_ssh() { printf "RESTARTED\\n"; }
+        printf "%s\\n" n | do_on
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已取消" ]]
+    [[ ! "$output" =~ "CHANGED" ]]
+    [[ ! "$output" =~ "RESTARTED" ]]
+}
+
 @test "iptables 关闭端口删除对应 ACCEPT 规则" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

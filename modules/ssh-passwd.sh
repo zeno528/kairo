@@ -84,6 +84,9 @@ set_password_auth() {
 }
 
 do_on() {
+    warn "即将开启 SSH 密码登录，并允许 root 使用密码登录"
+    read -r -p "  确认开启? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
     if set_password_auth yes yes && restart_ssh; then
         success "密码登录已开启"
     else
@@ -93,6 +96,9 @@ do_on() {
 }
 
 do_off() {
+    warn "即将关闭 SSH 密码登录，并禁止 root 使用密码登录"
+    read -r -p "  确认关闭? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
     if set_password_auth no prohibit-password && restart_ssh; then
         success "密码登录已关闭"
     else
