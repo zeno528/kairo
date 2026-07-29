@@ -186,7 +186,7 @@ deploy_staged_release() {
 if [ "${1:-}" = "uninstall" ]; then
     require_install_permissions
     local_ver=$(get_local_version)
-    echo ">>> 卸载 KAIRO v${local_ver}..."
+    echo ">>> 卸载 Kairo v${local_ver}..."
     rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || {
         echo ">>> 删除命令入口失败" >&2
         exit 1
@@ -253,11 +253,11 @@ if ! validate_staged_release "$runtime_dir" "$bin_file"; then
 fi
 
 if [ "$local_ver" = "未安装" ]; then
-    echo ">>> 首次安装 KAIRO v${remote_ver}..."
+    echo ">>> 首次安装 Kairo v${remote_ver}..."
 elif [ "$local_ver" = "$remote_ver" ]; then
-    echo ">>> 校验并修复 KAIRO v${remote_ver}..."
+    echo ">>> 校验并修复 Kairo v${remote_ver}..."
 else
-    echo ">>> 更新 KAIRO v${local_ver} → v${remote_ver}..."
+    echo ">>> 更新 Kairo v${local_ver} → v${remote_ver}..."
 fi
 
 chmod 644 "${runtime_dir}/VERSION"
@@ -267,6 +267,6 @@ deploy_staged_release "$runtime_dir" "$bin_file"
 rm -f -- "${BIN_DIR}/ot"
 rm -rf -- "$LEGACY_LIB_DIR"
 
-echo -e "\033[1;32m>>> 🎉 完成！KAIRO v${remote_ver} (${release_sha:0:12})\033[0m"
+echo -e "\033[1;32m>>> 🎉 完成！Kairo v${remote_ver} (${release_sha:0:12})\033[0m"
 echo ""
 echo "  主菜单: ka"
