@@ -80,7 +80,7 @@ do_update() {
         error "更新需要 sudo 权限"
         return 1
     fi
-    _with_spinner "正在更新 Kairo" kairo_run_installer
+    kairo_run_installer
 }
 
 do_uninstall() {
