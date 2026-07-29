@@ -93,10 +93,10 @@ menu() {
         echo ""
         read -p "  请输入选项: " choice
         case "$choice" in
-            1) do_listen_ports; echo ""; read -p "  按回车键继续..." ;;
-            2) do_find_by_port; echo ""; read -p "  按回车键继续..." ;;
-            3) do_find_by_name; echo ""; read -p "  按回车键继续..." ;;
-            4) do_kill_process; echo ""; read -p "  按回车键继续..." ;;
+            1) do_listen_ports; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            2) do_find_by_port; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            3) do_find_by_name; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4) do_kill_process; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

@@ -142,8 +142,8 @@ menu() {
         echo ""
         read -r -p "  请输入选项: " choice
         case "$choice" in
-            1) do_on; echo ""; kairo_pause ;;
-            2) do_off; echo ""; kairo_pause ;;
+            1) do_on; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            2) do_off; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

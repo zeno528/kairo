@@ -776,15 +776,15 @@ menu() {
                     4) do_reload ;;
                     *) info "已取消" ;;
                 esac
-                echo ""; read -p "  按回车键继续..." ;;
-            4) do_toggle_enable; echo ""; read -p "  按回车键继续..." ;;
-            5) do_test_conf; echo ""; read -p "  按回车键继续..." ;;
-            6) do_list_sites; echo ""; read -p "  按回车键继续..." ;;
-            7) do_view_conf; echo ""; read -p "  按回车键继续..." ;;
-            8) do_add_proxy; echo ""; read -p "  按回车键继续..." ;;
-            9) do_del_proxy; echo ""; read -p "  按回车键继续..." ;;
-            10) do_cert; echo ""; read -p "  按回车键继续..." ;;
-            11) do_cert_list; echo ""; read -p "  按回车键继续..." ;;
+                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4) do_toggle_enable; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            5) do_test_conf; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            6) do_list_sites; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            7) do_view_conf; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            8) do_add_proxy; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            9) do_del_proxy; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            10) do_cert; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            11) do_cert_list; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             12) do_logs ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;

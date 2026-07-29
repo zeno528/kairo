@@ -80,10 +80,10 @@ menu() {
         echo ""
         read -p "  请输入选项: " choice
         case "$choice" in
-            1) do_check; echo ""; read -p "  按回车键继续..." ;;
-            2) do_security_update; echo ""; read -p "  按回车键继续..." ;;
-            3) do_full_update; echo ""; read -p "  按回车键继续..." ;;
-            4) do_cleanup; echo ""; read -p "  按回车键继续..." ;;
+            1) do_check; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            2) do_security_update; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            3) do_full_update; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4) do_cleanup; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

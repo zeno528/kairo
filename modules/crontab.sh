@@ -78,7 +78,7 @@ do_remove() {
 do_edit() {
     echo ""
     info "将打开编辑器修改定时任务"
-    read -p "  按回车键继续..."
+    kairo_pause "按 Enter 打开编辑器..."
     export EDITOR="${EDITOR:-vi}"
     crontab -e
     success "定时任务已保存"
@@ -97,10 +97,10 @@ menu() {
         echo ""
         read -p "  请输入选项: " choice
         case "$choice" in
-            1) do_list; echo ""; read -p "  按回车键继续..." ;;
-            2) do_add; echo ""; read -p "  按回车键继续..." ;;
-            3) do_remove; echo ""; read -p "  按回车键继续..." ;;
-            4) do_edit; echo ""; read -p "  按回车键继续..." ;;
+            1) do_list; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            2) do_add; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            3) do_remove; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4) do_edit; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
