@@ -20,7 +20,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "all 12 个 modules bash 语法正确" {
+@test "全部 modules bash 语法正确" {
     for f in "$PWD"/modules/*.sh; do
         run /usr/bin/bash -n "$f"
         [ "$status" -eq 0 ] || { echo "$f 语法失败"; return 1; }
@@ -56,6 +56,32 @@ setup() {
     run /usr/bin/bash "$PWD/kairo.sh" nonexistent-module-xyz
     [ "$status" -ne 0 ]
     [[ "$output" =~ "模块不存在" ]]
+}
+
+@test "模块不能调用未在注册表声明的入口 action" {
+    run /usr/bin/bash "$PWD/kairo.sh" sys-info update
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "不支持操作" ]]
+}
+
+@test "注册表声明的 action 均有对应模块函数" {
+    source "$PWD/lib/core.sh"
+    source "$PWD/modules/registry.sh"
+    for module in "${KAIRO_MODULE_IDS[@]}"; do
+        # shellcheck disable=SC1090
+        source "$PWD/modules/${module}.sh"
+        for action in ${KAIRO_MODULE_ACTIONS[$module]}; do
+            type "do_${action}" >/dev/null
+        done
+    done
+}
+
+@test "注册表拒绝重复模块和未知分组" {
+    source "$PWD/modules/registry.sh"
+    run kairo_register_module sys-info system "重复模块" "overview"
+    [ "$status" -ne 0 ]
+    run kairo_register_module invalid missing-group "错误分组" "status"
+    [ "$status" -ne 0 ]
 }
 
 # ─── install.sh 关键函数 ──────────────────────────────────────
@@ -97,11 +123,53 @@ setup() {
     done
 }
 
-@test "安装清单完整覆盖运行时文件" {
-    while IFS= read -r path; do
-        [[ -z "$path" || "$path" == \#* ]] && continue
-        [ -f "$PWD/$path" ]
-    done < "$PWD/manifest.txt"
+@test "安装清单与全部运行时文件双向一致" {
+    local expected actual
+    expected=$(mktemp)
+    actual=$(mktemp)
+    {
+        printf '%s\n' kairo.sh VERSION lib/core.sh modules/registry.sh
+        for file in "$PWD"/modules/*.sh; do
+            printf 'modules/%s\n' "$(basename "$file")"
+        done
+    } | sort -u > "$expected"
+    sed '/^[[:space:]]*#/d;/^[[:space:]]*$/d' "$PWD/manifest.txt" | sort -u > "$actual"
+    run diff -u "$expected" "$actual"
+    [ "$status" -eq 0 ]
+    rm -f "$expected" "$actual"
+}
+
+@test "SSH 公钥添加保留字段分隔并拒绝重复 key" {
+    local test_home
+    test_home=$(mktemp -d)
+    run env HOME="$test_home" bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-keys.sh"
+        printf "%s\n" "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest user@example.com" | do_add
+        cat "$AUTHORIZED_KEYS"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest user@example.com" ]]
+
+    run env HOME="$test_home" bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-keys.sh"
+        printf "%s\n" "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest changed-comment" | do_add
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "已存在" ]]
+    rm -rf "$test_home"
+}
+
+@test "services 拒绝可能改变 shell 语义的服务名" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/services.sh"
+        printf "%s\n" "\"; printf INJECTED; #" | do_status
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "服务名格式不合法" ]]
+    [[ ! "$output" =~ "INJECTED" ]]
 }
 
 # ─── _with_spinner ──────────────────────────────────────────

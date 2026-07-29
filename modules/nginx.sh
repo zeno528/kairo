@@ -371,6 +371,7 @@ _ensure_ws_map() {
     local ws_conf="${NGINX_CONF_D}/kairo-ws-upgrade.conf"
     if [ ! -f "$ws_conf" ]; then
         info "创建 WebSocket 升级映射 ($ws_conf)"
+        sudo mkdir -p "$NGINX_CONF_D" || return 1
         cat <<'WSMAP' | sudo tee "$ws_conf" >/dev/null
 # 由 Kairo 生成 - WebSocket Connection 头映射
 map $http_upgrade $connection_upgrade {
@@ -387,9 +388,33 @@ _make_proxy_conf() {
     local upstream_host="$2"
     local upstream_port="$3"
     local with_www="$4"
+    local enable_tls="${5:-y}"
 
     local server_name="$domain"
     [ "$with_www" = "y" ] && server_name="$domain www.$domain"
+
+    if [ "$enable_tls" != "y" ]; then
+        cat <<EOF
+# 由 Kairo 生成于 $(date +%Y-%m-%d)
+server {
+    listen 80;
+    server_name ${server_name};
+
+    location / {
+        proxy_pass http://${upstream_host}:${upstream_port};
+        proxy_http_version 1.1;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade           \$http_upgrade;
+        proxy_set_header Connection        \$connection_upgrade;
+        proxy_read_timeout 86400s;
+    }
+}
+EOF
+        return
+    fi
 
     cat <<EOF
 # 由 Kairo 生成于 $(date +%Y-%m-%d)
@@ -463,6 +488,10 @@ do_add_proxy() {
 
     read -p "  上游 host (默认 127.0.0.1): " up_host
     up_host=${up_host:-127.0.0.1}
+    if [[ ! "$up_host" =~ ^[a-zA-Z0-9._:-]+$ ]]; then
+        error "上游 host 格式不合法"
+        return 1
+    fi
 
     read -p "  上游 port (默认 8080): " up_port
     up_port=${up_port:-8080}
@@ -482,21 +511,38 @@ do_add_proxy() {
     read -p "  确认添加? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
 
-    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
-    _ensure_ws_map
+    sudo mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED" || {
+        error "无法创建 Nginx 站点目录"
+        return 1
+    }
+    _ensure_ws_map || {
+        error "无法创建 WebSocket 公共配置"
+        return 1
+    }
 
     local conf_file="${NGINX_SITES_AVAIL}/${domain}"
-    _make_proxy_conf "$domain" "$up_host" "$up_port" "$with_www" | sudo tee "$conf_file" >/dev/null \
+    local enable_tls="n"
+    _has_cert "$domain" && enable_tls="y"
+    _make_proxy_conf "$domain" "$up_host" "$up_port" "$with_www" "$enable_tls" | sudo tee "$conf_file" >/dev/null \
         || { error "写入失败"; return; }
 
-    sudo ln -sf "$conf_file" "${NGINX_SITES_ENABLED}/${domain}"
+    sudo ln -sf "$conf_file" "${NGINX_SITES_ENABLED}/${domain}" || {
+        sudo rm -f -- "$conf_file"
+        error "启用站点失败"
+        return 1
+    }
     sudo nginx -t 2>&1 | sed 's/^/  /'
 
     if ! sudo nginx -t &>/dev/null; then
-        error "配置语法检查失败，已停在上一步，请修复后再 reload"
-        return
+        sudo rm -f -- "${NGINX_SITES_ENABLED}/${domain}" "$conf_file"
+        error "配置语法检查失败，已移除新站点"
+        return 1
     fi
-    sudo systemctl reload nginx 2>/dev/null
+    if ! sudo systemctl reload nginx 2>/dev/null; then
+        sudo rm -f -- "${NGINX_SITES_ENABLED}/${domain}" "$conf_file"
+        error "Nginx 重载失败，已移除新站点"
+        return 1
+    fi
     success "已添加: ${domain} → ${up_host}:${up_port}"
 
     # 提示申请证书

@@ -34,8 +34,10 @@ do_open_port() {
     echo ""
     read -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
+    kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
     read -p "  协议 (tcp/udp，默认 tcp): " proto
     proto=${proto:-tcp}
+    [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
 
     case "$FW" in
         ufw)
@@ -53,8 +55,13 @@ do_close_port() {
     echo ""
     read -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
+    kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
     read -p "  协议 (tcp/udp，默认 tcp): " proto
     proto=${proto:-tcp}
+    [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
+    warn "即将关闭 $port/$proto，可能中断现有服务"
+    read -r -p "  确认关闭? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
     case "$FW" in
         ufw)

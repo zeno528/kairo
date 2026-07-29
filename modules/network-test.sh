@@ -1,13 +1,18 @@
 #!/bin/bash
 # network-test 模块 - 网络测试
 
-BENCH_URL="https://raw.githubusercontent.com/teddysun/across/master/bench.sh"
-BACKTRACE_URL="https://raw.githubusercontent.com/zhanghanyun/backtrace/main/install.sh"
-NODE_BASE_URL="https://raw.githubusercontent.com/spiritLHLS/speedtest.cn-CN-ID/main"
+# 第三方脚本和数据固定到明确 commit，避免上游分支变化后直接执行未知内容。
+BENCH_REF="fdb40962837b2e24bc94b87c2b1786ad2308489a"
+BACKTRACE_REF="55956a8447c0ce3c49c403d61d9837f71d3c2e00"
+NODE_DATA_REF="3443ba80e9114b9732ceadd8d35561c728e8e05f"
+BENCH_URL="https://raw.githubusercontent.com/teddysun/across/${BENCH_REF}/bench.sh"
+BACKTRACE_URL="https://raw.githubusercontent.com/zhanghanyun/backtrace/${BACKTRACE_REF}/install.sh"
+NODE_BASE_URL="https://raw.githubusercontent.com/spiritLHLS/speedtest.cn-CN-ID/${NODE_DATA_REF}"
 
 do_speedtest() {
     echo ""
-    _with_spinner "执行测速脚本" bash -c 'curl -fsSL "$0" | bash' "$BENCH_URL"
+    _with_spinner "执行测速脚本" bash -c \
+        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$BENCH_URL"
 }
 
 do_backtrace() {
@@ -15,7 +20,8 @@ do_backtrace() {
     if command -v backtrace &>/dev/null; then
         _with_spinner "执行回程路由测试" backtrace
     else
-        _with_spinner "安装并执行回程测试" bash -c 'curl -fsSL "$0" | bash && backtrace' "$BACKTRACE_URL"
+        _with_spinner "安装并执行回程测试" bash -c \
+            'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash && backtrace' "$BACKTRACE_URL"
     fi
 }
 
@@ -32,14 +38,16 @@ do_ping_test() {
     (
         for isp in telecom unicom mobile; do
             local csv_url="${NODE_BASE_URL}/${isp}.csv"
-            curl -fsSL --max-time 10 "$csv_url" 2>/dev/null | tail -n +2 | while IFS=, read -r _ _ _ _ _ host _ _ city _ operator _; do
+            curl --connect-timeout 5 --max-time 10 --retry 1 -fsSL "$csv_url" 2>/dev/null |
+                tail -n +2 |
+                while IFS=, read -r _ _ _ _ _ host _ _ city _ operator _; do
                 [ -z "$host" ] && continue
                 # 提取 IP（从 host 中取第一个）
                 local ip
                 ip=$(echo "$host" | cut -d: -f1)
                 [ -z "$ip" ] && continue
                 echo "${ip},${city},${operator}"
-            done
+                done
         done
     ) | shuf | head -30 > "${tmp_dir}/nodes.csv"
 

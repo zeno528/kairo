@@ -51,18 +51,37 @@ do_list() {
 
 do_add() {
     echo ""
-    read -p "  粘贴公钥内容（ssh-rsa / ssh-ed25519 开头）: " key
-    key=$(echo "$key" | tr -d '[:space:]')
+    read -r -p "  粘贴公钥内容（ssh-rsa / ssh-ed25519 开头）: " key
+    key=${key%$'\r'}
     [ -z "$key" ] && info "已取消" && return
 
-    if [[ ! "$key" =~ ^ssh-(rsa|ed25519|ecdsa|dss) ]]; then
+    local key_type key_data key_comment
+    read -r key_type key_data key_comment <<< "$key"
+    case "$key_type" in
+        ssh-rsa|ssh-ed25519|ecdsa-sha2-*|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) ;;
+        *)
+            error "公钥类型不受支持: $key_type"
+            return 1
+            ;;
+    esac
+    if [ -z "$key_data" ] || [[ ! "$key_data" =~ ^[A-Za-z0-9+/]+={0,3}$ ]]; then
         error "公钥格式不正确，应以 ssh-rsa / ssh-ed25519 等开头"
-        return
+        return 1
     fi
 
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
-    echo "$key" >> "$AUTHORIZED_KEYS"
+    touch "$AUTHORIZED_KEYS"
+    if awk -v type="$key_type" -v data="$key_data" \
+        '$1 == type && $2 == data { found=1 } END { exit !found }' "$AUTHORIZED_KEYS"; then
+        warn "该公钥已存在"
+        return 1
+    fi
+    if [ -n "$key_comment" ]; then
+        printf '%s %s %s\n' "$key_type" "$key_data" "$key_comment" >> "$AUTHORIZED_KEYS"
+    else
+        printf '%s %s\n' "$key_type" "$key_data" >> "$AUTHORIZED_KEYS"
+    fi
     chmod 600 "$AUTHORIZED_KEYS"
     success "公钥已添加"
 }

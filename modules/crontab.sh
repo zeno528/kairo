@@ -51,7 +51,7 @@ do_remove() {
     echo ""
     read -p "  输入要删除的编号: " num
     [ -z "$num" ] && info "已取消" && return
-    [[ ! "$num" =~ ^[0-9]+$ ]] && error "请输入数字" && return
+    kairo_is_positive_integer "$num" || { error "请输入正整数"; return 1; }
 
     # 构建新的 crontab，跳过指定行
     local skip=$num

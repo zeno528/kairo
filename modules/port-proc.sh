@@ -24,6 +24,7 @@ do_find_by_port() {
     echo ""
     read -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
+    kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
     echo ""
     if command -v ss &>/dev/null; then
         result=$(ss -tlnp "sport = :$port" 2>/dev/null)
@@ -51,6 +52,7 @@ do_kill_process() {
     echo ""
     read -p "  输入 PID: " pid
     [ -z "$pid" ] && info "已取消" && return
+    kairo_is_positive_integer "$pid" || { error "PID 必须是正整数"; return 1; }
 
     if ! kill -0 "$pid" 2>/dev/null; then
         error "进程 $pid 不存在"

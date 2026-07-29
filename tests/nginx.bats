@@ -100,6 +100,15 @@ teardown() {
     [[ "$output" =~ "return 301 https://\$host\$request_uri" ]]
 }
 
+@test "_make_proxy_conf 无证书模式先生成可用 HTTP 反代" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n" "n"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "listen 80" ]]
+    [[ "$output" =~ "proxy_pass http://127.0.0.1:8080" ]]
+    [[ ! "$output" =~ "ssl_certificate" ]]
+    [[ ! "$output" =~ "return 301 https" ]]
+}
+
 @test "_make_proxy_conf 含 ssl_protocols TLSv1.2 TLSv1.3" {
     run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
     [[ "$output" =~ "ssl_protocols TLSv1.2 TLSv1.3" ]]

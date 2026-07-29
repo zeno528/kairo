@@ -74,8 +74,10 @@ do_remote_check() {
     echo ""
     read -p "  输入域名: " domain
     [ -z "$domain" ] && info "已取消" && return
+    kairo_is_host "$domain" || { error "域名或主机名格式不合法"; return 1; }
     read -p "  端口号 (默认 443): " port
     port=${port:-443}
+    kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
     _show_cert_info "$domain" "$port"
     echo ""
     local days
@@ -108,6 +110,10 @@ do_batch_check() {
     echo -e "  ${C_BOLD}域名${C_RESET}                        ${C_BOLD}剩余天数${C_RESET}  ${C_BOLD}状态${C_RESET}"
     echo -e "  ${C_GRAY}────────────────────────── ─────── ──────${C_RESET}"
     for domain in "${domains[@]}"; do
+        if ! kairo_is_host "$domain"; then
+            printf "  %-26s ${C_RED}%6s  %s${C_RESET}\n" "$domain" "N/A" "格式不合法"
+            continue
+        fi
         local days
         _start_spinner "正在检查 $domain 证书"
         days=$(_get_cert_days "$domain")

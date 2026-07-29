@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.2 (2026-07-29)
+- fix: harden modular runtime and deployment
+
 ## v1.1.1 (2026-07-29)
 - refactor module foundation
 

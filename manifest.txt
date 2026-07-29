@@ -1,4 +1,4 @@
-# Kairo 发行包清单。安装器仅下载此清单中声明的运行时文件。
+# Kairo 发行包清单。CI 会校验它与注册表及运行时文件双向一致。
 kairo.sh
 VERSION
 lib/core.sh

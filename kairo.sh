@@ -5,7 +5,9 @@
 
 LIB_DIR="/usr/local/lib/kairo"
 REPO="zeno528/kairo"
+# shellcheck disable=SC2034 # 由 lib/core.sh 的 fetch_remote_file 使用。
 KAIRO_BRANCH="main"
+# shellcheck disable=SC2034 # 由 lib/core.sh 的 fetch_remote_file 使用。
 CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -26,6 +28,12 @@ source "${KAIRO_ROOT}/modules/registry.sh"
 
 VERSION=$(cat "${KAIRO_ROOT}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
 
+kairo_cleanup() {
+    _stop_spinner
+}
+trap kairo_cleanup EXIT
+trap 'kairo_cleanup; exit 130' INT TERM
+
 show_banner() {
     local width=42 header="─ K A I R O "
     local version_line="  v${VERSION}"
@@ -44,7 +52,11 @@ show_banner() {
 
 kairo_run_installer() {
     set -o pipefail
-    fetch_remote_file install.sh | bash
+    if [ "$(id -u)" -eq 0 ]; then
+        fetch_remote_file install.sh | bash
+    else
+        fetch_remote_file install.sh | sudo bash
+    fi
 }
 
 do_update() {
@@ -62,6 +74,10 @@ do_update() {
         return 0
     fi
     warn "发现新版本 v${VERSION} → v${remote_ver}"
+    if [ "$(id -u)" -ne 0 ] && ! sudo -v; then
+        error "更新需要 sudo 权限"
+        return 1
+    fi
     _with_spinner "正在更新 KAIRO" kairo_run_installer
 }
 
@@ -96,11 +112,17 @@ _load_module() {
         error "模块文件缺失: $module"
         return 1
     fi
+    unset -f menu 2>/dev/null || true
     # shellcheck disable=SC1090
-    source "$module_file"
-    if type menu &>/dev/null; then
-        menu
+    if ! source "$module_file"; then
+        error "模块加载失败: $module"
+        return 1
     fi
+    if ! declare -F menu >/dev/null; then
+        error "模块未提供 menu 函数: $module"
+        return 1
+    fi
+    menu
 }
 
 show_help() {
@@ -112,11 +134,12 @@ show_help() {
     echo ""
     echo "模块:"
     for group in "${KAIRO_GROUP_IDS[@]}"; do
-        printf '  %s: ' "${KAIRO_GROUP_LABELS[$group]}"
+        printf '  %s:\n' "${KAIRO_GROUP_LABELS[$group]}"
         for module in "${KAIRO_MODULE_IDS[@]}"; do
-            [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] && printf '%s ' "$module"
+            if [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ]; then
+                printf '    %-18s %s\n' "$module" "${KAIRO_MODULE_ACTIONS[$module]}"
+            fi
         done
-        echo ""
     done
 }
 
@@ -127,10 +150,24 @@ run_module_action() {
         error "模块不存在: $module"
         return 1
     fi
-    # shellcheck disable=SC1090
-    source "$(kairo_module_file "$module")"
+    if ! kairo_module_supports_action "$module" "$action"; then
+        error "模块 $module 不支持操作: $action"
+        return 1
+    fi
+    local module_file
+    module_file=$(kairo_module_file "$module")
+    if [ ! -f "$module_file" ]; then
+        error "模块文件缺失: $module"
+        return 1
+    fi
     local function_name="do_${action}"
-    if type "$function_name" &>/dev/null; then
+    unset -f "$function_name" 2>/dev/null || true
+    # shellcheck disable=SC1090
+    if ! source "$module_file"; then
+        error "模块加载失败: $module"
+        return 1
+    fi
+    if declare -F "$function_name" >/dev/null; then
         "$function_name" "$@"
     else
         error "操作不存在: $action"

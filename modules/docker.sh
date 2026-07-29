@@ -65,6 +65,7 @@ do_logs() {
     echo ""
     read -p "  查看行数 (默认 50): " lines
     lines=${lines:-50}
+    kairo_is_positive_integer "$lines" || { error "行数必须是正整数"; return 1; }
     docker logs --tail "$lines" "$name" 2>&1
 }
 

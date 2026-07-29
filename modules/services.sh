@@ -8,11 +8,27 @@ _check_systemctl() {
     fi
 }
 
+_show_service_list() {
+    systemctl list-units --type=service --no-pager 2>/dev/null |
+        head -20 |
+        sed 's/^/  /'
+}
+
+_show_service_status() {
+    systemctl status "$1" --no-pager -l 2>/dev/null |
+        head -15 |
+        sed 's/^/  /'
+}
+
+_valid_service_name() {
+    [[ "$1" =~ ^[a-zA-Z0-9_.@:-]+$ ]]
+}
+
 do_list() {
     _check_systemctl || return
     echo ""
     echo -e "  ${C_BOLD}已安装的服务${C_RESET}"
-    _with_spinner "正在获取服务列表" bash -c "systemctl list-units --type=service --no-pager 2>/dev/null | head -20 | sed 's/^/  /'"
+    _with_spinner "正在获取服务列表" _show_service_list
     echo ""
     local total
     _start_spinner "正在统计服务数量"
@@ -26,8 +42,9 @@ do_status() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
+    _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
-    _with_spinner "正在获取服务状态" bash -c "systemctl status \"$svc\" --no-pager -l 2>/dev/null | head -15 | sed 's/^/  /'"
+    _with_spinner "正在获取服务状态" _show_service_status "$svc"
 }
 
 do_start() {
@@ -35,6 +52,7 @@ do_start() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
+    _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc" && success "服务 $svc 已启动" || error "启动失败"
 }
 
@@ -43,6 +61,7 @@ do_stop() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
+    _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
     read -p "  确认停止服务 $svc? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
@@ -54,6 +73,7 @@ do_restart() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
+    _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc" && success "服务 $svc 已重启" || error "重启失败"
 }
 
@@ -62,6 +82,7 @@ do_toggle_enable() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
+    _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
     local is_enabled
     is_enabled=$(systemctl is-enabled "$svc" 2>/dev/null)
