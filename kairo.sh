@@ -80,7 +80,7 @@ do_update() {
         error "更新需要 sudo 权限"
         return 1
     fi
-    _with_spinner "正在更新 KAIRO" kairo_run_installer
+    _with_spinner "正在更新 Kairo" kairo_run_installer
 }
 
 do_uninstall() {
@@ -88,7 +88,7 @@ do_uninstall() {
     local -a elevate=()
 
     echo ""
-    warn "即将卸载 KAIRO，以下文件将被删除:"
+    warn "即将卸载 Kairo，以下文件将被删除:"
     echo -e "  ${C_GRAY}${BIN_DIR}/ka${C_RESET}"
     echo -e "  ${C_GRAY}${BIN_DIR}/ot（旧版入口，如存在）${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
@@ -226,7 +226,7 @@ show_main_menu() {
     KAIRO_MENU_MODULES=()
     show_banner
     divider
-    echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 KAIRO    ${C_BOLD}[0]${C_RESET} 退出"
+    echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
 
     for group in "${KAIRO_GROUP_IDS[@]}"; do
         title "${KAIRO_GROUP_LABELS[$group]}"
@@ -248,7 +248,7 @@ while true; do
     case "$choice" in
         [Uu])
             do_update
-            read -r -p "  按回车键重启 KAIRO..." _
+            read -r -p "  按回车键重启 Kairo..." _
             exec "$0"
             ;;
         [Xx]) do_uninstall; kairo_pause ;;

@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.7 (2026-07-29)
+- ui: 统一菜单与卸载文案工具名为 Kairo
+
 ## v1.1.6 (2026-07-29)
 - chore: ignore local AI project rules
 
