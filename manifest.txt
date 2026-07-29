@@ -1,0 +1,17 @@
+# Kairo 发行包清单。安装器仅下载此清单中声明的运行时文件。
+kairo.sh
+VERSION
+lib/core.sh
+modules/registry.sh
+modules/crontab.sh
+modules/docker.sh
+modules/firewall.sh
+modules/network-test.sh
+modules/nginx.sh
+modules/port-proc.sh
+modules/security-update.sh
+modules/services.sh
+modules/ssh-keys.sh
+modules/ssh-passwd.sh
+modules/ssl-check.sh
+modules/sys-info.sh

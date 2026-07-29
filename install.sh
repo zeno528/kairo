@@ -11,6 +11,7 @@ LEGACY_LIB_DIR="/usr/local/lib/opstool"
 VERSION_FILE="${LIB_DIR}/VERSION"
 REPO="zeno528/kairo"
 CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
+MANIFEST_PATH="manifest.txt"
 
 # 通过 GitHub Contents API 下载 main 分支文件，避免 raw CDN 返回陈旧缓存。
 fetch_remote_file() {
@@ -22,7 +23,14 @@ fetch_remote_file() {
 download_remote_file() {
     local path="$1"
     local destination="$2"
-    fetch_remote_file "$path" > "$destination"
+    local tmp_file
+    mkdir -p "$(dirname "$destination")"
+    tmp_file=$(mktemp "${destination}.tmp.XXXXXX")
+    if ! fetch_remote_file "$path" > "$tmp_file"; then
+        rm -f "$tmp_file"
+        return 1
+    fi
+    mv "$tmp_file" "$destination"
 }
 
 # 获取远程版本号
@@ -59,35 +67,44 @@ else
     echo ">>> 更新 KAIRO v${local_ver} → v${remote_ver}..."
 fi
 
-mkdir -p "$LIB_DIR/modules"
+manifest=$(fetch_remote_file "$MANIFEST_PATH")
+if [ -z "$manifest" ]; then
+    echo ">>> 无法获取安装清单，已取消安装" >&2
+    exit 1
+fi
 
-# 下载主入口
-download_remote_file kairo.sh "${BIN_DIR}/ka"
-chmod +x "${BIN_DIR}/ka"
+TOTAL=$(printf '%s\n' "$manifest" | sed '/^#/d;/^[[:space:]]*$/d' | wc -l)
+COUNT=0
+while IFS= read -r path; do
+    [ -z "$path" ] && continue
+    case "$path" in
+        \#*) continue ;;
+        kairo.sh) destination="${BIN_DIR}/ka" ;;
+        VERSION|lib/*.sh|modules/*.sh) destination="${LIB_DIR}/${path}" ;;
+        *)
+            echo ">>> 安装清单包含非法路径: $path" >&2
+            exit 1
+            ;;
+    esac
+    case "$path" in
+        *..*|/*)
+            echo ">>> 安装清单包含非法路径: $path" >&2
+            exit 1
+            ;;
+    esac
+    download_remote_file "$path" "$destination"
+    chmod +x "$destination"
+    COUNT=$((COUNT + 1))
+    printf "\r  安装: %-25s [%d/%d]" "$path" "$COUNT" "$TOTAL"
+done <<EOF
+$manifest
+EOF
+echo ""
+
 # 清理旧版本的快捷入口，避免同一工具保留两个命令。
 rm -f "${BIN_DIR}/ot"
 
-# 动态获取远程模块列表
-MODULES=$(curl -fsSL "${CONTENTS_URL}/modules?ref=main&t=$(date +%s)" | grep -oP '"name":\s*"\K[^"]+\.sh')
-if [ -z "$MODULES" ]; then
-    echo "  警告: 无法获取模块列表，跳过模块安装"
-else
-    TOTAL=$(echo "$MODULES" | wc -l)
-    COUNT=0
-    printf "  安装: ka (主菜单) [0/%d]" "$TOTAL"
-    for mod_name in $MODULES; do
-        mod_path="modules/${mod_name}"
-        download_remote_file "$mod_path" "${LIB_DIR}/${mod_path}"
-        chmod +x "${LIB_DIR}/${mod_path}"
-        COUNT=$((COUNT + 1))
-        printf "\r  安装: %-25s [%d/%d]" "$mod_name" "$COUNT" "$TOTAL"
-    done
-    echo ""
-fi
-
 # 保存版本号
-echo "$remote_ver" > "$VERSION_FILE"
-
 # 完成 Kairo 安装后再清理旧运行库，保证旧版本用户可平滑迁移。
 rm -rf "$LEGACY_LIB_DIR"
 

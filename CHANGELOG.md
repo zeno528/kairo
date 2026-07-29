@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.1 (2026-07-29)
+- refactor module foundation
+
 ## v1.1.0 (2026-07-29)
 - 🎉 rename(kairo): 项目更名为 Kairo，快捷命令改为 `ka`，并迁移运行时目录与 GitHub 仓库。
 
