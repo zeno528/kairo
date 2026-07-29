@@ -32,3 +32,6 @@ Thumbs.db
 *.log
 test.sh
 *.tmp
+
+# === graphify 代码图谱工具生成的产物 ===
+graphify-out/

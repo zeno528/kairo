@@ -31,7 +31,7 @@ divider() {
     # 与右侧横向菜单的最宽内容对齐，避免铺满整个终端。
     [ "$width" -gt 60 ] && width=60
     printf -v line '%*s' "$width" ''
-    line=${line// /─}
+    line=${line// /-}
     echo -e "  ${C_GRAY}${line}${C_RESET}"
 }
 title() { echo -e "\n  ${C_CYAN}${C_BOLD}── $1 ──${C_RESET}"; }
@@ -178,6 +178,7 @@ while true; do
     echo -e "   ${C_BOLD}[9]${C_RESET} 安全更新"
     echo -e "   ${C_BOLD}[10]${C_RESET} 网络测试"
     echo -e "   ${C_BOLD}[11]${C_RESET} Docker 管理"
+    echo ""
     echo -e "  ${C_CYAN}${C_BOLD}🌐  反代${C_RESET}"
     echo -e "   ${C_BOLD}[12]${C_RESET} Nginx 管理"
     divider
