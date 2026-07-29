@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # KAIRO 安装/卸载脚本
-# 安装: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | sudo bash
-# 卸载: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | sudo bash -s -- uninstall
+# 安装: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | sudo bash
+# 卸载: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | sudo bash -s -- uninstall
 
 set -Eeuo pipefail
 
