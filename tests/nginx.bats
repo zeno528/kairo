@@ -402,6 +402,8 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ "server_tokens off" ]]
     [[ "$output" =~ "example.com" ]]
+    [[ "$output" =~ "NoSniff" ]]
+    [[ "$output" =~ "Frame" ]]
 }
 
 @test "do_disable_site 移除软链但保留配置" {

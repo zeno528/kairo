@@ -997,8 +997,10 @@ $(sudo cat "$gf" 2>/dev/null)"
     # 逐站点
     echo ""
     echo -e "  ${C_BOLD}站点（sites-enabled）${C_RESET}"
-    echo -e "  ${C_DIM}站点                        TLS  HSTS  nosn  fram  body  cert${C_RESET}"
-    echo -e "  ${C_DIM}──────────────────────────  ───  ────  ────  ────  ────  ────${C_RESET}"
+    printf "  ${C_DIM}%-24s %-4s %-5s %-8s %-7s %-6s %s${C_RESET}\n" \
+        "站点" "TLS" "HSTS" "NoSniff" "Frame" "Body" "证书"
+    printf "  ${C_DIM}%-26s %-4s %-5s %-8s %-7s %-6s %s${C_RESET}\n" \
+        "──────────────────────────" "────" "─────" "────────" "───────" "──────" "────"
     local any=0 link name c tls hsts nosniff frame body cert
     for link in "$NGINX_SITES_ENABLED"/*; do
         [ -L "$link" ] || continue
@@ -1012,14 +1014,14 @@ $(sudo cat "$gf" 2>/dev/null)"
         printf '%s\n' "$c" | grep -qEi 'X-Frame-Options|frame-ancestors' && frame="${C_GREEN}✔" || frame="${C_YELLOW}-"
         printf '%s\n' "$c" | grep -q 'client_max_body_size' && body="${C_GREEN}✔" || body="${C_YELLOW}-"
         if _has_cert "$name"; then cert="${C_GREEN}有"; else cert="${C_YELLOW}无"; fi
-        printf "  %-26s %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}\n" \
+        printf "  %-26s %s${C_RESET}    %s${C_RESET}     %s${C_RESET}        %s${C_RESET}       %s${C_RESET}      %s${C_RESET}\n" \
             "$name" "$tls" "$hsts" "$nosniff" "$frame" "$body" "$cert"
     done
     if [ "$any" -eq 0 ]; then
         echo -e "  ${C_DIM}(无启用站点)${C_RESET}"
     else
         echo ""
-        echo -e "  ${C_DIM}列: TLS≥1.2 / HSTS / nosniff / frame / body 限制 / 证书    ✔=已配置  -=缺失${C_RESET}"
+        echo -e "  ${C_DIM}列: TLS≥1.2 / HSTS / NoSniff / Frame / Body 限制 / 证书    ✔=已配置  -=缺失${C_RESET}"
     fi
 }
 
