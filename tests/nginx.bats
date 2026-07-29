@@ -52,7 +52,7 @@ teardown() {
     [ "$status" -eq 0 ]
 }
 
-# ─── 纯函数: _has_cert ───────────────────────────────────────
+# ─── 纯函数: _nginx_version_is_at_least ──────────────────────
 
 @test "_nginx_version_is_at_least 正确识别相同版本" {
     run _nginx_version_is_at_least "1.30.4-1~jammy" "1.30.4-1~jammy"
@@ -68,6 +68,8 @@ teardown() {
     run _nginx_version_is_at_least "1.30.3-1~jammy" "1.30.4-1~jammy"
     [ "$status" -ne 0 ]
 }
+
+# ─── 纯函数: _has_cert ───────────────────────────────────────
 
 @test "_has_cert 对已存在证书目录返回 0" {
     mkdir -p "${LE_LIVE_DIR}/example.com"
@@ -103,6 +105,12 @@ teardown() {
     [[ "$output" =~ "ssl_protocols TLSv1.2 TLSv1.3" ]]
 }
 
+@test "_make_proxy_conf 含 Mozilla Intermediate ssl_ciphers（ECDHE 套件）" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "ECDHE-ECDSA-AES128-GCM-SHA256" ]]
+    [[ "$output" =~ "ECDHE-RSA-CHACHA20-POLY1305" ]]
+}
+
 @test "_make_proxy_conf 含 client_max_body_size 20m" {
     run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
     [[ "$output" =~ "client_max_body_size 20m" ]]
@@ -114,6 +122,35 @@ teardown() {
     [[ "$output" =~ "proxy_set_header X-Real-IP" ]]
     [[ "$output" =~ "proxy_set_header X-Forwarded-For" ]]
     [[ "$output" =~ "proxy_set_header X-Forwarded-Proto" ]]
+}
+
+@test "_make_proxy_conf 含 WebSocket Upgrade / Connection 头" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "proxy_set_header Upgrade" ]]
+    [[ "$output" =~ "proxy_set_header Connection" ]]
+    [[ "$output" =~ 'Connection        $connection_upgrade' ]]
+}
+
+@test "_make_proxy_conf 含 WebSocket proxy_http_version 1.1" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "proxy_http_version 1.1" ]]
+}
+
+@test "_make_proxy_conf 含 WebSocket 长连接超时 proxy_read_timeout" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "proxy_read_timeout 86400s" ]]
+}
+
+@test "_make_proxy_conf 含 HSTS 头 max-age=63072000" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "Strict-Transport-Security" ]]
+    [[ "$output" =~ "max-age=63072000" ]]
+}
+
+@test "_make_proxy_conf 含 SSL 会话复用 ssl_session_cache" {
+    run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
+    [[ "$output" =~ "ssl_session_cache shared:SSL:10m" ]]
+    [[ "$output" =~ "ssl_session_timeout 1d" ]]
 }
 
 @test "_make_proxy_conf 反代正确的上游 host:port" {
@@ -184,4 +221,20 @@ teardown() {
 
 @test "nginx.sh 暴露 do_cert 函数" {
     type do_cert
+}
+
+@test "nginx.sh 暴露 do_test_conf 函数" {
+    type do_test_conf
+}
+
+@test "nginx.sh 暴露 do_view_conf 函数" {
+    type do_view_conf
+}
+
+@test "nginx.sh 暴露 do_cert_list 函数" {
+    type do_cert_list
+}
+
+@test "nginx.sh 暴露 _ensure_ws_map 函数" {
+    type _ensure_ws_map
 }

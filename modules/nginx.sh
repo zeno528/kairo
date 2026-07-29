@@ -189,8 +189,8 @@ do_uninstall() {
     echo ""
     read -p "  确认卸载? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    systemctl stop nginx 2>/dev/null
-    apt purge -y nginx nginx-common 2>/dev/null
+    sudo systemctl stop nginx 2>/dev/null
+    sudo apt purge -y nginx nginx-common 2>/dev/null
     success "已卸载 Nginx"
     info "如需彻底清理: rm -rf /etc/nginx /var/log/nginx /var/lib/nginx"
 }
@@ -234,11 +234,11 @@ do_status() {
     echo -e "  证书:     ${cert_count:-0} 个（letsencrypt/live）"
 }
 
-# ─── 启停 / 重载 ─────────────────────────────────────────────
+# ─── 启停 / 重载 / 测试 ──────────────────────────────────────
 
-do_start()    { _check_nginx; _check_systemctl; sudo systemctl start nginx 2>/dev/null && success "已启动" || error "启动失败"; }
-do_stop()     { _check_nginx; _check_systemctl; sudo systemctl stop nginx 2>/dev/null && success "已停止" || error "停止失败"; }
-do_restart()  { _check_nginx; _check_systemctl; sudo systemctl restart nginx 2>/dev/null && success "已重启" || error "重启失败"; }
+do_start()    { _check_nginx || return; _check_systemctl || return; sudo systemctl start nginx 2>/dev/null && success "已启动" || error "启动失败"; }
+do_stop()     { _check_nginx || return; _check_systemctl || return; sudo systemctl stop nginx 2>/dev/null && success "已停止" || error "停止失败"; }
+do_restart()  { _check_nginx || return; _check_systemctl || return; sudo systemctl restart nginx 2>/dev/null && success "已重启" || error "重启失败"; }
 
 do_reload() {
     _check_nginx || return
@@ -247,6 +247,20 @@ do_reload() {
         success "配置语法 OK，已重载"
     else
         error "重载失败，请检查 nginx -t 输出"
+    fi
+}
+
+do_test_conf() {
+    _check_nginx || return
+    echo ""
+    local output rc
+    output=$(sudo nginx -t 2>&1)
+    rc=$?
+    echo "$output" | sed 's/^/  /'
+    if [ "$rc" -eq 0 ]; then
+        success "配置语法正确"
+    else
+        error "配置语法检查失败"
     fi
 }
 
@@ -307,7 +321,52 @@ do_list_sites() {
     fi
 }
 
-# 生成反代 conf（基于用户现有机器的写法：ssl_protocols TLSv1.2 TLSv1.3 + client_max_body_size 20m + 完整 proxy_set_header）
+do_view_conf() {
+    _check_nginx || return
+    echo ""
+    echo -e "  ${C_BOLD}现有反代站点${C_RESET}"
+    local items=()
+    local i=1
+    if [ -d "$NGINX_SITES_AVAIL" ]; then
+        local f
+        for f in "$NGINX_SITES_AVAIL"/*; do
+            [ -f "$f" ] || continue
+            items+=("$f")
+            echo "  [$i] $(basename "$f")"
+            i=$((i + 1))
+        done
+    fi
+    [ ${#items[@]} -eq 0 ] && { info "无站点配置"; return; }
+    echo "  [0] 取消"
+    echo ""
+    read -p "  选择要查看的站点编号: " sel
+    [ "$sel" = "0" ] && info "已取消" && return
+    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#items[@]} ]; then
+        error "无效选择"; return
+    fi
+    local target="${items[$((sel - 1))]}"
+    echo ""
+    echo -e "  ${C_DIM}──── $(basename "$target") ────${C_RESET}"
+    cat "$target" 2>/dev/null || sudo cat "$target" 2>/dev/null
+    echo -e "  ${C_DIM}──────────────────────────────────${C_RESET}"
+}
+
+# 确保 conf.d 下存在 WebSocket Connection 头映射（全局，仅创建一次）。
+_ensure_ws_map() {
+    local ws_conf="${NGINX_CONF_D}/opstool-ws-upgrade.conf"
+    if [ ! -f "$ws_conf" ]; then
+        info "创建 WebSocket 升级映射 ($ws_conf)"
+        cat <<'WSMAP' | sudo tee "$ws_conf" >/dev/null
+# 由 opstool 生成 - WebSocket Connection 头映射
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+WSMAP
+    fi
+}
+
+# 生成反代 conf（TLSv1.2/1.3 + WebSocket + HSTS + SSL 会话复用 + 完整 proxy_set_header）
 _make_proxy_conf() {
     local domain="$1"
     local upstream_host="$2"
@@ -327,16 +386,29 @@ server {
     ssl_certificate     ${LE_LIVE_DIR}/${domain}/fullchain.pem;
     ssl_certificate_key ${LE_LIVE_DIR}/${domain}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    # Mozilla Intermediate 兼容配置 (https://ssl-config.mozilla.org/)
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
 
     client_max_body_size 20m;
 
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
     location / {
         proxy_pass http://${upstream_host}:${upstream_port};
+
+        # WebSocket 需要 HTTP/1.1（nginx < 1.29.7 默认 1.0）
+        proxy_http_version 1.1;
         proxy_set_header Host              \$host;
         proxy_set_header X-Real-IP         \$remote_addr;
         proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # WebSocket
+        proxy_set_header Upgrade           \$http_upgrade;
+        proxy_set_header Connection        \$connection_upgrade;
+        proxy_read_timeout 86400s;
     }
 }
 
@@ -370,7 +442,7 @@ do_add_proxy() {
 
     # 已存在检查
     if [ -L "${NGINX_SITES_ENABLED}/${domain}" ] || [ -f "${NGINX_SITES_AVAIL}/${domain}" ]; then
-        error "反代站点已存在: $domain，请用 [8] 删除后再添加"
+        error "反代站点已存在: $domain，请用 [9] 删除后再添加"
         return
     fi
 
@@ -396,6 +468,7 @@ do_add_proxy() {
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
 
     mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    _ensure_ws_map
 
     local conf_file="${NGINX_SITES_AVAIL}/${domain}"
     _make_proxy_conf "$domain" "$up_host" "$up_port" "$with_www" | sudo tee "$conf_file" >/dev/null \
@@ -416,8 +489,8 @@ do_add_proxy() {
     if ! _has_cert "$domain"; then
         warn "未检测到 ${domain} 的 Let's Encrypt 证书"
         echo -e "  ${C_DIM}访问当前走 80→443 重定向，但 443 证书文件不存在，浏览器会报错${C_RESET}"
-        read -p "  立即申请证书? [Y/n]: " do_cert
-        if [ "$do_cert" != "n" ] && [ "$do_cert" != "N" ]; then
+        read -p "  立即申请证书? [Y/n]: " do_cert_now
+        if [ "$do_cert_now" != "n" ] && [ "$do_cert_now" != "N" ]; then
             _do_cert_for_domain "$domain" "$with_www"
         fi
     else
@@ -486,8 +559,8 @@ _check_certbot() {
         error "安装 certbot 需要 root 权限"
         return 1
     fi
-    read -p "  安装 certbot? [Y/n]: " do_install
-    [ "$do_install" = "n" ] || [ "$do_install" = "N" ] && return 1
+    read -p "  安装 certbot? [Y/n]: " confirm
+    [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && return 1
 
     if command -v snap &>/dev/null; then
         info "使用 snap 安装 certbot（官方推荐路径）"
@@ -508,8 +581,6 @@ _do_cert_for_domain() {
 
     _check_certbot || return
 
-    # 临时把 80 server 改成 allow LE 验证（避免 301 拦截验证路径）
-    # 实际上用户的 conf 里有 .well-known 兼容行为，certbot --nginx 会自动处理
     info "开始为 ${domain} 申请 Let's Encrypt 证书..."
 
     local args=(--nginx --agree-tos --non-interactive --redirect)
@@ -571,6 +642,15 @@ do_cert() {
     _do_cert_for_domain "$target" "${with_www_map[$target]}"
 }
 
+do_cert_list() {
+    if ! command -v certbot &>/dev/null; then
+        error "未安装 certbot，请先执行 [10] 申请证书时自动安装"
+        return
+    fi
+    echo ""
+    sudo certbot certificates 2>&1 | sed 's/^/  /'
+}
+
 # ─── 日志 ────────────────────────────────────────────────────
 
 do_logs() {
@@ -597,11 +677,14 @@ menu() {
         echo -e "  ${C_BOLD}[2]${C_RESET}  卸载 Nginx"
         echo -e "  ${C_BOLD}[3]${C_RESET}  启动 / 停止 / 重启 / 重载"
         echo -e "  ${C_BOLD}[4]${C_RESET}  开关开机自启"
-        echo -e "  ${C_BOLD}[5]${C_RESET}  列出所有反代站点"
-        echo -e "  ${C_BOLD}[6]${C_RESET}  添加反代站点"
-        echo -e "  ${C_BOLD}[7]${C_RESET}  删除反代站点"
-        echo -e "  ${C_BOLD}[8]${C_RESET}  申请 / 续期 Let's Encrypt 证书"
-        echo -e "  ${C_BOLD}[9]${C_RESET}  实时查看日志 (tail)"
+        echo -e "  ${C_BOLD}[5]${C_RESET}  测试配置语法 (nginx -t)"
+        echo -e "  ${C_BOLD}[6]${C_RESET}  列出所有反代站点"
+        echo -e "  ${C_BOLD}[7]${C_RESET}  查看站点配置"
+        echo -e "  ${C_BOLD}[8]${C_RESET}  添加反代站点"
+        echo -e "  ${C_BOLD}[9]${C_RESET}  删除反代站点"
+        echo -e "  ${C_BOLD}[10]${C_RESET} 申请 / 续期 Let's Encrypt 证书"
+        echo -e "  ${C_BOLD}[11]${C_RESET} 证书概览 (certbot certificates)"
+        echo -e "  ${C_BOLD}[12]${C_RESET} 实时查看日志 (tail)"
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回上级"
         divider
         echo ""
@@ -622,11 +705,14 @@ menu() {
                 esac
                 echo ""; read -p "  按回车键继续..." ;;
             4) do_toggle_enable; echo ""; read -p "  按回车键继续..." ;;
-            5) do_list_sites; echo ""; read -p "  按回车键继续..." ;;
-            6) do_add_proxy; echo ""; read -p "  按回车键继续..." ;;
-            7) do_del_proxy; echo ""; read -p "  按回车键继续..." ;;
-            8) do_cert; echo ""; read -p "  按回车键继续..." ;;
-            9) do_logs ;;
+            5) do_test_conf; echo ""; read -p "  按回车键继续..." ;;
+            6) do_list_sites; echo ""; read -p "  按回车键继续..." ;;
+            7) do_view_conf; echo ""; read -p "  按回车键继续..." ;;
+            8) do_add_proxy; echo ""; read -p "  按回车键继续..." ;;
+            9) do_del_proxy; echo ""; read -p "  按回车键继续..." ;;
+            10) do_cert; echo ""; read -p "  按回车键继续..." ;;
+            11) do_cert_list; echo ""; read -p "  按回车键继续..." ;;
+            12) do_logs ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
