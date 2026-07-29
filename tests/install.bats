@@ -14,8 +14,8 @@ setup() {
     cat > "${TEST_TMP}/mock-bin/curl" <<'MOCK'
 #!/usr/bin/env bash
 url="${*: -1}"
-path="${url#*/contents/}"
-path="${path%%\?*}"
+[[ "$url" == *"raw.githubusercontent.com/"* ]] || exit 22
+path="${url#*${KAIRO_RELEASE_SHA}/}"
 if [ -n "${MOCK_FAIL_PATH:-}" ] && [ "$path" = "$MOCK_FAIL_PATH" ]; then
     exit 22
 fi

@@ -12,7 +12,7 @@ VERSION_FILE="${LIB_DIR}/VERSION"
 REPO="${KAIRO_REPO:-zeno528/kairo}"
 KAIRO_BRANCH="${KAIRO_BRANCH:-main}"
 API_URL="https://api.github.com/repos/${REPO}"
-CONTENTS_URL="${API_URL}/contents"
+RAW_URL="https://raw.githubusercontent.com/${REPO}"
 MANIFEST_PATH="manifest.txt"
 STAGE_DIR=""
 
@@ -74,8 +74,7 @@ resolve_release_sha() {
 fetch_remote_file() {
     local path="$1" ref="$2"
     curl --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 1 \
-        -fsSL -H "Accept: application/vnd.github.raw+json" \
-        "${CONTENTS_URL}/${path}?ref=${ref}&t=$(date +%s)"
+        -fsSL "${RAW_URL}/${ref}/${path}"
 }
 
 download_remote_file() {
