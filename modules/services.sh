@@ -1,13 +1,6 @@
 #!/bin/bash
 # services 模块 - 系统服务管理
 
-_check_systemctl() {
-    if ! command -v systemctl &>/dev/null; then
-        error "未找到 systemctl 命令"
-        return 1
-    fi
-}
-
 _show_service_status() {
     systemctl status "$1" --no-pager -l 2>/dev/null |
         head -15 |
@@ -19,7 +12,7 @@ _valid_service_name() {
 }
 
 do_list() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc state i total
     local -a service_rows=()
     SERVICE_ITEMS=()
@@ -39,7 +32,7 @@ do_list() {
 }
 
 do_status() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc="${1:-}"
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
@@ -49,16 +42,21 @@ do_status() {
 }
 
 do_start() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc="${1:-}"
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
-    _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc" && success "服务 $svc 已启动" || error "启动失败"
+    if _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc"; then
+        success "服务 $svc 已启动"
+    else
+        error "启动失败"
+        return 1
+    fi
 }
 
 do_stop() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc="${1:-}"
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
@@ -66,20 +64,30 @@ do_stop() {
     echo ""
     read -p "  确认停止服务 $svc? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    _with_spinner "正在停止服务 $svc" sudo systemctl stop "$svc" && success "服务 $svc 已停止" || error "停止失败"
+    if _with_spinner "正在停止服务 $svc" sudo systemctl stop "$svc"; then
+        success "服务 $svc 已停止"
+    else
+        error "停止失败"
+        return 1
+    fi
 }
 
 do_restart() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc="${1:-}"
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
-    _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc" && success "服务 $svc 已重启" || error "重启失败"
+    if _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc"; then
+        success "服务 $svc 已重启"
+    else
+        error "重启失败"
+        return 1
+    fi
 }
 
 do_toggle_enable() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local svc="${1:-}"
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
@@ -92,13 +100,23 @@ do_toggle_enable() {
         echo ""
         read -p "  关闭开机自启? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-        _with_spinner "正在关闭开机自启" sudo systemctl disable "$svc" && success "已关闭 $svc 开机自启"
+        if _with_spinner "正在关闭开机自启" sudo systemctl disable "$svc"; then
+            success "已关闭 $svc 开机自启"
+        else
+            error "关闭开机自启失败"
+            return 1
+        fi
     else
         echo -e "  当前: ${C_YELLOW}未启用${C_RESET} 开机自启"
         echo ""
         read -p "  开启开机自启? [Y/n]: " confirm
         [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
-        _with_spinner "正在开启开机自启" sudo systemctl enable "$svc" && success "已开启 $svc 开机自启"
+        if _with_spinner "正在开启开机自启" sudo systemctl enable "$svc"; then
+            success "已开启 $svc 开机自启"
+        else
+            error "开启开机自启失败"
+            return 1
+        fi
     fi
 }
 

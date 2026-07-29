@@ -285,6 +285,53 @@ setup() {
     [[ "$output" =~ "共 2 个已加载服务" ]]
 }
 
+@test "服务启动失败返回非零" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/services.sh"
+        systemctl() { return 42; }
+        sudo() { "$@"; }
+        _with_spinner() { shift; "$@"; }
+        do_start demo.service
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "启动失败" ]]
+}
+
+@test "Docker 启动失败返回非零" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/docker.sh"
+        docker() {
+            [ "$1" = "info" ] && return 0
+            return 42
+        }
+        _with_spinner() { shift; "$@"; }
+        do_start demo
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "启动失败" ]]
+}
+
+@test "进程强制终止失败返回非零" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/port-proc.sh"
+        ps() { printf "123 demo process\n"; }
+        sleep() { :; }
+        kill() {
+            case "$1" in
+                -0) return 0 ;;
+                -9) return 42 ;;
+                *) return 0 ;;
+            esac
+        }
+        printf "%s\n" y | do_kill_process 123
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "强制终止失败" ]]
+}
+
 @test "端口列表缓存同一 PID 的进程名" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

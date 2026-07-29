@@ -17,13 +17,6 @@ _check_nginx() {
     fi
 }
 
-_check_systemctl() {
-    if ! command -v systemctl &>/dev/null; then
-        error "未找到 systemctl 命令"
-        return 1
-    fi
-}
-
 # ─── 安装 / 升级 ─────────────────────────────────────────────
 
 # 返回已安装的 Debian 包版本；未安装时返回空。
@@ -210,7 +203,7 @@ do_uninstall() {
 # ─── 状态 ────────────────────────────────────────────────────
 
 do_status() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
 
     # 版本
     local ver pkg_ver candidate_ver release_date
@@ -273,17 +266,48 @@ do_status() {
 
 # ─── 启停 / 重载 / 测试 ──────────────────────────────────────
 
-do_start()    { _check_nginx || return; _check_systemctl || return; _with_spinner "正在启动 Nginx" sudo systemctl start nginx && success "已启动" || error "启动失败"; }
-do_stop()     { _check_nginx || return; _check_systemctl || return; _with_spinner "正在停止 Nginx" sudo systemctl stop nginx && success "已停止" || error "停止失败"; }
-do_restart()  { _check_nginx || return; _check_systemctl || return; _with_spinner "正在重启 Nginx" sudo systemctl restart nginx && success "已重启" || error "重启失败"; }
+do_start() {
+    _check_nginx || return
+    kairo_require_systemctl || return
+    if _with_spinner "正在启动 Nginx" sudo systemctl start nginx; then
+        success "已启动"
+    else
+        error "启动失败"
+        return 1
+    fi
+}
+
+do_stop() {
+    _check_nginx || return
+    kairo_require_systemctl || return
+    if _with_spinner "正在停止 Nginx" sudo systemctl stop nginx; then
+        success "已停止"
+    else
+        error "停止失败"
+        return 1
+    fi
+}
+
+do_restart() {
+    _check_nginx || return
+    kairo_require_systemctl || return
+    if _with_spinner "正在重启 Nginx" sudo systemctl restart nginx; then
+        success "已重启"
+    else
+        error "重启失败"
+        return 1
+    fi
+}
 
 do_reload() {
     _check_nginx || return
+    kairo_require_systemctl || return
     echo ""
     if sudo nginx -t 2>&1 | sed 's/^/  /' && sudo systemctl reload nginx 2>/dev/null; then
         success "配置语法 OK，已重载"
     else
         error "重载失败，请检查 nginx -t 输出"
+        return 1
     fi
 }
 
@@ -298,21 +322,32 @@ do_test_conf() {
         success "配置语法正确"
     else
         error "配置语法检查失败"
+        return 1
     fi
 }
 
 do_toggle_enable() {
-    _check_systemctl || return
+    kairo_require_systemctl || return
     local is_enabled
     is_enabled=$(systemctl is-enabled nginx 2>/dev/null)
     if [ "$is_enabled" = "enabled" ]; then
         read -p "  关闭开机自启? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-        sudo systemctl disable nginx 2>/dev/null && success "已关闭"
+        if sudo systemctl disable nginx 2>/dev/null; then
+            success "已关闭"
+        else
+            error "关闭开机自启失败"
+            return 1
+        fi
     else
         read -p "  开启开机自启? [Y/n]: " confirm
         [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
-        sudo systemctl enable nginx 2>/dev/null && success "已开启"
+        if sudo systemctl enable nginx 2>/dev/null; then
+            success "已开启"
+        else
+            error "开启开机自启失败"
+            return 1
+        fi
     fi
 }
 
@@ -562,7 +597,7 @@ do_add_proxy() {
     local enable_tls="n"
     _has_cert "$domain" && enable_tls="y"
     _make_proxy_conf "$domain" "$up_host" "$up_port" "$with_www" "$enable_tls" | sudo tee "$conf_file" >/dev/null \
-        || { error "写入失败"; return; }
+        || { error "写入失败"; return 1; }
 
     sudo ln -sf "$conf_file" "${NGINX_SITES_ENABLED}/${domain}" || {
         sudo rm -f -- "$conf_file"
@@ -601,7 +636,7 @@ do_del_proxy() {
     _check_nginx || return
     if ! sudo -n true &>/dev/null; then
         error "此操作需要 sudo 权限"
-        return
+        return 1
     fi
 
     local target="${1:-}"
@@ -619,12 +654,17 @@ do_del_proxy() {
     read -p "  确认删除? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
 
-    sudo rm -f "${NGINX_SITES_ENABLED}/${target}"
-    sudo rm -f "${NGINX_SITES_AVAIL}/${target}"
-
-    sudo nginx -t &>/dev/null && sudo systemctl reload nginx 2>/dev/null \
-        && success "已删除 ${target}，nginx 配置已重载" \
-        || error "重载失败，请检查配置"
+    if ! sudo rm -f "${NGINX_SITES_ENABLED}/${target}" ||
+       ! sudo rm -f "${NGINX_SITES_AVAIL}/${target}"; then
+        error "删除站点文件失败"
+        return 1
+    fi
+    if sudo nginx -t &>/dev/null && sudo systemctl reload nginx 2>/dev/null; then
+        success "已删除 ${target}，nginx 配置已重载"
+    else
+        error "重载失败，请检查配置"
+        return 1
+    fi
 }
 
 # ─── 证书 ────────────────────────────────────────────────────
@@ -643,14 +683,28 @@ _check_certbot() {
 
     if command -v snap &>/dev/null; then
         info "使用 snap 安装 certbot（官方推荐路径）"
-        _with_spinner "正在安装 certbot" sudo snap install --classic certbot
-        sudo ln -sf /snap/bin/certbot /usr/local/bin/certbot 2>/dev/null
+        if ! _with_spinner "正在安装 certbot" sudo snap install --classic certbot; then
+            error "certbot 安装失败"
+            return 1
+        fi
+        if ! sudo ln -sf /snap/bin/certbot /usr/local/bin/certbot 2>/dev/null; then
+            error "无法创建 certbot 命令链接"
+            return 1
+        fi
     else
         info "snap 不可用，使用 apt 安装 python3-certbot-nginx"
-        _with_spinner "正在安装 certbot" sudo apt install -y python3-certbot-nginx
+        if ! _with_spinner "正在安装 certbot" sudo apt install -y python3-certbot-nginx; then
+            error "certbot 安装失败"
+            return 1
+        fi
     fi
 
-    command -v certbot &>/dev/null && success "certbot 已安装" || error "certbot 安装失败"
+    if command -v certbot &>/dev/null; then
+        success "certbot 已安装"
+    else
+        error "certbot 安装失败"
+        return 1
+    fi
 }
 
 # 为单个域名申请证书（内部函数，nginx 模块内复用）

@@ -40,6 +40,13 @@ kairo_is_host() {
     [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]]
 }
 
+kairo_require_systemctl() {
+    if ! command -v systemctl &>/dev/null; then
+        error "未找到 systemctl 命令"
+        return 1
+    fi
+}
+
 _with_spinner() {
     local msg="${1:-处理中}"
     shift

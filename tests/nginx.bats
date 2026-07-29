@@ -19,6 +19,8 @@ setup() {
     export C_RED="\033[1;31m"
     export C_GRAY="\033[37m"
 
+    # shellcheck disable=SC1091
+    source "$PWD/lib/core.sh"
     # 临时隔离目录（防止污染真实 /etc/...）
     TEST_TMP="$(mktemp -d)"
     export NGINX_SITES_AVAIL="${TEST_TMP}/sites-available"
@@ -127,6 +129,31 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ "example.com" ]]
     [[ "$output" =~ "已返回" ]]
+}
+
+@test "Nginx 启动失败返回非零" {
+    nginx() { :; }
+    systemctl() { return 42; }
+    sudo() { "$@"; }
+    _with_spinner() { shift; "$@"; }
+
+    run do_start
+
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "启动失败" ]]
+}
+
+@test "Nginx 配置语法检查失败返回非零" {
+    nginx() {
+        [ "$1" = "-t" ] && return 42
+        return 0
+    }
+    sudo() { "$@"; }
+
+    run do_test_conf
+
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "配置语法检查失败" ]]
 }
 
 # ─── 纯函数: _make_proxy_conf ─────────────────────────────────

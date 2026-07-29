@@ -56,6 +56,7 @@ do_find_by_port() {
         lsof -i ":$port" 2>/dev/null || warn "未找到端口 $port"
     else
         error "未找到 ss 或 lsof 命令"
+        return 1
     fi
 }
 
@@ -76,7 +77,7 @@ do_kill_process() {
 
     if ! kill -0 "$pid" 2>/dev/null; then
         error "进程 $pid 不存在"
-        return
+        return 1
     fi
 
     proc_info=$(ps -p "$pid" -o pid,comm,args --no-headers 2>/dev/null)
@@ -90,10 +91,16 @@ do_kill_process() {
             sleep 3
             if kill -0 "$pid" 2>/dev/null; then
                 warn "进程未退出，发送 SIGKILL..."
-                kill -9 "$pid" 2>/dev/null && success "已强制终止" || error "强制终止失败"
+                if kill -9 "$pid" 2>/dev/null; then
+                    success "已强制终止"
+                else
+                    error "强制终止失败"
+                    return 1
+                fi
             fi
         else
             error "无法终止进程 $pid（权限不足？）"
+            return 1
         fi
     else
         info "已取消"

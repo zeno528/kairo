@@ -27,7 +27,12 @@ do_start() {
     local name="${1:-}"
     [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
-    _with_spinner "正在启动容器 $name" docker start "$name" && success "容器 $name 已启动" || error "启动失败"
+    if _with_spinner "正在启动容器 $name" docker start "$name"; then
+        success "容器 $name 已启动"
+    else
+        error "启动失败"
+        return 1
+    fi
 }
 
 do_stop() {
@@ -38,7 +43,12 @@ do_stop() {
     echo ""
     read -p "  确认停止容器 $name? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    _with_spinner "正在停止容器 $name" docker stop "$name" && success "容器 $name 已停止" || error "停止失败"
+    if _with_spinner "正在停止容器 $name" docker stop "$name"; then
+        success "容器 $name 已停止"
+    else
+        error "停止失败"
+        return 1
+    fi
 }
 
 do_restart() {
@@ -46,7 +56,12 @@ do_restart() {
     local name="${1:-}"
     [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
-    _with_spinner "正在重启容器 $name" docker restart "$name" && success "容器 $name 已重启" || error "重启失败"
+    if _with_spinner "正在重启容器 $name" docker restart "$name"; then
+        success "容器 $name 已重启"
+    else
+        error "重启失败"
+        return 1
+    fi
 }
 
 do_logs() {
@@ -72,7 +87,12 @@ do_images() {
     echo ""
     read -p "  清理未使用的镜像? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        _with_spinner "正在清理未使用的镜像" docker image prune -f && success "清理完成"
+        if _with_spinner "正在清理未使用的镜像" docker image prune -f; then
+            success "清理完成"
+        else
+            error "清理失败"
+            return 1
+        fi
     fi
 }
 
