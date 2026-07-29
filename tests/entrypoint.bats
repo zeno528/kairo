@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# 测试目标: opstool.sh + install.sh
+# 测试目标: kairo.sh + install.sh
 # 覆盖: 语法 + 关键常量/函数可调用
 
 setup() {
@@ -10,8 +10,8 @@ setup() {
 
 # ─── 语法 ──────────────────────────────────────────────────────
 
-@test "opstool.sh bash 语法正确" {
-    run /usr/bin/bash -n "$PWD/opstool.sh"
+@test "kairo.sh bash 语法正确" {
+    run /usr/bin/bash -n "$PWD/kairo.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -27,10 +27,10 @@ setup() {
     done
 }
 
-# ─── opstool.sh 入口 ──────────────────────────────────────────
+# ─── kairo.sh 入口 ────────────────────────────────────────────
 
-@test "opstool.sh help 输出含全部模块" {
-    run /usr/bin/bash "$PWD/opstool.sh" help
+@test "kairo.sh help 输出含全部模块" {
+    run /usr/bin/bash "$PWD/kairo.sh" help
     [ "$status" -eq 0 ]
     [[ "$output" =~ "ssh-passwd" ]]
     [[ "$output" =~ "ssh-keys" ]]
@@ -46,21 +46,21 @@ setup() {
     [[ "$output" =~ "nginx" ]]
 }
 
-@test "opstool.sh help 输出含 update / uninstall" {
-    run /usr/bin/bash "$PWD/opstool.sh" help
+@test "kairo.sh help 输出含 update / uninstall" {
+    run /usr/bin/bash "$PWD/kairo.sh" help
     [ "$status" -eq 0 ]
     [[ "$output" =~ "update" ]]
     [[ "$output" =~ "uninstall" ]]
 }
 
-@test "opstool.sh --help 与 help 等价" {
-    run /usr/bin/bash "$PWD/opstool.sh" --help
+@test "kairo.sh --help 与 help 等价" {
+    run /usr/bin/bash "$PWD/kairo.sh" --help
     [ "$status" -eq 0 ]
     [[ "$output" =~ "ssh-passwd" ]]
 }
 
-@test "opstool.sh 错误模块名报错退出码非 0" {
-    run /usr/bin/bash "$PWD/opstool.sh" nonexistent-module-xyz
+@test "kairo.sh 错误模块名报错退出码非 0" {
+    run /usr/bin/bash "$PWD/kairo.sh" nonexistent-module-xyz
     [ "$status" -ne 0 ]
     [[ "$output" =~ "模块不存在" ]]
 }
@@ -77,7 +77,7 @@ setup() {
     if [ -f "$PWD/.test_install_touch" ]; then rm -f "$PWD/.test_install_touch"; fi
     run /usr/bin/bash "$PWD/install.sh" --this-flag-does-not-exist 2>&1 || true
     # install.sh 会输出"无法连接远程仓库"或类似的失败消息而不是建立版本文件
-    [ ! -f /tmp/opstool_test_version ]
+    [ ! -f /tmp/kairo_test_version ]
 }
 
 # ─── VERSION / CHANGELOG 一致性 ─────────────────────────────
@@ -116,14 +116,14 @@ setup() {
 
 # ─── _with_spinner ──────────────────────────────────────────
 
-@test "opstool.sh 定义了 _with_spinner 函数" {
-    grep -q '^_with_spinner()' "$PWD/opstool.sh"
+@test "kairo.sh 定义了 _with_spinner 函数" {
+    grep -q '^_with_spinner()' "$PWD/kairo.sh"
 }
 
 @test "_with_spinner 非终端模式透传命令输出" {
     run bash -c '
         C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/kairo.sh)"
         _with_spinner "test" echo "hello world"
     '
     [ "$status" -eq 0 ]
@@ -133,7 +133,7 @@ setup() {
 @test "_with_spinner 非终端模式透传退出码" {
     run bash -c '
         C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/kairo.sh)"
         _with_spinner "test" false
     '
     [ "$status" -eq 1 ]
@@ -142,7 +142,7 @@ setup() {
 @test "_with_spinner 非终端模式透传多行输出" {
     run bash -c '
         C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/kairo.sh)"
         _with_spinner "test" printf "a\nb\nc\n"
     '
     [ "$status" -eq 0 ]

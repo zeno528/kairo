@@ -368,11 +368,11 @@ do_view_conf() {
 
 # 确保 conf.d 下存在 WebSocket Connection 头映射（全局，仅创建一次）。
 _ensure_ws_map() {
-    local ws_conf="${NGINX_CONF_D}/opstool-ws-upgrade.conf"
+    local ws_conf="${NGINX_CONF_D}/kairo-ws-upgrade.conf"
     if [ ! -f "$ws_conf" ]; then
         info "创建 WebSocket 升级映射 ($ws_conf)"
         cat <<'WSMAP' | sudo tee "$ws_conf" >/dev/null
-# 由 opstool 生成 - WebSocket Connection 头映射
+# 由 Kairo 生成 - WebSocket Connection 头映射
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
@@ -392,7 +392,7 @@ _make_proxy_conf() {
     [ "$with_www" = "y" ] && server_name="$domain www.$domain"
 
     cat <<EOF
-# 由 opstool 生成于 $(date +%Y-%m-%d)
+# 由 Kairo 生成于 $(date +%Y-%m-%d)
 # 删除: rm ${NGINX_SITES_AVAIL}/${domain} && rm ${NGINX_SITES_ENABLED}/${domain}
 server {
     listen 443 ssl http2;

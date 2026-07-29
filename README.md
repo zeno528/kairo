@@ -1,25 +1,25 @@
-# OPSTOOL
+# Kairo
 
-![Version](https://img.shields.io/badge/version-1.0.41-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/opstool?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/opstool?color=teal)
+![Version](https://img.shields.io/badge/version-2.0.1-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 通用运维脚本工具箱，一行命令部署。
 
 ## 一键安装
 
 ```bash
-curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash
+curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | bash
 ```
 
 ## 卸载
 
 ```bash
-curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash -s -- uninstall
+curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | bash -s -- uninstall
 ```
 
 ## 使用
 
 ```bash
-ot  # 进入主菜单
+ka  # 进入主菜单
 ```
 
 ## 功能列表

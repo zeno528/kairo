@@ -1,19 +1,25 @@
 # 更新日志
 
+## v2.0.1 (2026-07-29)
+- rename project to Kairo
+
+## v2.0.0 (2026-07-29)
+- 🎉 rename(kairo): 项目更名为 Kairo，快捷命令改为 `ka`，并迁移运行时目录与 GitHub 仓库。
+
 ## v1.0.41 (2026-07-29)
 - fix(nginx): keep status summary on one line
 
 ## v1.0.40 (2026-07-29)
-- ✨ feat(opstool): 为所有慢操作添加旋转指示器避免误判卡死
+- ✨ feat(kairo): 为所有慢操作添加旋转指示器避免误判卡死
 
 ## v1.0.39 (2026-07-29)
 - ✨ feat(nginx): 增强反代配置，支持 WebSocket 并优化 SSL 安全
 
 ## v1.0.38 (2026-07-29)
-- 💄 ui(opstool): 分割线改为虚线样式，菜单分组间增加空行
+- 💄 ui(kairo): 分割线改为虚线样式，菜单分组间增加空行
 
 ## v1.0.37 (2026-07-29)
-- 💄 ui(opstool): 精简 banner 布局，将标题融入顶部边框线
+- 💄 ui(kairo): 精简 banner 布局，将标题融入顶部边框线
 
 ## v1.0.36 (2026-07-29)
 - ✨ feat(nginx): 增强 Nginx 安装/升级流程，自动保留现有配置并使用非交互模式
@@ -22,16 +28,16 @@
 - ✨ feat(nginx): 改变确认提示默认值，提升安装/升级便捷性
 
 ## v1.0.34 (2026-07-29)
-- ♻️ refactor(opstool): 将文件下载从 raw CDN 迁移至 GitHub Contents API
+- ♻️ refactor(kairo): 将文件下载从 raw CDN 迁移至 GitHub Contents API
 
 ## v1.0.33 (2026-07-29)
-- ♻️ refactor(opstool): 动态计算分割线宽度以自适应终端尺寸
+- ♻️ refactor(kairo): 动态计算分割线宽度以自适应终端尺寸
 
 ## v1.0.32 (2026-07-29)
 - 🔧 chore(nginx): 增强安装过程的信息输出
 
 ## v1.0.31 (2026-07-29)
-- ♻️ refactor(opstool): 重构启动横幅显示
+- ♻️ refactor(kairo): 重构启动横幅显示
 
 ## v1.0.30 (2026-07-29)
 - ♻️ refactor(nginx): 重构版本检测与安装逻辑
@@ -60,7 +66,7 @@
 - 📝 docs(readme): 更新版本号至 1.0.22
 
 ## v1.0.22 (2026-05-14)
-- ♻️ refactor(opstool.sh): 移除终端超链接支持，简化横幅显示
+- ♻️ refactor(kairo.sh): 移除终端超链接支持，简化横幅显示
 
 ## v1.0.21 (2026-05-14)
 - ✨ feat(ui): 优化主菜单布局并添加可点击链接
@@ -87,13 +93,13 @@
 - 📝 docs(README): 更新系统支持说明和模块添加指南。
 
 ## v1.0.13 (2026-04-08)
-- ✨ refactor(opstool): 重构模块加载逻辑并优化菜单结构。
+- ✨ refactor(kairo): 重构模块加载逻辑并优化菜单结构。
 
 ## v1.0.12 (2026-04-08)
-- 🌈 style(opstool): 优化脚本颜色和显示格式。
+- 🌈 style(kairo): 优化脚本颜色和显示格式。
 
 ## v1.0.11 (2026-04-08)
-- 🌈 style(opstool): 统一输出格式并引入颜色辅助函数。
+- 🌈 style(kairo): 统一输出格式并引入颜色辅助函数。
 
 ## v1.0.10 (2026-04-08)
 - ✨ feat(ssh-keys): 添加修改公钥备注功能。
@@ -102,19 +108,19 @@
 - ♻️ refactor(ssh-passwd): 重构 SSH 配置设置逻辑并新增 Root 登录检查功能。
 
 ## v1.0.8 (2026-04-08)
-- 🔧 chore(opstool): 调整菜单选项顺序并新增SSH公钥管理功能。
+- 🔧 chore(kairo): 调整菜单选项顺序并新增SSH公钥管理功能。
 
 ## v1.0.7 (2026-04-07)
 - 📝 docs(changelog): 添加更新日志文件并记录历史版本
 
 ## v1.0.4 (2026-04-07)
-- ✨ feat(opstool): 添加新功能模块及优化菜单显示
+- ✨ feat(kairo): 添加新功能模块及优化菜单显示
 
 ## v1.0.3 (2026-04-07)
 - ✨ fix(install): 优化模块下载逻辑并增加缓存失效机制。
 
 ## v1.0.2 (2026-04-07)
-- 🌈 style(opstool): 优化启动横幅显示格式。
+- 🌈 style(kairo): 优化启动横幅显示格式。
 
 ## v1.0.1 (2026-04-07)
 - fix: replace logo with OPS text

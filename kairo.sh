@@ -1,12 +1,12 @@
 #!/bin/bash
-# OPSTOOL - 运维工具箱主入口
-# 用法: ot                    # 交互菜单
-#       ot <模块> [操作] [参数]  # CLI 调用
+# KAIRO - 运维工具箱主入口
+# 用法: ka                    # 交互菜单
+#       ka <模块> [操作] [参数]  # CLI 调用
 
-LIB_DIR="/usr/local/lib/opstool"
+LIB_DIR="/usr/local/lib/kairo"
 MODULES_DIR="${LIB_DIR}/modules"
 VERSION=$(cat "${LIB_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-REPO="zeno528/opstool"
+REPO="zeno528/kairo"
 CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
 
 # 非终端模式自动确认
@@ -124,9 +124,9 @@ fetch_remote_file() {
 
 show_banner() {
     local W=42
-    local header="─ O P S T O O L "
+    local header="─ K A I R O "
     local l1="  v${VERSION}"
-    local l2="  https://github.com/zeno528/opstool"
+    local l2="  https://github.com/zeno528/kairo"
     local i dash="" fill="" p1="" p2=""
     for ((i=${#header}; i<W; i++)); do fill+="─"; done
     for ((i=0; i<W; i++)); do dash+="─"; done
@@ -152,18 +152,18 @@ do_update() {
         return
     fi
     warn "发现新版本 v${VERSION} → v${remote_ver}"
-    _with_spinner "正在更新 OPSTOOL" bash -c 'fetch_remote_file install.sh | bash'
+    _with_spinner "正在更新 KAIRO" bash -c 'fetch_remote_file install.sh | bash'
 }
 
 do_uninstall() {
     echo ""
-    warn "即将卸载 OPSTOOL，以下文件将被删除:"
-    echo -e "  ${C_GRAY}/usr/local/bin/ot${C_RESET}"
+    warn "即将卸载 KAIRO，以下文件将被删除:"
+    echo -e "  ${C_GRAY}/usr/local/bin/ka${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
     echo ""
     read -p "  确认卸载? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        rm -f /usr/local/bin/ot
+        rm -f /usr/local/bin/ka
         rm -rf "$LIB_DIR"
         success "卸载完成"
         exit 0
@@ -184,7 +184,7 @@ _load_module() {
         error "模块不存在: $module"
         return
     fi
-    export OPSTOOL_MODE="module"
+    export KAIRO_MODE="module"
     # shellcheck disable=SC1090
     source "$module_file"
     if type menu &>/dev/null; then menu; fi
@@ -196,10 +196,10 @@ if [ $# -gt 0 ]; then
         update) do_update; exit $? ;;
         uninstall) do_uninstall; exit $? ;;
         help|--help|-h)
-            echo "用法: ot                    # 交互菜单"
-            echo "      ot <模块> [操作] [参数]  # CLI 调用"
-            echo "      ot update               # 检查更新"
-            echo "      ot uninstall            # 卸载"
+            echo "用法: ka                    # 交互菜单"
+            echo "      ka <模块> [操作] [参数]  # CLI 调用"
+            echo "      ka update               # 检查更新"
+            echo "      ka uninstall            # 卸载"
             echo ""
             echo "模块: ssh-keys ssh-passwd sys-info port-proc firewall"
             echo "      services crontab ssl-check security-update network-test"
@@ -241,7 +241,7 @@ while true; do
     divider
     R=42
     echo -ne "  ${C_GREEN}${C_BOLD}🔒 SSH${C_RESET}"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新"
-    echo -ne "   ${C_BOLD}[1]${C_RESET} 密码登录管理"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[X]${C_RESET} 卸载 OPSTOOL"
+    echo -ne "   ${C_BOLD}[1]${C_RESET} 密码登录管理"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[X]${C_RESET} 卸载 KAIRO"
     echo -ne "   ${C_BOLD}[2]${C_RESET} 公钥管理"; printf "\033[${R}G"; echo -e "  ${C_BOLD}[0]${C_RESET} 退出"
     echo ""
     echo -e "  ${C_CYAN}${C_BOLD}🖥  系统${C_RESET}"
@@ -276,7 +276,7 @@ while true; do
         12) _load_module nginx ;;
         [Uu])
             do_update
-            echo ""; read -p "  按回车键重启 OPSTOOL..." -r _
+            echo ""; read -p "  按回车键重启 KAIRO..." -r _
             exec "$0"
             ;;
         [Xx])

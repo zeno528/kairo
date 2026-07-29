@@ -25,7 +25,7 @@ do_ping_test() {
     echo -e "  ${C_BOLD}全国节点 Ping 延迟测试${C_RESET}"
     echo -e "  ${C_DIM}正在获取节点列表...${C_RESET}"
 
-    local tmp_dir="/tmp/opstool-ping-$$"
+    local tmp_dir="/tmp/kairo-ping-$$"
     mkdir -p "$tmp_dir"
 
     # 并行拉取三网节点 CSV，提取 host 和城市信息

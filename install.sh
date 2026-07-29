@@ -1,14 +1,15 @@
 #!/bin/bash
-# OPSTOOL 安装/卸载脚本
-# 安装: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash
-# 卸载: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/opstool/contents/install.sh?ref=main' | bash -s -- uninstall
+# KAIRO 安装/卸载脚本
+# 安装: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | bash
+# 卸载: curl -fsSL -H 'Accept: application/vnd.github.raw+json' 'https://api.github.com/repos/zeno528/kairo/contents/install.sh?ref=main' | bash -s -- uninstall
 
 set -e
 
 BIN_DIR="/usr/local/bin"
-LIB_DIR="/usr/local/lib/opstool"
+LIB_DIR="/usr/local/lib/kairo"
+LEGACY_LIB_DIR="/usr/local/lib/opstool"
 VERSION_FILE="${LIB_DIR}/VERSION"
-REPO="zeno528/opstool"
+REPO="zeno528/kairo"
 CONTENTS_URL="https://api.github.com/repos/${REPO}/contents"
 
 # 通过 GitHub Contents API 下载 main 分支文件，避免 raw CDN 返回陈旧缓存。
@@ -37,9 +38,10 @@ get_local_version() {
 # 卸载
 if [ "$1" = "uninstall" ]; then
     local_ver=$(get_local_version)
-    echo ">>> 卸载 OPSTOOL v${local_ver}..."
-    rm -f "${BIN_DIR}/ot"
+    echo ">>> 卸载 KAIRO v${local_ver}..."
+    rm -f "${BIN_DIR}/ka"
     rm -rf "$LIB_DIR"
+    rm -rf "$LEGACY_LIB_DIR"
     echo ">>> 卸载完成"
     exit 0
 fi
@@ -49,19 +51,21 @@ remote_ver=$(get_remote_version)
 local_ver=$(get_local_version)
 
 if [ "$local_ver" = "未安装" ]; then
-    echo ">>> 首次安装 OPSTOOL v${remote_ver}..."
+    echo ">>> 首次安装 KAIRO v${remote_ver}..."
 elif [ "$local_ver" = "$remote_ver" ]; then
-    echo ">>> OPSTOOL 已是最新版本 v${remote_ver}"
+    echo ">>> KAIRO 已是最新版本 v${remote_ver}"
     exit 0
 else
-    echo ">>> 更新 OPSTOOL v${local_ver} → v${remote_ver}..."
+    echo ">>> 更新 KAIRO v${local_ver} → v${remote_ver}..."
 fi
 
 mkdir -p "$LIB_DIR/modules"
 
 # 下载主入口
-download_remote_file opstool.sh "${BIN_DIR}/ot"
-chmod +x "${BIN_DIR}/ot"
+download_remote_file kairo.sh "${BIN_DIR}/ka"
+chmod +x "${BIN_DIR}/ka"
+# 清理旧版本的快捷入口，避免同一工具保留两个命令。
+rm -f "${BIN_DIR}/ot"
 
 # 动态获取远程模块列表
 MODULES=$(curl -fsSL "${CONTENTS_URL}/modules?ref=main&t=$(date +%s)" | grep -oP '"name":\s*"\K[^"]+\.sh')
@@ -70,7 +74,7 @@ if [ -z "$MODULES" ]; then
 else
     TOTAL=$(echo "$MODULES" | wc -l)
     COUNT=0
-    printf "  安装: ot (主菜单) [0/%d]" "$TOTAL"
+    printf "  安装: ka (主菜单) [0/%d]" "$TOTAL"
     for mod_name in $MODULES; do
         mod_path="modules/${mod_name}"
         download_remote_file "$mod_path" "${LIB_DIR}/${mod_path}"
@@ -84,6 +88,9 @@ fi
 # 保存版本号
 echo "$remote_ver" > "$VERSION_FILE"
 
-echo -e "\033[1;32m>>> 🎉 完成！OPSTOOL v${remote_ver}\033[0m"
+# 完成 Kairo 安装后再清理旧运行库，保证旧版本用户可平滑迁移。
+rm -rf "$LEGACY_LIB_DIR"
+
+echo -e "\033[1;32m>>> 🎉 完成！KAIRO v${remote_ver}\033[0m"
 echo ""
-echo "  主菜单: ot"
+echo "  主菜单: ka"

@@ -9,7 +9,7 @@ setup() {
     # 切到项目根
     cd "$BATS_TEST_DIRNAME/.." || return 1
 
-    # 加载模块需要 opstool.sh 顶层定义的色变量
+    # 加载模块需要 kairo.sh 顶层定义的色变量
     export C_RESET="\033[0m"
     export C_BOLD="\033[1m"
     export C_DIM="\033[2m"
@@ -169,9 +169,9 @@ teardown() {
     [[ ! "$output" =~ "server_name example.com www" ]]
 }
 
-@test "_make_proxy_conf 注释里含 opstool 生成标记" {
+@test "_make_proxy_conf 注释里含 Kairo 生成标记" {
     run _make_proxy_conf "test.com" "127.0.0.1" "8080" "n"
-    [[ "$output" =~ "由 opstool 生成于" ]]
+    [[ "$output" =~ "由 Kairo 生成于" ]]
 }
 
 # ─── 纯函数: 域名校验 (do_add_proxy 内联) ──────────────────
