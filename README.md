@@ -1,10 +1,10 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.1.29-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.1.30-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
-通用运维脚本工具箱，一行命令部署。
+轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
-## 一键安装
+## 一键安装/升级
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | sudo bash
@@ -42,7 +42,7 @@ ka  # 进入主菜单
 - **Docker 管理** — 容器列表、启停重启、查看日志、镜像管理
 
 ### Nginx 反向代理
-- **安装/升级** — 走 nginx 官方 apt 源（永远拿到最新 stable），已装则自动跳过同版本、旧版本提示升级
+- **安装/升级** — 走 nginx 官方 apt 源（永远拿到最新 stable），已装则检查官方候选版本、提示升级；发布日期走本地缓存，状态总览进菜单零延迟
 - **站点管理** — 列出/添加/删除反代站点（sites-available + sites-enabled 软链，模板对齐现有写法）
 - **证书** — 一键申请/续期 Let's Encrypt 证书（certbot，优先 snap 路径，按官方推荐）
 - **运维** — 状态总览（含版本/服务/监听端口/证书数）、启停重启重载、开关开机自启、实时日志

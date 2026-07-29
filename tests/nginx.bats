@@ -38,6 +38,7 @@ setup() {
     NGINX_SITES_ENABLED="${TEST_TMP}/sites-enabled"
     NGINX_CONF_D="${TEST_TMP}/conf.d"
     LE_LIVE_DIR="${TEST_TMP}/letsencrypt/live"
+    NGINX_RELEASE_CACHE="${TEST_TMP}/nginx-release.info"
 
     # 清理临时目录（每个 test 结束）
     export TEST_TMP
@@ -78,6 +79,47 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [ "$output" = "2026-07-15" ]
+}
+
+# ─── 纯函数: 发布日期本地缓存 ───────────────────────────────
+
+@test "_nginx_cached_release_date 读取本地缓存的发布日期" {
+    printf '1.30.4 2026-07-15\n1.29.5 2026-05-01\n' > "$NGINX_RELEASE_CACHE"
+    run _nginx_cached_release_date "1.30.4"
+    [ "$status" -eq 0 ]
+    [ "$output" = "2026-07-15" ]
+}
+
+@test "_nginx_cached_release_date 无匹配版本返回空" {
+    printf '1.30.4 2026-07-15\n' > "$NGINX_RELEASE_CACHE"
+    run _nginx_cached_release_date "9.9.9"
+    [ "$status" -eq 0 ]
+    [ "$output" = "" ]
+}
+
+@test "_nginx_store_release_date 写入并覆盖同版本记录" {
+    sudo() { "$@"; }
+    _nginx_store_release_date "1.30.4" "2026-07-15"
+    _nginx_store_release_date "1.30.4" "2026-07-16"
+    _nginx_store_release_date "1.29.5" "2026-05-01"
+    run cat "$NGINX_RELEASE_CACHE"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "1.30.4 2026-07-16" ]]
+    [[ "$output" =~ "1.29.5 2026-05-01" ]]
+    [ "$(grep -c '^1\.30\.4 ' "$NGINX_RELEASE_CACHE")" -eq 1 ]
+}
+
+@test "do_status 显示缓存发布日期且不联网拉取" {
+    printf '1.30.4 2026-07-15\n' > "$NGINX_RELEASE_CACHE"
+    nginx() { echo 'nginx version: nginx/1.30.4' >&2; }
+    systemctl() { echo active; }
+    ss() { :; }
+    curl() { echo "SHOULD_NOT_CALL_CURL"; return 1; }
+    run do_status
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "v1.30.4" ]]
+    [[ "$output" =~ "2026-07-15 发布" ]]
+    [[ ! "$output" =~ "SHOULD_NOT_CALL_CURL" ]]
 }
 
 # ─── 纯函数: _has_cert ───────────────────────────────────────

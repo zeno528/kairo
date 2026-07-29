@@ -80,6 +80,7 @@ do_update() {
         error "更新需要 sudo 权限"
         return 1
     fi
+    info "正在更新，请稍候..."
     kairo_run_installer
 }
 
@@ -106,6 +107,7 @@ do_uninstall() {
 
     "${elevate[@]}" rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || failed=1
     "${elevate[@]}" rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || failed=1
+    "${elevate[@]}" rm -rf -- /var/cache/kairo 2>/dev/null || true
 
     for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then

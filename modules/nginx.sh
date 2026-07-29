@@ -7,6 +7,8 @@ NGINX_SITES_AVAIL="/etc/nginx/sites-available"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
 NGINX_CONF_D="/etc/nginx/conf.d"
 LE_LIVE_DIR="/etc/letsencrypt/live"
+# Nginx 发布日期本地缓存：安装/升级/检查官方更新时写入，状态总览离线读取。
+NGINX_RELEASE_CACHE="/var/cache/kairo/nginx-release.info"
 
 # ─── 前置检查 ────────────────────────────────────────────────
 
@@ -36,6 +38,23 @@ _get_nginx_release_date() {
         "https://nginx.org/download/nginx-${1}.tar.gz" 2>/dev/null | \
         awk -F': ' 'tolower($1) == "last-modified" { print $2; exit }')
     [ -n "$last_modified" ] && date -d "$last_modified" '+%F' 2>/dev/null
+}
+
+# 读取本地缓存的发布日期；无匹配返回空。供 do_status 离线显示，不联网。
+_nginx_cached_release_date() {
+    [ -f "$NGINX_RELEASE_CACHE" ] || return
+    awk -v v="$1" '$1 == v { print $2; exit }' "$NGINX_RELEASE_CACHE" 2>/dev/null
+}
+
+# 把 ver→date 写入本地缓存（覆盖同版本旧记录）。调用方需具备 sudo 权限。
+_nginx_store_release_date() {
+    local ver="$1" date="$2"
+    [ -n "$ver" ] && [ -n "$date" ] || return
+    sudo mkdir -p "$(dirname "$NGINX_RELEASE_CACHE")"
+    {
+        [ -f "$NGINX_RELEASE_CACHE" ] && awk -v v="$ver" '$1 != v' "$NGINX_RELEASE_CACHE"
+        printf '%s %s\n' "$ver" "$date"
+    } | sudo tee "$NGINX_RELEASE_CACHE" >/dev/null
 }
 
 # 使用 Debian 版本规则比较，避免 nginx -v 与 apt 包版本格式不同造成误判。
@@ -94,6 +113,56 @@ _configure_nginx_official_repo() {
     fi
 }
 
+# 检测发行版，结果写入 NGINX_DISTRO / NGINX_CODENAME；仅支持 Ubuntu/Debian。
+_detect_distro() {
+    NGINX_DISTRO="" NGINX_CODENAME=""
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        NGINX_DISTRO="$ID"
+        NGINX_CODENAME="$VERSION_CODENAME"
+    fi
+    case "$NGINX_DISTRO" in
+        ubuntu|debian) return 0 ;;
+        *)
+            error "当前系统 ${NGINX_DISTRO:-未知} 不在支持列表（仅 Ubuntu/Debian）"
+            return 1
+            ;;
+    esac
+}
+
+# 刷新 nginx 官方 apt 源并打印本地/上游版本对比。
+# 有可用更新时返回 0，并把候选版本写入 NGINX_CANDIDATE_VER；
+# 未安装 / 获取失败 / 已是最新时返回非零。
+_nginx_refresh_upstream() {
+    local distro="$1" codename="$2"
+    local local_ver candidate_ver upstream_ver release_date
+
+    local_ver=$(_get_nginx_installed_version)
+    [ -n "$local_ver" ] || { error "未检测到已安装的 Nginx"; return 1; }
+
+    _configure_nginx_official_repo "$distro" "$codename" || return 1
+    candidate_ver=$(_get_nginx_candidate_version)
+    if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
+        error "未能获取 nginx 官方候选版本"
+        return 1
+    fi
+
+    upstream_ver="${local_ver%%-*}"
+    release_date=$(_get_nginx_release_date "$upstream_ver")
+    [ -n "$release_date" ] && _nginx_store_release_date "$upstream_ver" "$release_date"
+
+    echo ""
+    info "当前版本:     v${local_ver}${release_date:+ （${release_date} 发布）}"
+    info "官方候选版本: v${candidate_ver}"
+    if _nginx_version_is_at_least "$local_ver" "$candidate_ver"; then
+        success "当前 Nginx 已是官方最新版本或更高"
+        return 1
+    fi
+    warn "检测到可更新版本"
+    NGINX_CANDIDATE_VER="$candidate_ver"
+    return 0
+}
+
 do_install() {
     if ! sudo -n true &>/dev/null; then
         error "此操作需要 sudo 权限"
@@ -103,20 +172,8 @@ do_install() {
     echo ""
 
     # 检测发行版（只支持 Ubuntu/Debian）
-    local distro codename
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        distro="$ID"
-        codename="$VERSION_CODENAME"
-    fi
-    case "$distro" in
-        ubuntu) ;;
-        debian) ;;
-        *)
-            error "当前系统 $distro 不在支持列表（仅 Ubuntu/Debian）"
-            return
-            ;;
-    esac
+    _detect_distro || return
+    local distro="$NGINX_DISTRO" codename="$NGINX_CODENAME"
 
     local local_ver candidate_ver repo_configured=0
     local_ver=$(_get_nginx_installed_version)
@@ -131,22 +188,12 @@ do_install() {
             return
         fi
     else
-        # 已安装时，先刷新 nginx.org 官方候选版本，才能正确判断是否需要升级。
-        _configure_nginx_official_repo "$distro" "$codename" || return
+        # 已安装时刷新官方候选版本，判断是否需要升级。
         repo_configured=1
-        candidate_ver=$(_get_nginx_candidate_version)
-        if [ -z "$candidate_ver" ] || [ "$candidate_ver" = "(none)" ]; then
-            error "未能获取 nginx 官方候选版本"
+        if ! _nginx_refresh_upstream "$distro" "$codename"; then
             return
         fi
-
-        info "当前版本: v${local_ver}"
-        info "nginx.org 候选版本: v${candidate_ver}"
-        if _nginx_version_is_at_least "$local_ver" "$candidate_ver"; then
-            success "当前 Nginx 已是官方最新版本或更高，无需变动"
-            return
-        fi
-
+        candidate_ver="$NGINX_CANDIDATE_VER"
         echo ""
         read -p "  是否升级到 v${candidate_ver}? [Y/n]: " confirm
         if [ "$confirm" = "n" ] || [ "$confirm" = "N" ]; then
@@ -171,6 +218,12 @@ do_install() {
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
+        # 缓存新版本发布日期，供状态总览离线显示
+        _start_spinner "正在记录版本发布日期"
+        local new_date
+        new_date=$(_get_nginx_release_date "$new_ver")
+        _stop_spinner
+        [ -n "$new_date" ] && _nginx_store_release_date "$new_ver" "$new_date"
         success "Nginx 安装/升级完成，当前版本 v${new_ver}"
         info "服务已启用并启动，监听 80 端口"
     else
@@ -205,13 +258,11 @@ do_uninstall() {
 do_status() {
     kairo_require_systemctl || return
 
-    # 版本
-    local ver pkg_ver candidate_ver release_date
+    # 版本 + 本地缓存的发布日期（零联网；缓存由安装/升级/检查官方更新时写入）
+    local ver release_date
     if command -v nginx &>/dev/null; then
         ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
-        pkg_ver=$(_get_nginx_installed_version)
-        candidate_ver=$(_get_nginx_candidate_version)
-        release_date=$(_get_nginx_release_date "$ver")
+        release_date=$(_nginx_cached_release_date "$ver")
     else
         ver="未安装"
     fi
@@ -245,13 +296,6 @@ do_status() {
         echo -e "  版本:     ${C_YELLOW}${ver}${C_RESET}"
     else
         echo -e "  版本:     ${C_CYAN}v${ver}${C_RESET}${release_date:+ （${release_date} 发布）}"
-        if [ -n "$candidate_ver" ] && [ "$candidate_ver" != "(none)" ]; then
-            if _nginx_version_is_at_least "$pkg_ver" "$candidate_ver"; then
-                echo -e "  官方源:   ${C_GREEN}v${candidate_ver}（当前最新）${C_RESET}"
-            else
-                echo -e "  官方源:   ${C_YELLOW}v${candidate_ver}（可更新）${C_RESET}"
-            fi
-        fi
     fi
     if [ "$svc_state" = "active" ]; then
         echo -e "  服务:     ${C_GREEN}${svc_state}${C_RESET} （${en_state} 开机自启）"

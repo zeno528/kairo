@@ -215,6 +215,8 @@ if [ "${1:-}" = "uninstall" ]; then
         echo ">>> 删除运行库失败" >&2
         exit 1
     }
+    # 清理 Kairo 运行时缓存（发布日期等；丢失会自动重建）
+    rm -rf -- /var/cache/kairo 2>/dev/null || true
     for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
             echo ">>> 卸载后仍有残留: $target" >&2
