@@ -49,17 +49,15 @@ fetch_remote_file() {
 
 show_banner() {
     local W=42
-    local l0="  O P S T O O L"
+    local header="─ O P S T O O L "
     local l1="  v${VERSION}"
     local l2="  https://github.com/zeno528/opstool"
-    local i dash="" p0="" p1="" p2=""
+    local i dash="" fill="" p1="" p2=""
+    for ((i=${#header}; i<W; i++)); do fill+="─"; done
     for ((i=0; i<W; i++)); do dash+="─"; done
-    for ((i=${#l0}; i<W; i++)); do p0+=" "; done
     for ((i=${#l1}; i<W; i++)); do p1+=" "; done
     for ((i=${#l2}; i<W; i++)); do p2+=" "; done
-    # 顶边使用完整横线，避免图标的显示宽度与 Bash 字符计数不一致。
-    echo -e "  ${C_CYAN}╭${dash}╮${C_RESET}"
-    echo -e "  ${C_CYAN}│${C_RESET}${C_BOLD}${C_CYAN}${l0}${C_RESET}${p0}${C_CYAN}│${C_RESET}"
+    echo -e "  ${C_CYAN}╭${C_BOLD}${header}${C_RESET}${C_CYAN}${fill}╮${C_RESET}"
     echo -e "  ${C_CYAN}│${C_RESET}${C_BOLD}${C_CYAN}${l1}${C_RESET}${p1}${C_CYAN}│${C_RESET}"
     echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${l2}${C_RESET}${p2}${C_CYAN}│${C_RESET}"
     echo -e "  ${C_CYAN}╰${dash}╯${C_RESET}"
