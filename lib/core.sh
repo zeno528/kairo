@@ -126,5 +126,6 @@ fetch_remote_file() {
 }
 
 kairo_pause() {
-    read -r -p "  按回车键继续..." _
+    local prompt="${1:-按回车键继续...}"
+    read -r -p "  ${prompt}" _
 }

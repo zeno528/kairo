@@ -18,7 +18,13 @@ do_status() {
     echo -e "  ${C_BOLD}防火墙${C_RESET}  $FW"
     case "$FW" in
         ufw)
-            echo -e "  ${C_BOLD}状态${C_RESET}  $(ufw status | head -1 | sed 's/Status: //')"
+            local status
+            status=$(ufw status | head -1 | sed 's/Status: //')
+            echo -e "  ${C_BOLD}状态${C_RESET}  $status"
+            if [ "$status" = "inactive" ]; then
+                warn "防火墙未启用；放行规则会保存，但暂不会影响流量"
+                info "启用前请先确认 SSH 端口已放行，再选择 [4] 开启防火墙"
+            fi
             echo ""
             ufw status numbered 2>/dev/null | tail -n +4
             ;;
@@ -38,6 +44,9 @@ do_open_port() {
     read -p "  协议 (tcp/udp，默认 tcp): " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
+    warn "即将放行入站端口 $port/$proto"
+    read -r -p "  确认放行? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
     case "$FW" in
         ufw)
@@ -84,6 +93,7 @@ do_enable() {
     case "$FW" in
         ufw)
             warn "确保已放行 SSH 端口 (22)，否则可能无法远程连接"
+            warn "开启后，未明确放行的入站连接可能被阻止"
             read -p "  确认开启? [y/N]: " confirm
             [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
             sudo ufw enable && success "防火墙已开启"
@@ -116,20 +126,20 @@ menu() {
         title "🛡 防火墙管理"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 查看防火墙状态"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 开放端口"
+        echo -e "  ${C_BOLD}[2]${C_RESET} 开放端口（添加放行规则）"
         echo -e "  ${C_BOLD}[3]${C_RESET} 关闭端口"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 开启防火墙"
+        echo -e "  ${C_BOLD}[4]${C_RESET} 开启防火墙（可能影响 SSH）"
         echo -e "  ${C_BOLD}[5]${C_RESET} 关闭防火墙"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
         read -p "  请输入选项: " choice
         case "$choice" in
-            1) do_status; echo ""; read -p "  按回车键继续..." ;;
-            2) do_open_port; echo ""; read -p "  按回车键继续..." ;;
-            3) do_close_port; echo ""; read -p "  按回车键继续..." ;;
-            4) do_enable; echo ""; read -p "  按回车键继续..." ;;
-            5) do_disable; echo ""; read -p "  按回车键继续..." ;;
+            1) do_status; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
+            2) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
+            3) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
+            4) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
+            5) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
