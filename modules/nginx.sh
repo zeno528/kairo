@@ -9,6 +9,12 @@ NGINX_CONF_D="/etc/nginx/conf.d"
 LE_LIVE_DIR="/etc/letsencrypt/live"
 # Nginx 发布日期本地缓存：安装/升级/检查官方更新时写入，状态总览离线读取。
 NGINX_RELEASE_CACHE="/var/cache/kairo/nginx-release.info"
+# 以下路径用 ${VAR:-default} 形式，便于测试环境覆盖。
+NGINX_CONF_FILE="${NGINX_CONF_FILE:-/etc/nginx/nginx.conf}"
+NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
+NGINX_SNAPSHOT_DIR="${NGINX_SNAPSHOT_DIR:-/var/cache/kairo/nginx-snapshots}"
+NGINX_SNAPSHOT_KEEP="${NGINX_SNAPSHOT_KEEP:-5}"
+NGINX_ETC_DIR="${NGINX_ETC_DIR:-/etc/nginx}"
 
 # ─── 前置检查 ────────────────────────────────────────────────
 
@@ -711,6 +717,87 @@ do_del_proxy() {
     fi
 }
 
+# 列出 sites-available 中尚未启用的站点，写进 NGINX_SITE_ITEMS。
+_list_disabled_sites() {
+    local f name i=0
+    NGINX_SITE_ITEMS=()
+    echo ""
+    echo -e "  ${C_BOLD}未启用的站点配置 (sites-available)${C_RESET}"
+    for f in "$NGINX_SITES_AVAIL"/*; do
+        [ -f "$f" ] || continue
+        name=$(basename "$f")
+        [ -L "${NGINX_SITES_ENABLED}/${name}" ] && continue
+        i=$((i + 1))
+        NGINX_SITE_ITEMS+=("$name")
+        echo -e "  [$i] $name"
+    done
+    [ "$i" -eq 0 ] && info "无未启用的站点"
+}
+
+_select_disabled_site() {
+    local sel
+    _list_disabled_sites
+    [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
+    echo "  [0] 返回上一级"
+    read -p "  选择要启用的站点编号（0 返回）: " sel
+    [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
+    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
+        error "无效选择"
+        return 1
+    fi
+    NGINX_SELECTED_SITE="${NGINX_SITE_ITEMS[$((sel - 1))]}"
+}
+
+# 禁用站点：移除 sites-enabled 软链（保留 available 配置与证书）。
+do_disable_site() {
+    _check_nginx || return
+    if ! sudo -n true &>/dev/null; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+    local target="${1:-}"
+    [ -n "$target" ] || { _select_enabled_site || return 0; target="$NGINX_SELECTED_SITE"; }
+    [ -f "${NGINX_SITES_AVAIL}/${target}" ] || { error "站点配置缺失: $target"; return 1; }
+    [ -L "${NGINX_SITES_ENABLED}/${target}" ] || { error "站点未启用: $target"; return 1; }
+
+    echo ""
+    warn "禁用站点（保留配置与证书）: ${target}"
+    read -p "  确认禁用? [y/N]: " confirm
+    [ "$confirm" = "y" ] || [ "$confirm" = "Y" ] || { info "已取消"; return; }
+
+    sudo rm -f "${NGINX_SITES_ENABLED}/${target}" || { error "禁用失败"; return 1; }
+    if sudo nginx -t &>/dev/null && sudo systemctl reload nginx 2>/dev/null; then
+        success "已禁用 ${target}（配置保留在 sites-available）"
+    else
+        sudo ln -sf "${NGINX_SITES_AVAIL}/${target}" "${NGINX_SITES_ENABLED}/${target}"
+        error "重载失败，已恢复启用状态"
+        return 1
+    fi
+}
+
+# 启用站点：为 sites-available 配置建立 sites-enabled 软链。
+do_enable_site() {
+    _check_nginx || return
+    if ! sudo -n true &>/dev/null; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+    local target="${1:-}"
+    [ -n "$target" ] || { _select_disabled_site || return 0; target="$NGINX_SELECTED_SITE"; }
+    [ -f "${NGINX_SITES_AVAIL}/${target}" ] || { error "站点配置不存在: $target"; return 1; }
+    [ -L "${NGINX_SITES_ENABLED}/${target}" ] && { info "站点已启用: $target"; return; }
+
+    sudo mkdir -p "$NGINX_SITES_ENABLED"
+    sudo ln -sf "${NGINX_SITES_AVAIL}/${target}" "${NGINX_SITES_ENABLED}/${target}" || { error "启用失败"; return 1; }
+    if sudo nginx -t &>/dev/null && sudo systemctl reload nginx 2>/dev/null; then
+        success "已启用 ${target}"
+    else
+        sudo rm -f "${NGINX_SITES_ENABLED}/${target}"
+        error "配置校验/重载失败，已撤销启用（请检查 ${NGINX_SITES_AVAIL}/${target}）"
+        return 1
+    fi
+}
+
 # ─── 证书 ────────────────────────────────────────────────────
 
 _check_certbot() {
@@ -803,14 +890,218 @@ do_cert_list() {
 do_logs() {
     _check_nginx || return
     echo ""
-    echo "  [1] 访问日志 (access.log)"
-    echo "  [2] 错误日志 (error.log)"
+    echo "  [1] 访问日志 (tail)"
+    echo "  [2] 错误日志 (tail)"
+    echo "  [3] 访问日志 Top 分析 (今天)"
+    echo "  [0] 返回"
     read -p "  选择: " log_type
     case "$log_type" in
-        1) sudo tail -f /var/log/nginx/access.log ;;
-        2) sudo tail -f /var/log/nginx/error.log ;;
+        1) sudo tail -f "${NGINX_LOG_DIR}/access.log" ;;
+        2) sudo tail -f "${NGINX_LOG_DIR}/error.log" ;;
+        3) do_log_top; echo ""; kairo_pause "按 Enter 返回日志菜单..." ;;
         *) info "已取消"; return ;;
     esac
+}
+
+# 把字节数转为人类可读（B/KB/MB/GB）。
+_human_bytes() {
+    local b="${1:-0}"
+    awk -v b="$b" 'BEGIN{
+        if (b>=1073741824) printf "%.2f GB", b/1073741824
+        else if (b>=1048576) printf "%.2f MB", b/1048576
+        else if (b>=1024) printf "%.2f KB", b/1024
+        else printf "%d B", b
+    }'
+}
+
+# 访问日志 Top 分析（默认今天）：Top IP / URL / 状态码 / 总流量。
+# nginx combined: IP - - [date] "METHOD URL PROTO" status bytes "ref" "ua"
+do_log_top() {
+    _check_nginx || return
+    local log="${NGINX_LOG_DIR}/access.log"
+    if ! sudo test -r "$log"; then
+        error "访问日志不存在或不可读: $log"
+        return 1
+    fi
+
+    local today data total
+    today=$(date '+%d/%b/%Y')
+    data=$(sudo awk -v d="$today" '$0 ~ d' "$log")
+    if [ -z "$data" ]; then
+        echo ""
+        info "今天（${today}）暂无访问记录"
+        return
+    fi
+    total=$(printf '%s\n' "$data" | wc -l)
+    echo ""
+    info "访问日志分析（${today}，共 ${total} 条）"
+
+    echo ""
+    echo -e "  ${C_BOLD}Top 10 IP${C_RESET}"
+    printf '%s\n' "$data" | awk '{print $1}' | sort | uniq -c | sort -rn | head -n 10 | \
+        awk '{printf "  %8d  %s\n", $1, $2}'
+
+    echo ""
+    echo -e "  ${C_BOLD}Top 10 URL${C_RESET}"
+    printf '%s\n' "$data" | awk -F'"' '{print $2}' | awk '{print $2}' | sort | uniq -c | sort -rn | head -n 10 | \
+        awk '{printf "  %8d  %s\n", $1, $2}'
+
+    echo ""
+    echo -e "  ${C_BOLD}状态码分布${C_RESET}"
+    printf '%s\n' "$data" | awk -F'"' '{gsub(/^ /,"",$3); split($3,a," "); print a[1]}' | sort | uniq -c | sort -rn | \
+        awk '{printf "  %8d  %s\n", $1, $2}'
+
+    local bytes
+    bytes=$(printf '%s\n' "$data" | awk -F'"' '{gsub(/^ /,"",$3); split($3,a," "); sum+=a[2]} END{print sum+0}')
+    echo ""
+    info "总流量: $(_human_bytes "$bytes")"
+}
+
+# ─── 安全加固扫描 ────────────────────────────────────────────
+
+# 安全加固扫描（只读）：检查全局 server_tokens 与各站点的安全配置项。
+do_security_scan() {
+    _check_nginx || return
+    echo ""
+    title "🔒 安全加固扫描"
+
+    # 全局：server_tokens（nginx.conf + conf.d）
+    echo ""
+    echo -e "  ${C_BOLD}全局${C_RESET}"
+    local gconf=""
+    [ -f "$NGINX_CONF_FILE" ] && gconf=$(sudo cat "$NGINX_CONF_FILE" 2>/dev/null)
+    if [ -d "$NGINX_CONF_D" ]; then
+        local gf
+        for gf in "$NGINX_CONF_D"/*.conf; do
+            [ -f "$gf" ] && gconf="${gconf}
+$(sudo cat "$gf" 2>/dev/null)"
+        done
+    fi
+    if printf '%s\n' "$gconf" | grep -qE '^[[:space:]]*server_tokens[[:space:]]+off[[:space:]]*;'; then
+        printf "  %-28s ${C_GREEN}%s${C_RESET}\n" "server_tokens off" "✔"
+    else
+        printf "  %-28s ${C_YELLOW}%s${C_RESET}\n" "server_tokens off" "⚠ 未关闭（暴露版本号）"
+    fi
+
+    # 逐站点
+    echo ""
+    echo -e "  ${C_BOLD}站点（sites-enabled）${C_RESET}"
+    echo -e "  ${C_DIM}站点                        TLS  HSTS  nosn  fram  body  cert${C_RESET}"
+    echo -e "  ${C_DIM}──────────────────────────  ───  ────  ────  ────  ────  ────${C_RESET}"
+    local any=0 link name c tls hsts nosniff frame body cert
+    for link in "$NGINX_SITES_ENABLED"/*; do
+        [ -L "$link" ] || continue
+        name=$(basename "$link")
+        [ -f "${NGINX_SITES_AVAIL}/${name}" ] || continue
+        any=1
+        c=$(sudo cat "${NGINX_SITES_AVAIL}/${name}" 2>/dev/null)
+        printf '%s\n' "$c" | grep -qE 'ssl_protocols[^\n]*TLSv1\.[23]' && tls="${C_GREEN}✔" || tls="${C_YELLOW}-"
+        printf '%s\n' "$c" | grep -qi 'Strict-Transport-Security' && hsts="${C_GREEN}✔" || hsts="${C_YELLOW}-"
+        printf '%s\n' "$c" | grep -qi 'X-Content-Type-Options' && nosniff="${C_GREEN}✔" || nosniff="${C_YELLOW}-"
+        printf '%s\n' "$c" | grep -qEi 'X-Frame-Options|frame-ancestors' && frame="${C_GREEN}✔" || frame="${C_YELLOW}-"
+        printf '%s\n' "$c" | grep -q 'client_max_body_size' && body="${C_GREEN}✔" || body="${C_YELLOW}-"
+        if _has_cert "$name"; then cert="${C_GREEN}有"; else cert="${C_YELLOW}无"; fi
+        printf "  %-26s %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}    %s${C_RESET}\n" \
+            "$name" "$tls" "$hsts" "$nosniff" "$frame" "$body" "$cert"
+    done
+    if [ "$any" -eq 0 ]; then
+        echo -e "  ${C_DIM}(无启用站点)${C_RESET}"
+    else
+        echo ""
+        echo -e "  ${C_DIM}列: TLS≥1.2 / HSTS / nosniff / frame / body 限制 / 证书    ✔=已配置  -=缺失${C_RESET}"
+    fi
+}
+
+# ─── 配置快照 / 回滚 ────────────────────────────────────────
+
+# 创建配置快照（整目录 /etc/nginx），只保留最近 NGINX_SNAPSHOT_KEEP 个。
+do_snapshot() {
+    _check_nginx || return
+    if ! sudo -n true &>/dev/null; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+    [ -d "$NGINX_ETC_DIR" ] || { error "Nginx 配置目录不存在"; return 1; }
+
+    sudo mkdir -p "$NGINX_SNAPSHOT_DIR" || { error "无法创建快照目录"; return 1; }
+    local stamp snap
+    stamp=$(date '+%Y%m%d-%H%M%S')
+    snap="${NGINX_SNAPSHOT_DIR}/nginx-${stamp}"
+    if _with_spinner "正在创建快照 nginx-${stamp}" sudo cp -a "$NGINX_ETC_DIR" "$snap"; then
+        success "已创建快照: $snap"
+    else
+        error "创建快照失败"
+        return 1
+    fi
+
+    # 清理：只保留最近 NGINX_SNAPSHOT_KEEP 个
+    local i=0 d
+    while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        i=$((i + 1))
+        [ "$i" -gt "$NGINX_SNAPSHOT_KEEP" ] && sudo rm -rf -- "$d"
+    done < <(sudo ls -1dt "${NGINX_SNAPSHOT_DIR}"/*/ 2>/dev/null | sed 's#/$##')
+    [ "$i" -gt "$NGINX_SNAPSHOT_KEEP" ] && info "已清理旧快照，保留最近 ${NGINX_SNAPSHOT_KEEP} 个"
+}
+
+# 列出快照（按时间倒序），写 NGINX_SNAPSHOT_ITEMS 数组。
+_list_snapshots() {
+    local d i=0
+    NGINX_SNAPSHOT_ITEMS=()
+    echo ""
+    echo -e "  ${C_BOLD}配置快照（${NGINX_SNAPSHOT_DIR}）${C_RESET}"
+    while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        i=$((i + 1))
+        NGINX_SNAPSHOT_ITEMS+=("$d")
+        echo -e "  [$i] $(basename "$d")"
+    done < <(sudo ls -1dt "${NGINX_SNAPSHOT_DIR}"/*/ 2>/dev/null | sed 's#/$##')
+    [ "$i" -eq 0 ] && info "无快照（先选择 [1] 创建快照）"
+}
+
+# 从快照恢复 /etc/nginx：二次确认 + 恢复前自动 pre-restore 保险 + nginx -t 兜底。
+do_restore() {
+    _check_nginx || return
+    if ! sudo -n true &>/dev/null; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+    _list_snapshots
+    [ ${#NGINX_SNAPSHOT_ITEMS[@]} -gt 0 ] || return 0
+    echo "  [0] 返回上一级"
+    local sel
+    read -p "  选择要恢复的快照（0 返回）: " sel
+    [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return; }
+    if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SNAPSHOT_ITEMS[@]} ]; then
+        error "无效选择"
+        return 1
+    fi
+    local snap="${NGINX_SNAPSHOT_ITEMS[$((sel - 1))]}"
+
+    echo ""
+    warn "将用快照 $(basename "$snap") 覆盖整个 /etc/nginx"
+    echo -e "  ${C_GRAY}当前配置会先自动备份为 pre-restore 快照${C_RESET}"
+    read -p "  确认恢复? [y/N]: " confirm
+    [ "$confirm" = "y" ] || [ "$confirm" = "Y" ] || { info "已取消"; return; }
+
+    local pre
+    pre="${NGINX_SNAPSHOT_DIR}/pre-restore-$(date '+%Y%m%d-%H%M%S')"
+    sudo cp -a "$NGINX_ETC_DIR" "$pre" || { error "恢复前的备份失败，已中止"; return 1; }
+
+    if ! sudo cp -a "${snap}/." "${NGINX_ETC_DIR}/"; then
+        error "恢复失败，当前配置未受影响（pre-restore 备份: $pre）"
+        return 1
+    fi
+
+    if sudo nginx -t &>/dev/null; then
+        sudo systemctl reload nginx 2>/dev/null
+        success "已从 $(basename "$snap") 恢复并重载"
+        info "恢复前的备份: $pre"
+    else
+        sudo cp -a "${pre}/." "${NGINX_ETC_DIR}/" 2>/dev/null
+        error "快照配置校验失败，已自动回滚到恢复前状态"
+        return 1
+    fi
 }
 
 # ─── 菜单 ────────────────────────────────────────────────────
@@ -823,8 +1114,10 @@ menu() {
         echo -e "  ${C_BOLD}[1]${C_RESET}  安装 / 升级 Nginx (官方源)"
         echo -e "  ${C_BOLD}[2]${C_RESET}  服务管理"
         echo -e "  ${C_BOLD}[3]${C_RESET}  反代站点管理"
-        echo -e "  ${C_BOLD}[4]${C_RESET}  实时查看日志 (tail)"
-        echo -e "  ${C_BOLD}[5]${C_RESET}  卸载 Nginx"
+        echo -e "  ${C_BOLD}[4]${C_RESET}  日志 (tail / Top 分析)"
+        echo -e "  ${C_BOLD}[5]${C_RESET}  安全加固扫描"
+        echo -e "  ${C_BOLD}[6]${C_RESET}  配置快照 / 回滚"
+        echo -e "  ${C_BOLD}[7]${C_RESET}  卸载 Nginx"
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回上级"
         divider
         echo ""
@@ -852,10 +1145,12 @@ menu() {
             3)
                 _list_manageable_sites
                 echo ""
-                echo "  [编号] 选择站点    [A] 添加站点    [C] 证书概览    [0] 返回上级"
+                echo "  [编号] 选择站点    [A] 添加    [D] 禁用站点    [E] 启用站点    [C] 证书概览    [0] 返回上级"
                 read -p "  选择站点或操作: " sub
                 case "$sub" in
                     [Aa]) do_add_proxy; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
+                    [Dd]) do_disable_site; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
+                    [Ee]) do_enable_site; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
                     [Cc]) do_cert_list; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
                     0) continue ;;
                     *)
@@ -879,7 +1174,19 @@ menu() {
                 esac
                 echo ""; kairo_pause "按 Enter 返回站点列表..." ;;
             4) do_logs ;;
-            5) do_uninstall; ;;
+            5) do_security_scan; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            6)
+                echo ""
+                echo "  [1] 创建快照    [2] 从快照恢复    [0] 返回上一级"
+                read -p "  选择: " sub
+                case "$sub" in
+                    1) do_snapshot ;;
+                    2) do_restore ;;
+                    0) continue ;;
+                    *) error "无效选项"; sleep 1; continue ;;
+                esac
+                echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            7) do_uninstall; ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

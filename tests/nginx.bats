@@ -27,6 +27,12 @@ setup() {
     export NGINX_SITES_ENABLED="${TEST_TMP}/sites-enabled"
     export NGINX_CONF_D="${TEST_TMP}/conf.d"
     export LE_LIVE_DIR="${TEST_TMP}/letsencrypt/live"
+    # 新增常量用 ${VAR:-default}，source 前导出即可生效
+    export NGINX_CONF_FILE="${TEST_TMP}/nginx.conf"
+    export NGINX_LOG_DIR="${TEST_TMP}/log"
+    export NGINX_SNAPSHOT_DIR="${TEST_TMP}/snapshots"
+    export NGINX_ETC_DIR="${TEST_TMP}/nginx-etc"
+    export NGINX_SNAPSHOT_KEEP=5
 
     # 加载模块（不执行 menu()）
     # shellcheck disable=SC1091
@@ -366,4 +372,94 @@ teardown() {
 
 @test "nginx.sh 暴露 _ensure_ws_map 函数" {
     type _ensure_ws_map
+}
+
+# ─── 新增功能: 日志分析 / 安全扫描 / 启用禁用 / 快照 ─────────
+
+@test "do_log_top 聚合今天的 Top IP / URL / 状态码" {
+    mkdir -p "$NGINX_LOG_DIR"
+    local d; d=$(date '+%d/%b/%Y')
+    printf '%s - - [%s +0800] "GET /a HTTP/1.1" 200 100 "-" "ua"\n' "1.1.1.1" "$d" > "$NGINX_LOG_DIR/access.log"
+    printf '%s - - [%s +0800] "POST /b HTTP/1.1" 404 50 "-" "ua"\n' "2.2.2.2" "$d" >> "$NGINX_LOG_DIR/access.log"
+    sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
+    nginx() { :; }
+    run do_log_top
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "1.1.1.1" ]]
+    [[ "$output" =~ "/a" ]]
+    [[ "$output" =~ "404" ]]
+}
+
+@test "do_security_scan 报告 server_tokens 与站点安全项" {
+    printf 'server_tokens off;\n' > "$NGINX_CONF_FILE"
+    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    printf 'server {\n listen 443 ssl http2;\n ssl_protocols TLSv1.2 TLSv1.3;\n add_header Strict-Transport-Security "x";\n add_header X-Content-Type-Options nosniff;\n add_header X-Frame-Options SAMEORIGIN;\n client_max_body_size 20m;\n}\n' > "$NGINX_SITES_AVAIL/example.com"
+    ln -s "$NGINX_SITES_AVAIL/example.com" "$NGINX_SITES_ENABLED/example.com"
+    sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
+    nginx() { :; }
+    title() { :; }
+    run do_security_scan
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "server_tokens off" ]]
+    [[ "$output" =~ "example.com" ]]
+}
+
+@test "do_disable_site 移除软链但保留配置" {
+    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    echo "server { }" > "$NGINX_SITES_AVAIL/example.com"
+    ln -s "$NGINX_SITES_AVAIL/example.com" "$NGINX_SITES_ENABLED/example.com"
+    sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
+    nginx() { return 0; }
+    systemctl() { return 0; }
+    run do_disable_site "example.com" <<< $'y\n'
+    [ "$status" -eq 0 ]
+    [ ! -e "$NGINX_SITES_ENABLED/example.com" ]
+    [ -f "$NGINX_SITES_AVAIL/example.com" ]
+}
+
+@test "do_enable_site 为未启用站点建立软链" {
+    mkdir -p "$NGINX_SITES_AVAIL" "$NGINX_SITES_ENABLED"
+    echo "server { }" > "$NGINX_SITES_AVAIL/example.com"
+    sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
+    nginx() { return 0; }
+    systemctl() { return 0; }
+    run do_enable_site "example.com"
+    [ "$status" -eq 0 ]
+    [ -L "$NGINX_SITES_ENABLED/example.com" ]
+}
+
+@test "do_snapshot 创建快照并保留最近 N 个" {
+    mkdir -p "$NGINX_ETC_DIR" "$NGINX_SNAPSHOT_DIR/nginx-old1" "$NGINX_SNAPSHOT_DIR/nginx-old2"
+    touch -d '2020-01-01' "$NGINX_SNAPSHOT_DIR/nginx-old1" "$NGINX_SNAPSHOT_DIR/nginx-old2"
+    sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
+    nginx() { :; }
+    _with_spinner() { shift; "$@"; }
+    NGINX_SNAPSHOT_KEEP=1
+    run do_snapshot
+    [ "$status" -eq 0 ]
+    [ "$(find "$NGINX_SNAPSHOT_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
+}
+
+@test "nginx.sh 暴露 do_log_top 函数" {
+    type do_log_top
+}
+
+@test "nginx.sh 暴露 do_security_scan 函数" {
+    type do_security_scan
+}
+
+@test "nginx.sh 暴露 do_enable_site 函数" {
+    type do_enable_site
+}
+
+@test "nginx.sh 暴露 do_disable_site 函数" {
+    type do_disable_site
+}
+
+@test "nginx.sh 暴露 do_snapshot 函数" {
+    type do_snapshot
+}
+
+@test "nginx.sh 暴露 do_restore 函数" {
+    type do_restore
 }

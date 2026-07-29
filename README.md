@@ -1,6 +1,6 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.1.30-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.1.31-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
@@ -42,10 +42,16 @@ ka  # 进入主菜单
 - **Docker 管理** — 容器列表、启停重启、查看日志、镜像管理
 
 ### Nginx 反向代理
-- **安装/升级** — 走 nginx 官方 apt 源（永远拿到最新 stable），已装则检查官方候选版本、提示升级；发布日期走本地缓存，状态总览进菜单零延迟
-- **站点管理** — 列出/添加/删除反代站点（sites-available + sites-enabled 软链，模板对齐现有写法）
-- **证书** — 一键申请/续期 Let's Encrypt 证书（certbot，优先 snap 路径，按官方推荐）
-- **运维** — 状态总览（含版本/服务/监听端口/证书数）、启停重启重载、开关开机自启、实时日志
+
+反向代理：让 Nginx 统一接收外部请求再转发给本机各服务，所有域名共用 80/443 端口，服务本身不必直接暴露在公网。
+
+- **安装 / 升级** — 从 nginx 官方源安装最新稳定版；已安装时检查并提示升级，版本信息本地缓存，进菜单不卡顿。
+- **站点管理** — 添加反代站点只需填「域名 + 后台地址:端口」，自动生成含 HTTPS 和 WebSocket 的配置；可查看、删除单个站点。
+- **站点禁用 / 启用** — 让某个站点暂时下线（保留配置和证书不删），之后一键重新上线，适合后台维护或临时关站。
+- **证书** — 一键申请 Let's Encrypt 免费 HTTPS 证书并自动续期。
+- **安全加固扫描** — 检查 Nginx 配置的安全项：HTTPS（TLS）版本新不新、安全响应头（防劫持、防点击劫持等）配没配、证书有没有。只读，列出还缺哪些，不自动改。
+- **配置快照 / 回滚** — 改配置前先备份（留最近 5 份）；改错导致站打不开时，一键恢复到之前的好版本，恢复前自动校验语法。
+- **日志 + Top 分析** — 实时查看访问和错误日志；Top 分析统计今天的访问：最活跃的 IP、最热门的地址、状态码分布、总流量，排查异常访问或报错时用。
 
 ## 支持系统
 

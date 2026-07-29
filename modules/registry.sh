@@ -49,8 +49,8 @@ kairo_module_supports_action() {
     return 1
 }
 
-kairo_register_group ssh "🔒 SSH"
-kairo_register_group system "🖥  系统"
+kairo_register_group ssh "🧑‍💻 SSH"
+kairo_register_group system "💻  系统"
 kairo_register_group proxy "🌐  反代"
 
 kairo_register_module ssh-passwd ssh "密码登录管理" "on off status"
@@ -64,4 +64,4 @@ kairo_register_module ssl-check system "SSL 证书检查" "local_check remote_ch
 kairo_register_module security-update system "软件更新" "check security_update full_update full_update_preview cleanup"
 kairo_register_module network-test system "网络测试" "speedtest backtrace ping_test"
 kairo_register_module docker system "Docker 管理" "list_containers start stop restart logs images"
-kairo_register_module nginx proxy "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs"
+kairo_register_module nginx proxy "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs security_scan enable_site disable_site snapshot restore log_top"
