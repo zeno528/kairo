@@ -35,9 +35,10 @@ _show_cert_info() {
     local host="$1"
     local port="${2:-443}"
     echo ""
-    echo | openssl s_client -servername "$host" -connect "$host:$port" 2>/dev/null | \
+    _with_spinner "正在获取 $host 证书详情" bash -c \
+        'echo | openssl s_client -servername "$1" -connect "$1:$2" 2>/dev/null | \
         openssl x509 -noout -subject -issuer -dates -ext subjectAltName 2>/dev/null | \
-        sed 's/^/  /'
+        sed "s/^/  /"' _ "$host" "$port"
 }
 
 do_local_check() {
@@ -78,7 +79,9 @@ do_remote_check() {
     _show_cert_info "$domain" "$port"
     echo ""
     local days
+    _start_spinner "正在检查 $domain 证书剩余天数"
     days=$(_get_cert_days "$domain" "$port")
+    _stop_spinner
     if [ "$days" -lt 0 ]; then
         echo -e "  ${C_RED}无法获取证书信息或证书已过期${C_RESET}"
     elif [ "$days" -lt 30 ]; then
@@ -106,7 +109,9 @@ do_batch_check() {
     echo -e "  ${C_GRAY}────────────────────────── ─────── ──────${C_RESET}"
     for domain in "${domains[@]}"; do
         local days
+        _start_spinner "正在检查 $domain 证书"
         days=$(_get_cert_days "$domain")
+        _stop_spinner
         if [ "$days" -lt 0 ]; then
             printf "  %-26s ${C_RED}%6s  %s${C_RESET}\n" "$domain" "N/A" "连接失败/已过期"
         elif [ "$days" -lt 30 ]; then

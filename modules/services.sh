@@ -12,10 +12,12 @@ do_list() {
     _check_systemctl || return
     echo ""
     echo -e "  ${C_BOLD}已安装的服务${C_RESET}"
-    systemctl list-units --type=service --no-pager 2>/dev/null | head -20 | sed 's/^/  /'
+    _with_spinner "正在获取服务列表" bash -c "systemctl list-units --type=service --no-pager 2>/dev/null | head -20 | sed 's/^/  /'"
     echo ""
     local total
+    _start_spinner "正在统计服务数量"
     total=$(systemctl list-units --type=service --no-pager 2>/dev/null | grep -c 'loaded')
+    _stop_spinner
     info "共 $total 个已加载服务（显示前 20 个）"
 }
 
@@ -25,7 +27,7 @@ do_status() {
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
     echo ""
-    systemctl status "$svc" --no-pager -l 2>/dev/null | head -15 | sed 's/^/  /'
+    _with_spinner "正在获取服务状态" bash -c "systemctl status \"$svc\" --no-pager -l 2>/dev/null | head -15 | sed 's/^/  /'"
 }
 
 do_start() {
@@ -33,7 +35,7 @@ do_start() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
-    sudo systemctl start "$svc" 2>/dev/null && success "服务 $svc 已启动" || error "启动失败"
+    _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc" && success "服务 $svc 已启动" || error "启动失败"
 }
 
 do_stop() {
@@ -44,7 +46,7 @@ do_stop() {
     echo ""
     read -p "  确认停止服务 $svc? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    sudo systemctl stop "$svc" 2>/dev/null && success "服务 $svc 已停止" || error "停止失败"
+    _with_spinner "正在停止服务 $svc" sudo systemctl stop "$svc" && success "服务 $svc 已停止" || error "停止失败"
 }
 
 do_restart() {
@@ -52,7 +54,7 @@ do_restart() {
     echo ""
     read -p "  输入服务名: " svc
     [ -z "$svc" ] && info "已取消" && return
-    sudo systemctl restart "$svc" 2>/dev/null && success "服务 $svc 已重启" || error "重启失败"
+    _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc" && success "服务 $svc 已重启" || error "重启失败"
 }
 
 do_toggle_enable() {
@@ -68,13 +70,13 @@ do_toggle_enable() {
         echo ""
         read -p "  关闭开机自启? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-        sudo systemctl disable "$svc" 2>/dev/null && success "已关闭 $svc 开机自启"
+        _with_spinner "正在关闭开机自启" sudo systemctl disable "$svc" && success "已关闭 $svc 开机自启"
     else
         echo -e "  当前: ${C_YELLOW}未启用${C_RESET} 开机自启"
         echo ""
         read -p "  开启开机自启? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-        sudo systemctl enable "$svc" 2>/dev/null && success "已开启 $svc 开机自启"
+        _with_spinner "正在开启开机自启" sudo systemctl enable "$svc" && success "已开启 $svc 开机自启"
     fi
 }
 

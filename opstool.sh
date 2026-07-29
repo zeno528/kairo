@@ -40,6 +40,81 @@ success() { echo -e "  ${C_GREEN}✔ $1${C_RESET}"; }
 warn() { echo -e "  ${C_YELLOW}⚠ $1${C_RESET}"; }
 error() { echo -e "  ${C_RED}✘ $1${C_RESET}"; }
 
+# ── 旋转指示器 ──
+# 用法: _with_spinner "提示信息" command args...
+# 功能: 后台运行命令，前台显示动画指示器；命令输出逐行透传不干扰，
+#       静默期间指示器持续旋转，让用户知道"还在跑"。
+_with_spinner() {
+    local msg="${1:-处理中}"
+    shift
+
+    # 非终端（管道/重定向/CI）直接运行，不显示指示器
+    [ -t 1 ] || { "$@"; return $?; }
+
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0 line partial=""
+    local fifo
+    fifo=$(mktemp -u)
+    mkfifo "$fifo"
+
+    # 命令输出写入 fifo，后台运行
+    "$@" >"$fifo" 2>&1 &
+    local cmd_pid=$!
+
+    # 打开 fifo 读取端（同时解除写端 open 阻塞）
+    exec 9<"$fifo"
+
+    # 主循环：100ms 超时读 + 旋转动画
+    while true; do
+        if IFS= read -r -t 0.1 -u 9 line 2>/dev/null; then
+            printf "\r\033[K%s%s\n" "$partial" "$line"
+            partial=""
+        else
+            # 超时：累积可能的半行数据
+            partial="${partial}${line}"
+        fi
+        # 命令结束则退出循环
+        kill -0 "$cmd_pid" 2>/dev/null || break
+        # 画旋转指示器
+        printf "\r\033[K  ${C_CYAN}%s${C_RESET} %s..." "${spin:i++%10:1}" "$msg"
+    done
+
+    # 排空残留输出
+    while IFS= read -r -t 0.1 -u 9 line 2>/dev/null; do
+        printf "\r\033[K%s%s\n" "$partial" "$line"
+        partial=""
+    done
+    [ -n "$partial" ] && printf "\r\033[K%s\n" "$partial"
+
+    exec 9<&-
+    rm -f "$fifo"
+    printf "\r\033[K"
+    wait "$cmd_pid" 2>/dev/null
+    return $?
+}
+
+# ── 旋转指示器（轻量版，用于 $(...) 命令替换场景）──
+# 用法: _start_spinner "提示信息"; var=$(慢命令); _stop_spinner
+# 功能: 纯后台动画，不拦截输出。适合输出需要被 $(...) 捕获的场景。
+_SPINNER_PID=""
+_start_spinner() {
+    [ -t 1 ] || return
+    local msg="${1:-处理中}"
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    while true; do
+        printf "\r\033[K  ${C_CYAN}%s${C_RESET} %s..." "${spin:i++%10:1}" "$msg"
+        sleep 0.1
+    done &
+    _SPINNER_PID=$!
+}
+
+_stop_spinner() {
+    [ -n "$_SPINNER_PID" ] && kill "$_SPINNER_PID" 2>/dev/null
+    _SPINNER_PID=""
+    [ -t 1 ] && printf "\r\033[K"
+}
+
 # 通过 GitHub Contents API 获取 main 分支文件，避免 raw CDN 返回陈旧缓存。
 fetch_remote_file() {
     local path="$1"
@@ -65,8 +140,9 @@ show_banner() {
 
 do_update() {
     echo ""
-    info "正在检查更新..."
+    _start_spinner "正在检查更新"
     remote_ver=$(fetch_remote_file VERSION 2>/dev/null | tr -d '[:space:]')
+    _stop_spinner
     if [ -z "$remote_ver" ]; then
         error "无法连接远程仓库"
         return
@@ -76,7 +152,7 @@ do_update() {
         return
     fi
     warn "发现新版本 v${VERSION} → v${remote_ver}"
-    fetch_remote_file install.sh | bash
+    _with_spinner "正在更新 OPSTOOL" bash -c 'fetch_remote_file install.sh | bash'
 }
 
 do_uninstall() {

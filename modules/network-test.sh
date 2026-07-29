@@ -7,15 +7,15 @@ NODE_BASE_URL="https://raw.githubusercontent.com/spiritLHLS/speedtest.cn-CN-ID/m
 
 do_speedtest() {
     echo ""
-    curl -fsSL "$BENCH_URL" | bash
+    _with_spinner "执行测速脚本" bash -c 'curl -fsSL "$0" | bash' "$BENCH_URL"
 }
 
 do_backtrace() {
     echo ""
     if command -v backtrace &>/dev/null; then
-        backtrace
+        _with_spinner "执行回程路由测试" backtrace
     else
-        curl -fsSL "$BACKTRACE_URL" | bash && backtrace
+        _with_spinner "安装并执行回程测试" bash -c 'curl -fsSL "$0" | bash && backtrace' "$BACKTRACE_URL"
     fi
 }
 

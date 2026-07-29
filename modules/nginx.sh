@@ -57,21 +57,22 @@ _configure_nginx_official_repo() {
     esac
 
     info "配置 nginx 官方 apt 源..."
-    info "正在安装官方源所需依赖..."
 
-    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
+    if ! _with_spinner "正在安装官方源依赖" sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
         error "安装 nginx 官方源依赖失败"
         return 1
     fi
 
     if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
-        info "正在下载 nginx 官方签名 key..."
+        _start_spinner "正在下载 nginx 官方签名 key"
         if ! curl -fsSL "https://nginx.org/keys/nginx_signing.key?t=$(date +%s)" | \
             gpg --dearmor | \
             sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null; then
+            _stop_spinner
             error "导入 nginx 官方签名 key 失败"
             return 1
         fi
+        _stop_spinner
         success "已导入 nginx 官方签名 key"
     fi
 
@@ -84,8 +85,8 @@ _configure_nginx_official_repo() {
     printf '%s\n' "Package: *" "Pin: origin nginx.org" "Pin-Priority: 900" | \
         sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
 
-    info "正在刷新软件源，首次运行可能需要 1–2 分钟，请勿中断..."
-    if ! sudo apt update; then
+    info "首次刷新软件源可能需要 1–2 分钟，请勿中断..."
+    if ! _with_spinner "正在刷新软件源" sudo apt update; then
         error "刷新 apt 索引失败，无法获取 nginx 官方版本"
         return 1
     fi
@@ -159,9 +160,8 @@ do_install() {
         return
     fi
 
-    info "正在下载并安装 Nginx v${candidate_ver}，耗时取决于服务器网络..."
     info "检测到已有 Nginx 配置时将保留现有文件，不覆盖站点配置"
-    if sudo env DEBIAN_FRONTEND=noninteractive \
+    if _with_spinner "正在安装 Nginx v${candidate_ver}" sudo env DEBIAN_FRONTEND=noninteractive \
         apt -o Dpkg::Options::=--force-confold install -y nginx; then
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
@@ -190,7 +190,7 @@ do_uninstall() {
     read -p "  确认卸载? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     sudo systemctl stop nginx 2>/dev/null
-    sudo apt purge -y nginx nginx-common 2>/dev/null
+    _with_spinner "正在卸载 Nginx" sudo apt purge -y nginx nginx-common
     success "已卸载 Nginx"
     info "如需彻底清理: rm -rf /etc/nginx /var/log/nginx /var/lib/nginx"
 }
@@ -236,9 +236,9 @@ do_status() {
 
 # ─── 启停 / 重载 / 测试 ──────────────────────────────────────
 
-do_start()    { _check_nginx || return; _check_systemctl || return; sudo systemctl start nginx 2>/dev/null && success "已启动" || error "启动失败"; }
-do_stop()     { _check_nginx || return; _check_systemctl || return; sudo systemctl stop nginx 2>/dev/null && success "已停止" || error "停止失败"; }
-do_restart()  { _check_nginx || return; _check_systemctl || return; sudo systemctl restart nginx 2>/dev/null && success "已重启" || error "重启失败"; }
+do_start()    { _check_nginx || return; _check_systemctl || return; _with_spinner "正在启动 Nginx" sudo systemctl start nginx && success "已启动" || error "启动失败"; }
+do_stop()     { _check_nginx || return; _check_systemctl || return; _with_spinner "正在停止 Nginx" sudo systemctl stop nginx && success "已停止" || error "停止失败"; }
+do_restart()  { _check_nginx || return; _check_systemctl || return; _with_spinner "正在重启 Nginx" sudo systemctl restart nginx && success "已重启" || error "重启失败"; }
 
 do_reload() {
     _check_nginx || return
@@ -564,11 +564,11 @@ _check_certbot() {
 
     if command -v snap &>/dev/null; then
         info "使用 snap 安装 certbot（官方推荐路径）"
-        sudo snap install --classic certbot 2>&1 | sed 's/^/  /'
+        _with_spinner "正在安装 certbot" sudo snap install --classic certbot
         sudo ln -sf /snap/bin/certbot /usr/local/bin/certbot 2>/dev/null
     else
         info "snap 不可用，使用 apt 安装 python3-certbot-nginx"
-        sudo apt install -y python3-certbot-nginx 2>&1 | tail -5 | sed 's/^/  /'
+        _with_spinner "正在安装 certbot" sudo apt install -y python3-certbot-nginx
     fi
 
     command -v certbot &>/dev/null && success "certbot 已安装" || error "certbot 安装失败"
@@ -588,7 +588,7 @@ _do_cert_for_domain() {
     args+=(-d "$domain")
     [ "$with_www" = "y" ] && args+=(-d "www.${domain}")
 
-    if sudo certbot "${args[@]}" 2>&1 | sed 's/^/  /'; then
+    if _with_spinner "正在为 ${domain} 申请证书" sudo certbot "${args[@]}"; then
         success "证书申请/续期完成"
     else
         error "证书申请失败，请检查:"
@@ -648,7 +648,7 @@ do_cert_list() {
         return
     fi
     echo ""
-    sudo certbot certificates 2>&1 | sed 's/^/  /'
+    _with_spinner "正在查询证书列表" sudo certbot certificates
 }
 
 # ─── 日志 ────────────────────────────────────────────────────

@@ -5,11 +5,15 @@ SSHD_CONFIG="/etc/ssh/sshd_config"
 SSHD_CONFIG_D="/etc/ssh/sshd_config.d"
 
 restart_ssh() {
+    _start_spinner "正在重启 SSH 服务"
     if systemctl restart ssh 2>/dev/null; then
+        _stop_spinner
         success "SSH 服务已重启"
     elif systemctl restart sshd 2>/dev/null; then
+        _stop_spinner
         success "SSH 服务已重启"
     else
+        _stop_spinner
         error "无法重启 SSH 服务"
         return 1
     fi

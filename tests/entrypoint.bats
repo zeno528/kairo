@@ -113,3 +113,40 @@ setup() {
 @test "modules 目录含 nginx.sh 新模块" {
     [ -f "$PWD/modules/nginx.sh" ]
 }
+
+# ─── _with_spinner ──────────────────────────────────────────
+
+@test "opstool.sh 定义了 _with_spinner 函数" {
+    grep -q '^_with_spinner()' "$PWD/opstool.sh"
+}
+
+@test "_with_spinner 非终端模式透传命令输出" {
+    run bash -c '
+        C_CYAN=""; C_RESET=""
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        _with_spinner "test" echo "hello world"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "hello world" ]]
+}
+
+@test "_with_spinner 非终端模式透传退出码" {
+    run bash -c '
+        C_CYAN=""; C_RESET=""
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        _with_spinner "test" false
+    '
+    [ "$status" -eq 1 ]
+}
+
+@test "_with_spinner 非终端模式透传多行输出" {
+    run bash -c '
+        C_CYAN=""; C_RESET=""
+        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/opstool.sh)"
+        _with_spinner "test" printf "a\nb\nc\n"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "a" ]]
+    [[ "$output" =~ "b" ]]
+    [[ "$output" =~ "c" ]]
+}

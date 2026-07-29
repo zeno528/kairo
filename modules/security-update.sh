@@ -4,7 +4,9 @@
 # 检查失效源并提示，不阻断更新
 _apt_update_smart() {
     local update_output
+    _start_spinner "正在更新软件源列表"
     update_output=$(sudo apt update 2>&1)
+    _stop_spinner
 
     # 提取失效源地址
     local broken
@@ -40,7 +42,7 @@ do_security_update() {
     read -p "  确认执行安全更新? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     _apt_update_smart
-    sudo apt upgrade -y 2>/dev/null && success "安全更新完成"
+    _with_spinner "正在升级软件包" sudo apt upgrade -y && success "安全更新完成"
 }
 
 do_full_update() {
@@ -50,13 +52,13 @@ do_full_update() {
     read -p "  确认执行完整更新? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     _apt_update_smart
-    sudo apt full-upgrade -y 2>/dev/null && success "完整更新完成"
+    _with_spinner "正在升级软件包" sudo apt full-upgrade -y && success "完整更新完成"
 }
 
 do_cleanup() {
     echo ""
     echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
-    sudo apt autoremove -y 2>/dev/null && sudo apt clean 2>/dev/null && success "清理完成"
+    _with_spinner "正在清理缓存和不需要的包" bash -c 'sudo apt autoremove -y && sudo apt clean' && success "清理完成"
 }
 
 menu() {

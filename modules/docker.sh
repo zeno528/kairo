@@ -29,7 +29,7 @@ do_start() {
     echo ""
     read -p "  输入容器名或 ID: " name
     [ -z "$name" ] && info "已取消" && return
-    docker start "$name" 2>/dev/null && success "容器 $name 已启动" || error "启动失败"
+    _with_spinner "正在启动容器 $name" docker start "$name" && success "容器 $name 已启动" || error "启动失败"
 }
 
 do_stop() {
@@ -42,7 +42,7 @@ do_stop() {
     echo ""
     read -p "  确认停止容器 $name? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    docker stop "$name" 2>/dev/null && success "容器 $name 已停止" || error "停止失败"
+    _with_spinner "正在停止容器 $name" docker stop "$name" && success "容器 $name 已停止" || error "停止失败"
 }
 
 do_restart() {
@@ -52,7 +52,7 @@ do_restart() {
     echo ""
     read -p "  输入容器名或 ID: " name
     [ -z "$name" ] && info "已取消" && return
-    docker restart "$name" 2>/dev/null && success "容器 $name 已重启" || error "重启失败"
+    _with_spinner "正在重启容器 $name" docker restart "$name" && success "容器 $name 已重启" || error "重启失败"
 }
 
 do_logs() {
@@ -79,7 +79,7 @@ do_images() {
     echo ""
     read -p "  清理未使用的镜像? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        docker image prune -f 2>/dev/null && success "清理完成"
+        _with_spinner "正在清理未使用的镜像" docker image prune -f && success "清理完成"
     fi
 }
 
