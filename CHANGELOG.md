@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.4 (2026-07-29)
+- fix: make uninstall verifiable and complete
+
 ## v1.1.3 (2026-07-29)
 - docs: simplify install commands
 

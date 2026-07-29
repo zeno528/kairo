@@ -3,7 +3,9 @@
 # 用法: ka                    # 交互菜单
 #       ka <模块> [操作] [参数]  # CLI 调用
 
+BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/kairo"
+LEGACY_LIB_DIR="/usr/local/lib/opstool"
 REPO="zeno528/kairo"
 # shellcheck disable=SC2034 # 由 lib/core.sh 的 fetch_remote_file 使用。
 KAIRO_BRANCH="main"
@@ -84,15 +86,22 @@ do_update() {
 do_uninstall() {
     echo ""
     warn "即将卸载 KAIRO，以下文件将被删除:"
-    echo -e "  ${C_GRAY}/usr/local/bin/ka${C_RESET}"
+    echo -e "  ${C_GRAY}${BIN_DIR}/ka${C_RESET}"
+    echo -e "  ${C_GRAY}${BIN_DIR}/ot（旧版入口，如存在）${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
+    echo -e "  ${C_GRAY}${LEGACY_LIB_DIR}/（旧版运行库，如存在）${C_RESET}"
+    echo -e "  ${C_GRAY}安装中断遗留的 .kairo-stage.* 临时目录${C_RESET}"
+    echo ""
+    info "Nginx、SSH、防火墙、证书等业务配置不会被删除"
     echo ""
     read -r -p "  确认卸载? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        rm -f /usr/local/bin/ka
-        rm -rf "$LIB_DIR"
-        success "卸载完成"
-        exit 0
+        if kairo_remove_runtime "$BIN_DIR" "$LIB_DIR" "$LEGACY_LIB_DIR"; then
+            success "卸载完成，Kairo 运行文件已全部清理"
+            exit 0
+        fi
+        error "卸载失败，请根据上方残留路径检查权限或文件属性"
+        return 1
     fi
     info "已取消"
 }

@@ -40,6 +40,76 @@ kairo_is_host() {
     [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]]
 }
 
+kairo_validate_runtime_paths() {
+    local bin_dir="$1" lib_dir="$2" legacy_lib_dir="$3" path
+    for path in "$bin_dir" "$lib_dir" "$legacy_lib_dir"; do
+        case "$path" in
+            *..*|*//*)
+                printf 'Kairo 卸载路径包含非法片段: %s\n' "$path" >&2
+                return 1
+                ;;
+            /*) ;;
+            *)
+                printf 'Kairo 卸载路径不是绝对路径: %s\n' "$path" >&2
+                return 1
+                ;;
+        esac
+        case "${path%/}" in
+            ""|/|/usr|/usr/local|/etc|/var|/opt|/home)
+                printf 'Kairo 拒绝使用过宽的卸载路径: %s\n' "$path" >&2
+                return 1
+                ;;
+        esac
+    done
+    [ "${bin_dir%/}" != "${lib_dir%/}" ] &&
+        [ "${bin_dir%/}" != "${legacy_lib_dir%/}" ] &&
+        [ "${lib_dir%/}" != "${legacy_lib_dir%/}" ]
+}
+
+kairo_remove_runtime() {
+    local bin_dir="$1" lib_dir="$2" legacy_lib_dir="$3"
+    local lib_parent needs_sudo=0 target stage
+    local -a elevate=() stages=() remnants=()
+
+    kairo_validate_runtime_paths "$bin_dir" "$lib_dir" "$legacy_lib_dir" || return 1
+    lib_parent=$(dirname "$lib_dir")
+
+    for target in "$bin_dir" "$(dirname "$lib_dir")" "$(dirname "$legacy_lib_dir")"; do
+        [ -w "$target" ] || needs_sudo=1
+    done
+    if [ "$needs_sudo" -eq 1 ] && [ "$(id -u)" -ne 0 ]; then
+        if ! command -v sudo &>/dev/null || ! sudo -v; then
+            printf 'Kairo 卸载需要 sudo 权限\n' >&2
+            return 1
+        fi
+        elevate=(sudo)
+    fi
+
+    "${elevate[@]}" rm -f -- "${bin_dir}/ka" "${bin_dir}/ot" || return 1
+    "${elevate[@]}" rm -rf -- "$lib_dir" "$legacy_lib_dir" || return 1
+
+    # 清理安装被 SIGKILL 等强制中断时可能留下的私有 staging 目录。
+    for stage in "${lib_parent}"/.kairo-stage.*; do
+        if [ -e "$stage" ] || [ -L "$stage" ]; then
+            stages+=("$stage")
+        fi
+    done
+    if [ "${#stages[@]}" -gt 0 ]; then
+        "${elevate[@]}" rm -rf -- "${stages[@]}" || return 1
+    fi
+
+    for target in "${bin_dir}/ka" "${bin_dir}/ot" "$lib_dir" "$legacy_lib_dir" "${stages[@]}"; do
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            remnants+=("$target")
+        fi
+    done
+    if [ "${#remnants[@]}" -gt 0 ]; then
+        printf 'Kairo 卸载后仍有残留:\n' >&2
+        printf '  %s\n' "${remnants[@]}" >&2
+        return 1
+    fi
+}
+
 _with_spinner() {
     local msg="${1:-处理中}"
     shift

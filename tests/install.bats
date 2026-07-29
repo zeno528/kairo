@@ -80,3 +80,18 @@ teardown() {
     [ "$(cat "${KAIRO_LIB_DIR}/lib/core.sh")" = "old-runtime" ]
     [ "$(cat "${KAIRO_BIN_DIR}/ka")" = "old-bin" ]
 }
+
+@test "远程卸载清理新旧运行时和 staging 残留" {
+    mkdir -p "$KAIRO_LIB_DIR" "$KAIRO_LEGACY_LIB_DIR" "${TEST_TMP}/lib/.kairo-stage.interrupted"
+    touch "${KAIRO_BIN_DIR}/ka" "${KAIRO_BIN_DIR}/ot"
+    printf '1.1.3\n' > "${KAIRO_LIB_DIR}/VERSION"
+
+    run bash "$PWD/install.sh" uninstall
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "运行文件已全部清理" ]]
+    [ ! -e "${KAIRO_BIN_DIR}/ka" ]
+    [ ! -e "${KAIRO_BIN_DIR}/ot" ]
+    [ ! -e "$KAIRO_LIB_DIR" ]
+    [ ! -e "$KAIRO_LEGACY_LIB_DIR" ]
+    [ ! -e "${TEST_TMP}/lib/.kairo-stage.interrupted" ]
+}
