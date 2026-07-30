@@ -36,22 +36,64 @@ trap kairo_cleanup EXIT
 trap 'kairo_cleanup; exit 130' INT TERM
 
 show_banner() {
-    local width=42 header="─ Kairo "
-    local version_line="  v${VERSION}"
-    local repo_line="  https://github.com/zeno528/kairo"
-    local cmd_line="  本脚本启动命令: ka"
-    local i dash="" fill="" version_padding="" repo_padding="" cmd_padding=""
+    local width i fill="" pad lw tw kw p idx key_padded
+    # 2 行 K：▀▄█ 把每列拆成上下两像素，2 行字符 = 4 行像素，斜线才画得出来。
+    local -a logo_lines=(
+        '█▄▀'
+        '█ ▚ '
+    )
+    # 标题用纯文本，颜色在打印时加，宽度测量才不会被 ANSI 字节干扰。
+    local -a title_lines=(
+        "Kairo 运维工具箱"
+        "v${VERSION}"
+    )
 
-    for ((i=${#header}; i<width; i++)); do fill+="─"; done
-    for ((i=0; i<width; i++)); do dash+="─"; done
-    for ((i=$(_menu_display_width "$version_line"); i<width; i++)); do version_padding+=" "; done
-    for ((i=$(_menu_display_width "$repo_line"); i<width; i++)); do repo_padding+=" "; done
-    for ((i=$(_menu_display_width "$cmd_line"); i<width; i++)); do cmd_padding+=" "; done
-    echo -e "  ${C_CYAN}╭${C_BOLD}${header}${C_RESET}${C_CYAN}${fill}╮${C_RESET}"
-    echo -e "  ${C_CYAN}│${C_RESET}${C_BOLD}${C_CYAN}${version_line}${C_RESET}${version_padding}${C_CYAN}│${C_RESET}"
-    echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${repo_line}${C_RESET}${repo_padding}${C_CYAN}│${C_RESET}"
-    echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${cmd_line}${C_RESET}${cmd_padding}${C_CYAN}│${C_RESET}"
-    echo -e "  ${C_CYAN}╰${dash}╯${C_RESET}"
+    width=$(tput cols 2>/dev/null || echo 80)
+    width=$((width - 4))
+    [ "$width" -lt 40 ] && width=40
+    [ "$width" -gt 60 ] && width=60
+
+    for ((i=0; i<width; i++)); do fill+="─"; done
+    echo -e "  ${C_CYAN}╭${fill}╮${C_RESET}"
+
+    for idx in "${!logo_lines[@]}"; do
+        lw=$(_menu_display_width "${logo_lines[$idx]}")
+        tw=$(_menu_display_width "${title_lines[$idx]}")
+        pad=$((width - lw - tw - 3))
+        [ "$pad" -lt 1 ] && pad=1
+        # 颜色在打印时附加，避免污染宽度测量。
+        local colored_title=""
+        if [ "$idx" -eq 0 ]; then
+            colored_title="${C_BOLD}${C_CYAN}Kairo${C_RESET} 运维工具箱"
+        elif [ "$idx" -eq 1 ]; then
+            colored_title="${C_DIM}v${VERSION}${C_RESET}"
+        fi
+        printf '  %b│%b %s %s%*s %b│%b\n' \
+            "$C_CYAN" "$C_RESET" \
+            "${C_CYAN}${C_BOLD}${logo_lines[$idx]}${C_RESET}" \
+            "$colored_title" "$pad" "" \
+            "$C_CYAN" "$C_RESET"
+    done
+
+    pad=$width
+    echo -e "  ${C_CYAN}│$(printf '%*s' "$pad" '')│${C_RESET}"
+
+    local -a field_keys=("Version:" "Repo:" "Launch:")
+    local -a field_values=("v${VERSION}" "https://github.com/zeno528/kairo" "ka")
+    local kw_max=0
+    for idx in "${!field_keys[@]}"; do
+        kw=$(_menu_display_width "${field_keys[$idx]}")
+        [ "$kw" -gt "$kw_max" ] && kw_max=$kw
+    done
+    for idx in "${!field_keys[@]}"; do
+        printf -v key_padded "%-${kw_max}s" "${field_keys[$idx]}"
+        vw=$(_menu_display_width "${field_values[$idx]}")
+        p=$((width - kw_max - 3 - vw))
+        [ "$p" -lt 1 ] && p=1
+        echo -e "  ${C_CYAN}│${C_RESET} ${C_BOLD}${C_CYAN}${key_padded}${C_RESET} ${field_values[$idx]}$(printf '%*s' "$p" '') ${C_CYAN}│${C_RESET}"
+    done
+
+    echo -e "  ${C_CYAN}╰${fill}╯${C_RESET}"
 }
 
 kairo_run_installer() {
@@ -221,7 +263,8 @@ fi
 declare -A KAIRO_MENU_MODULES=()
 
 _menu_display_width() {
-    printf '%s\n' "$1" | wc -L | tr -d '[:space:]'
+    # 先去除 ANSI SGR 序列再用 wc -L 测显示宽度（避免把 \033[..m 的字节算进去）。
+    printf '%s' "$1" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' | wc -L | tr -d '[:space:]'
 }
 
 _format_menu_module() {
