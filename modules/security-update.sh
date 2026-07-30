@@ -52,7 +52,7 @@ do_security_update() {
     echo ""
     echo -e "  ${C_BOLD}执行常规升级...${C_RESET}"
     echo ""
-    read -p "  确认执行常规升级? [Y/n]: " confirm
+    read -r -p "  确认执行常规升级? [Y/n]: " confirm
     [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     _apt_update_smart || return
     if sudo apt-get upgrade -y; then
@@ -67,7 +67,7 @@ do_full_update() {
     echo ""
     warn "完整升级可能安装新包或移除冲突包"
     echo ""
-    read -p "  确认执行完整升级? [y/N]: " confirm
+    read -r -p "  确认执行完整升级? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     _apt_update_smart || return
     if sudo apt-get full-upgrade -y; then
@@ -124,20 +124,20 @@ menu() {
         title "🛡 软件更新"
         do_check
         divider
-        echo -e "  ${C_BOLD}[U]${C_RESET} 常规升级（不删除已安装软件包）"
-        echo -e "  ${C_BOLD}[F]${C_RESET} 完整升级（可能安装或删除软件包）"
-        echo -e "  ${C_BOLD}[P]${C_RESET} 预演完整升级（不修改系统）"
-        echo -e "  ${C_BOLD}[C]${C_RESET} 清理孤立包和安装缓存    ${C_BOLD}[R]${C_RESET} 刷新列表"
+        echo -e "  ${C_BOLD}[1]${C_RESET} 常规升级（不删除已安装软件包）"
+        echo -e "  ${C_BOLD}[2]${C_RESET} 完整升级（可能安装或删除软件包）"
+        echo -e "  ${C_BOLD}[3]${C_RESET} 预演完整升级（不修改系统）"
+        echo -e "  ${C_BOLD}[4]${C_RESET} 清理孤立包和安装缓存    ${C_BOLD}[5]${C_RESET} 刷新列表"
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
-        read -p "  选择操作: " choice
+        read -r -p "  选择操作: " choice
         case "$choice" in
-            [Uu]) do_security_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
-            [Ff]) do_full_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
-            [Pp]) do_full_update_preview; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
-            [Cc]) do_cleanup; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
-            [Rr]) continue ;;
+            1) do_security_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            2) do_full_update; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            3) do_full_update_preview; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            4) do_cleanup; echo ""; kairo_pause "按 Enter 返回更新列表..." ;;
+            5) continue ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
