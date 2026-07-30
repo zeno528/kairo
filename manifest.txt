@@ -7,6 +7,8 @@ modules/crontab.sh
 modules/docker.sh
 modules/firewall.sh
 modules/github-cli.sh
+modules/go.sh
+modules/jq.sh
 modules/network-test.sh
 modules/nginx.sh
 modules/openclaw.sh

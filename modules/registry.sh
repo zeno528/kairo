@@ -74,3 +74,5 @@ kairo_register_module claude tools "Claude Code" "status install upgrade" "Anthr
 kairo_register_module kimi tools "Kimi Code" "status install upgrade" "Kimi AI 编程助手"
 kairo_register_module github-cli tools "GitHub CLI" "status install upgrade" "GitHub 命令行工具"
 kairo_register_module openclaw tools "OpenClaw" "status install upgrade" "AI Agent 网关"
+kairo_register_module go tools "Go" "status install upgrade" "Go 语言工具链"
+kairo_register_module jq tools "jq" "status install upgrade" "JSON 命令行处理器"
