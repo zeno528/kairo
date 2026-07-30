@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.42 (2026-07-30)
+- ✨ feat(codex): 添加 Codex CLI 工具支持
+
 ## v1.1.41 (2026-07-30)
 - ♻️ refactor(core): 移除 `kairo_link` 函数，改用纯文本 URL 输出
 

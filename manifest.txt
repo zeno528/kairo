@@ -21,4 +21,5 @@ modules/ssl-check.sh
 modules/sqlite3.sh
 modules/sys-info.sh
 modules/claude.sh
+modules/codex.sh
 modules/kimi.sh

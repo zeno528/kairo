@@ -125,14 +125,14 @@ setup() {
 
 @test "工具模块不包含代理检测或代理参数" {
     run grep -Ein 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
-        "$PWD/modules/claude.sh" "$PWD/modules/kimi.sh" \
+        "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/kimi.sh" \
         "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
         "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh"
     [ "$status" -eq 1 ]
 }
 
-@test "Claude Code 与 OpenClaw 不由 Kairo 直接调用 npm 管理" {
-    run grep -Ein '\<npm\>' "$PWD/modules/claude.sh" "$PWD/modules/openclaw.sh"
+@test "Claude Code、Codex CLI 与 OpenClaw 不由 Kairo 直接调用 npm 管理" {
+    run grep -Ein '\<npm\>' "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/openclaw.sh"
     [ "$status" -eq 1 ]
 }
 
