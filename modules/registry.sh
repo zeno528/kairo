@@ -76,3 +76,4 @@ kairo_register_module github-cli tools "GitHub CLI" "status install upgrade" "Gi
 kairo_register_module openclaw tools "OpenClaw" "status install upgrade" "AI Agent 网关"
 kairo_register_module go tools "Go" "status install upgrade" "Go 语言工具链"
 kairo_register_module jq tools "jq" "status install upgrade" "JSON 命令行处理器"
+kairo_register_module sqlite3 tools "SQLite3" "status install upgrade" "轻量数据库命令行工具"

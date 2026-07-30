@@ -1,29 +1,28 @@
 #!/usr/bin/env bash
-# OpenClaw 安装与升级。
+# OpenClaw 使用官方安装器与官方 update 命令安装和升级。
+
+OPENCLAW_BINARY=""
 
 _openclaw_exists() {
-    command -v openclaw >/dev/null 2>&1
+    OPENCLAW_BINARY=$(command -v openclaw 2>/dev/null) || return 1
 }
 
 _openclaw_version() {
-    openclaw --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+){1,2}(-[0-9]+)?' | head -n 1
+    "$OPENCLAW_BINARY" --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+){1,2}(-[0-9]+)?' | head -n 1
 }
 
-_openclaw_latest_version() {
-    timeout 30 npm view openclaw version 2>/dev/null | tr -d '[:space:]'
-}
-
-_openclaw_restart_gateway() {
-    if ! systemctl --user stop openclaw-gateway 2>/dev/null; then
-        warn "Gateway 未运行或无法停止"
+_openclaw_run_installer() {
+    local installer rc
+    installer=$(mktemp) || return 1
+    if ! curl --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 -fsSL \
+        "https://openclaw.ai/install.sh" -o "$installer"; then
+        rm -f -- "$installer"
+        return 1
     fi
-    if ! systemctl --user start openclaw-gateway 2>/dev/null; then
-        warn "Gateway 未启动，请检查用户级 systemd 服务"
-    fi
-}
-
-_openclaw_install_version() {
-    npm install -g "openclaw@$1"
+    bash "$installer"
+    rc=$?
+    rm -f -- "$installer"
+    return "$rc"
 }
 
 do_status() {
@@ -33,22 +32,21 @@ do_status() {
         return 1
     fi
     printf '  版本    %s\n' "$(_openclaw_version)"
-    printf '  路径    %s\n' "$(command -v openclaw)"
+    printf '  路径    %s\n' "$OPENCLAW_BINARY"
+    printf '  方式    OpenClaw 官方更新器\n'
     printf '  来源    '
-    kairo_link "https://www.npmjs.com/package/openclaw" "https://www.npmjs.com/package/openclaw"
+    kairo_link "https://openclaw.ai/" "https://openclaw.ai/"
     printf '\n'
 }
 
 do_install() {
-    local latest
     if _openclaw_exists; then
         info "OpenClaw 已安装: $(_openclaw_version)"
         return 0
     fi
-    command -v npm >/dev/null 2>&1 || { error "需要 npm，请先安装 Node.js"; return 1; }
-    latest=$(_openclaw_latest_version)
-    [ -n "$latest" ] || { error "无法获取 OpenClaw 最新版本"; return 1; }
-    if _with_spinner "正在安装 OpenClaw" _openclaw_install_version "$latest"; then
+    command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
+    if _with_spinner "正在安装 OpenClaw" _openclaw_run_installer; then
+        _openclaw_exists
         success "OpenClaw 安装完成: $(_openclaw_version)"
     else
         error "OpenClaw 安装失败"
@@ -57,33 +55,22 @@ do_install() {
 }
 
 do_upgrade() {
-    local current latest confirm method
+    local current confirm
     _openclaw_exists || { do_install; return $?; }
-    command -v npm >/dev/null 2>&1 || { error "需要 npm"; return 1; }
     current=$(_openclaw_version)
-    latest=$(_openclaw_latest_version)
-    [ -n "$latest" ] || { error "无法获取 OpenClaw 最新版本"; return 1; }
-    if ! kairo_version_is_newer "$latest" "$current"; then
-        success "已是最新版本 ($current)"
-        return 0
-    fi
-    info "$current → $latest"
-    read -r -p "  升级 OpenClaw? [Y/n]: " confirm
+    info "当前版本: $current"
+    read -r -p "  使用 OpenClaw 官方更新器检查并升级? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    echo "  [1] openclaw update（官方命令）"
-    echo "  [2] npm install -g（适用于 update 失败）"
-    read -r -p "  请选择升级方式 [1/2，默认 1]: " method
-    case "${method:-1}" in
-        1) _with_spinner "正在升级 OpenClaw" openclaw update ;;
-        2) _with_spinner "正在升级 OpenClaw" _openclaw_install_version "$latest" ;;
-        *) error "无效选项"; return 1 ;;
-    esac || { error "OpenClaw 升级失败"; return 1; }
-    _openclaw_restart_gateway
-    openclaw doctor --fix || warn "doctor 检查有警告"
-    if [ "$(_openclaw_version)" = "$latest" ]; then
-        success "OpenClaw 已升级至 $latest"
+    if _with_spinner "正在通过官方更新器检查 OpenClaw" "$OPENCLAW_BINARY" update; then
+        _openclaw_exists
+        if [ "$(_openclaw_version)" = "$current" ]; then
+            success "已是最新版本 ($current)"
+        else
+            success "OpenClaw 已升级至 $(_openclaw_version)"
+        fi
     else
-        warn "升级完成，但当前版本与目标版本不一致: $(_openclaw_version)"
+        error "OpenClaw 升级失败"
+        return 1
     fi
 }
 

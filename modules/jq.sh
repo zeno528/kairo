@@ -1,18 +1,31 @@
 #!/usr/bin/env bash
-# jq 官方发行二进制安装与升级。
+# jq 按 Debian/Ubuntu apt 或官方 Releases 二进制安装渠道升级。
 
 _jq_target="/usr/local/bin/jq"
+JQ_CHANNEL=""
+JQ_PACKAGE=""
+JQ_BINARY=""
 
-_jq_managed() {
-    [ -x "$_jq_target" ]
-}
-
-_jq_exists() {
-    command -v jq >/dev/null 2>&1
+_jq_detect_channel() {
+    local binary
+    JQ_CHANNEL=""
+    JQ_PACKAGE=""
+    JQ_BINARY=""
+    binary=$(command -v jq 2>/dev/null) || return 1
+    JQ_BINARY="$binary"
+    JQ_PACKAGE=$(kairo_deb_package_for_path "$binary") || {
+        if [ "$(readlink -f "$binary")" = "$_jq_target" ]; then
+            JQ_CHANNEL="official_release"
+        else
+            JQ_CHANNEL="other"
+        fi
+        return 0
+    }
+    JQ_CHANNEL="apt"
 }
 
 _jq_version() {
-    jq --version 2>/dev/null | sed 's/^jq-//'
+    "$JQ_BINARY" --version 2>/dev/null | sed 's/^jq-//'
 }
 
 _jq_latest_version() {
@@ -42,39 +55,37 @@ _jq_install_release() {
     sudo install -m 755 "$binary" "$_jq_target"
 }
 
+_jq_upgrade_apt() {
+    sudo apt update -qq && sudo apt install --only-upgrade -y "$JQ_PACKAGE"
+}
+
 do_status() {
     title "当前状态"
-    if ! _jq_exists; then
+    if ! _jq_detect_channel; then
         warn "未安装"
         return 1
     fi
     printf '  版本    %s\n' "$(_jq_version)"
-    printf '  路径    %s\n' "$(command -v jq)"
-    if _jq_managed; then
-        printf '  方式    jq 官方发行二进制\n'
-    else
-        printf '  方式    非 Kairo 管理\n'
-    fi
+    printf '  路径    %s\n' "$JQ_BINARY"
+    case "$JQ_CHANNEL" in
+        apt) printf '  方式    apt 包: %s\n' "$JQ_PACKAGE" ;;
+        official_release) printf '  方式    jq 官方 Releases 二进制\n' ;;
+        *) printf '  方式    未识别的安装渠道\n' ;;
+    esac
     printf '  来源    '
     kairo_link "https://github.com/jqlang/jq/releases" "https://github.com/jqlang/jq/releases"
     printf '\n'
 }
 
 do_install() {
-    local latest asset
-    if _jq_managed; then
-        info "jq 已安装: $(_jq_version)"
+    if _jq_detect_channel; then
+        info "jq 已安装: $(_jq_version)（${JQ_CHANNEL}）"
         return 0
     fi
-    if _jq_exists; then
-        error "检测到非 Kairo 管理的 jq，未自动覆盖: $(command -v jq)"
-        return 1
-    fi
-    latest=$(_jq_latest_version)
-    asset=$(_jq_asset_name) || { error "不支持的架构: $(uname -m)"; return 1; }
-    [ -n "$latest" ] || { error "无法获取 jq 最新版本"; return 1; }
+    command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if _with_spinner "正在安装 jq ${latest}" _jq_install_release "$latest" "$asset"; then
+    if _with_spinner "正在通过 apt 安装 jq" sudo apt update -qq && sudo apt install -y jq; then
+        _jq_detect_channel
         success "jq 安装完成: $(_jq_version)"
     else
         error "jq 安装失败"
@@ -83,26 +94,59 @@ do_install() {
 }
 
 do_upgrade() {
-    local current latest asset confirm
-    _jq_managed || { do_install; return $?; }
-    current=$(_jq_version)
-    latest=$(_jq_latest_version)
-    asset=$(_jq_asset_name) || { error "不支持的架构: $(uname -m)"; return 1; }
-    [ -n "$latest" ] || { error "无法获取 jq 最新版本"; return 1; }
-    if ! kairo_version_is_newer "$latest" "$current"; then
-        success "已是最新版本 ($current)"
-        return 0
-    fi
-    info "$current → $latest"
-    read -r -p "  将覆盖 ${_jq_target}，确认升级 jq? [Y/n]: " confirm
-    [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if _with_spinner "正在升级 jq ${latest}" _jq_install_release "$latest" "$asset"; then
-        success "jq 已升级至 $(_jq_version)"
-    else
-        error "jq 升级失败"
-        return 1
-    fi
+    local current latest asset confirm installed candidate
+    _jq_detect_channel || { do_install; return $?; }
+    case "$JQ_CHANNEL" in
+        apt)
+            sudo -v || { error "升级需要 sudo 权限"; return 1; }
+            if ! _with_spinner "正在刷新 jq 软件源" sudo apt update -qq; then
+                error "刷新软件源失败"
+                return 1
+            fi
+            installed=$(dpkg-query -W -f='${Version}' "$JQ_PACKAGE")
+            candidate=$(apt-cache policy "$JQ_PACKAGE" | awk '/Candidate:/ { print $2; exit }')
+            [ -n "$candidate" ] && [ "$candidate" != "(none)" ] || { error "无法获取候选版本"; return 1; }
+            if [ "$installed" = "$candidate" ]; then
+                success "系统包已是最新版本 ($(_jq_version))"
+                return 0
+            fi
+            info "$installed → $candidate"
+            read -r -p "  通过 apt 升级 jq? [Y/n]: " confirm
+            [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
+            if _with_spinner "正在升级 jq" _jq_upgrade_apt; then
+                _jq_detect_channel
+                success "jq 已升级至 $(_jq_version)"
+            else
+                error "jq 升级失败"
+                return 1
+            fi
+            ;;
+        official_release)
+            current=$(_jq_version)
+            latest=$(_jq_latest_version)
+            asset=$(_jq_asset_name) || { error "不支持的架构: $(uname -m)"; return 1; }
+            [ -n "$latest" ] || { error "无法获取 jq 最新版本"; return 1; }
+            if ! kairo_version_is_newer "$latest" "$current"; then
+                success "已是最新版本 ($current)"
+                return 0
+            fi
+            info "$current → $latest"
+            read -r -p "  通过 jq 官方 Releases 升级? [Y/n]: " confirm
+            [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
+            sudo -v || { error "升级需要 sudo 权限"; return 1; }
+            if _with_spinner "正在升级 jq ${latest}" _jq_install_release "$latest" "$asset"; then
+                _jq_detect_channel
+                success "jq 已升级至 $(_jq_version)"
+            else
+                error "jq 升级失败"
+                return 1
+            fi
+            ;;
+        *)
+            error "未识别 jq 的安装渠道，未自动升级: $JQ_BINARY"
+            return 1
+            ;;
+    esac
 }
 
 menu() {

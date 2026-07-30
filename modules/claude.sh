@@ -1,12 +1,24 @@
 #!/usr/bin/env bash
 # Claude Code 安装与升级。
 
-_claude_exists() {
-    command -v claude >/dev/null 2>&1
+CLAUDE_CHANNEL=""
+CLAUDE_BINARY=""
+
+_claude_detect_channel() {
+    local resolved
+    CLAUDE_CHANNEL=""
+    CLAUDE_BINARY=$(command -v claude 2>/dev/null) || return 1
+    resolved=$(readlink -f "$CLAUDE_BINARY") || return 1
+    if [ "$CLAUDE_BINARY" = "$HOME/.local/bin/claude" ] \
+        && [[ "$resolved" = "$HOME/.local/share/claude/versions/"* ]]; then
+        CLAUDE_CHANNEL="official_installer"
+    else
+        CLAUDE_CHANNEL="other"
+    fi
 }
 
 _claude_version() {
-    claude --version 2>/dev/null | awk 'NR == 1 { print $1; exit }' | sed 's/^v//'
+    "$CLAUDE_BINARY" --version 2>/dev/null | awk 'NR == 1 { print $1; exit }' | sed 's/^v//'
 }
 
 _claude_latest_version() {
@@ -31,20 +43,25 @@ _claude_run_installer() {
 
 do_status() {
     title "当前状态"
-    if ! _claude_exists; then
+    if ! _claude_detect_channel; then
         warn "未安装"
         return 1
     fi
     printf '  版本    %s\n' "$(_claude_version)"
-    printf '  路径    %s\n' "$(command -v claude)"
+    printf '  路径    %s\n' "$CLAUDE_BINARY"
+    if [ "$CLAUDE_CHANNEL" = "official_installer" ]; then
+        printf '  方式    Claude Code 官方安装器\n'
+    else
+        printf '  方式    未识别的安装渠道\n'
+    fi
     printf '  来源    '
     kairo_link "https://github.com/anthropics/claude-code/releases" "https://github.com/anthropics/claude-code/releases"
     printf '\n'
 }
 
 do_install() {
-    if _claude_exists; then
-        info "Claude Code 已安装: $(_claude_version)"
+    if _claude_detect_channel; then
+        info "Claude Code 已安装: $(_claude_version)（${CLAUDE_CHANNEL}）"
         return 0
     fi
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
@@ -58,7 +75,11 @@ do_install() {
 
 do_upgrade() {
     local current latest confirm
-    _claude_exists || { do_install; return $?; }
+    _claude_detect_channel || { do_install; return $?; }
+    if [ "$CLAUDE_CHANNEL" != "official_installer" ]; then
+        error "未识别 Claude Code 的安装渠道，未自动升级: $CLAUDE_BINARY"
+        return 1
+    fi
     current=$(_claude_version)
     latest=$(_claude_latest_version)
     [ -n "$latest" ] || { error "无法获取 GitHub Releases 最新版本"; return 1; }
@@ -69,7 +90,7 @@ do_upgrade() {
     info "$current → $latest"
     read -r -p "  升级 Claude Code? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if _with_spinner "正在升级 Claude Code" claude update; then
+    if _with_spinner "正在升级 Claude Code" "$CLAUDE_BINARY" update; then
         success "Claude Code 已升级至 $(_claude_version)"
     else
         error "Claude Code 升级失败"

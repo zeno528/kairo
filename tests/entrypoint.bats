@@ -127,7 +127,12 @@ setup() {
     run grep -Ein 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
         "$PWD/modules/claude.sh" "$PWD/modules/kimi.sh" \
         "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
-        "$PWD/modules/go.sh" "$PWD/modules/jq.sh"
+        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh"
+    [ "$status" -eq 1 ]
+}
+
+@test "Claude Code 与 OpenClaw 不由 Kairo 直接调用 npm 管理" {
+    run grep -Ein '\<npm\>' "$PWD/modules/claude.sh" "$PWD/modules/openclaw.sh"
     [ "$status" -eq 1 ]
 }
 
@@ -136,6 +141,7 @@ setup() {
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/claude.sh"
         claude() { [ "$1" = "--version" ] && echo 1.0.0 || echo upgraded; }
+        _claude_detect_channel() { CLAUDE_CHANNEL=official_installer; CLAUDE_BINARY=claude; }
         _claude_latest_version() { echo 1.1.0; }
         _with_spinner() { shift; "$@"; }
         printf "\n" | do_upgrade

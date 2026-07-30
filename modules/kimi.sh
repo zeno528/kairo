@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # Kimi Code 安装与升级。
 
-_kimi_exists() {
-    command -v kimi >/dev/null 2>&1
+KIMI_CHANNEL=""
+KIMI_BINARY=""
+
+_kimi_detect_channel() {
+    KIMI_CHANNEL=""
+    KIMI_BINARY=$(command -v kimi 2>/dev/null) || return 1
+    if [ "$(readlink -f "$KIMI_BINARY")" = "$HOME/.kimi-code/bin/kimi" ]; then
+        KIMI_CHANNEL="official_installer"
+    else
+        KIMI_CHANNEL="other"
+    fi
 }
 
 _kimi_version() {
-    kimi --version 2>/dev/null | head -n 1 | sed 's/^v//'
+    "$KIMI_BINARY" --version 2>/dev/null | head -n 1 | sed 's/^v//'
 }
 
 _kimi_latest_version() {
@@ -30,12 +39,17 @@ _kimi_run_installer() {
 
 do_status() {
     title "当前状态"
-    if ! _kimi_exists; then
+    if ! _kimi_detect_channel; then
         warn "未安装"
         return 1
     fi
     printf '  版本    %s\n' "$(_kimi_version)"
-    printf '  路径    %s\n' "$(command -v kimi)"
+    printf '  路径    %s\n' "$KIMI_BINARY"
+    if [ "$KIMI_CHANNEL" = "official_installer" ]; then
+        printf '  方式    Kimi Code 官方安装器\n'
+    else
+        printf '  方式    未识别的安装渠道\n'
+    fi
     printf '  来源    '
     kairo_link "https://github.com/MoonshotAI/kimi-code/releases" "https://github.com/MoonshotAI/kimi-code/releases"
     printf '\n'
@@ -43,8 +57,8 @@ do_status() {
 
 do_install() {
     local latest
-    if _kimi_exists; then
-        info "Kimi Code 已安装: $(_kimi_version)"
+    if _kimi_detect_channel; then
+        info "Kimi Code 已安装: $(_kimi_version)（${KIMI_CHANNEL}）"
         return 0
     fi
     latest=$(_kimi_latest_version)
@@ -60,7 +74,11 @@ do_install() {
 
 do_upgrade() {
     local current latest confirm
-    _kimi_exists || { do_install; return $?; }
+    _kimi_detect_channel || { do_install; return $?; }
+    if [ "$KIMI_CHANNEL" != "official_installer" ]; then
+        error "未识别 Kimi Code 的安装渠道，未自动升级: $KIMI_BINARY"
+        return 1
+    fi
     current=$(_kimi_version)
     latest=$(_kimi_latest_version)
     [ -n "$latest" ] || { error "无法获取 Kimi Code 最新版本"; return 1; }

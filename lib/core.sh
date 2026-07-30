@@ -50,6 +50,14 @@ kairo_link() {
     printf '\033]8;;%s\007%s\033]8;;\007' "$1" "$2"
 }
 
+kairo_deb_package_for_path() {
+    local path="$1" owner packages
+    path=$(readlink -f -- "$path") || return 1
+    owner=$(dpkg-query -S "$path" 2>/dev/null) || return 1
+    packages=${owner%%: *}
+    printf '%s\n' "${packages%%,*}"
+}
+
 kairo_require_systemctl() {
     if ! command -v systemctl &>/dev/null; then
         error "未找到 systemctl 命令"

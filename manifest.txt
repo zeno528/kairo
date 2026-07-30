@@ -18,6 +18,7 @@ modules/services.sh
 modules/ssh-keys.sh
 modules/ssh-passwd.sh
 modules/ssl-check.sh
+modules/sqlite3.sh
 modules/sys-info.sh
 modules/claude.sh
 modules/kimi.sh
