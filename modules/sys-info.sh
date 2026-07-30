@@ -27,15 +27,25 @@ do_overview() {
 
     # --- CPU ---
     _info_sep
-    local cpu_model cpu_cores cpu_mhz
+    local cpu_model cpu_cores cpu_threads cpu_mhz
     if command -v lscpu >/dev/null 2>&1; then
         cpu_model=$(lscpu | awk -F': +' '/^Model name:/{print $2; exit}')
-        cpu_cores=$(lscpu | awk -F': +' '/^CPU\(s\):/{print $2; exit}')
+        cpu_threads=$(lscpu | awk -F': +' '/^CPU\(s\):/{print $2; exit}')
+        local cores_per_socket sockets
+        cores_per_socket=$(lscpu | awk -F': +' '/^Core\(s\) per socket:/{print $2; exit}')
+        sockets=$(lscpu | awk -F': +' '/^Socket\(s\):/{print $2; exit}')
+        if [ -n "$cores_per_socket" ] && [ -n "$sockets" ] && [ "$sockets" -gt 0 ] 2>/dev/null; then
+            cpu_cores=$((cores_per_socket * sockets))
+        else
+            cpu_cores="$cpu_threads"
+        fi
         cpu_mhz=$(lscpu | awk -F': +' '/^CPU max MHz:/{print $2; exit}')
         [ -n "$cpu_mhz" ] || cpu_mhz=$(lscpu | awk -F': +' '/^CPU MHz:/{print $2; exit}')
     else
         cpu_model=$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)
-        cpu_cores=$(grep -c '^processor' /proc/cpuinfo)
+        cpu_threads=$(grep -c '^processor' /proc/cpuinfo)
+        cpu_cores=$(awk -F': ' '/^cpu cores/{print $2; exit}')
+        [ -n "$cpu_cores" ] || cpu_cores="$cpu_threads"
     fi
     # lscpu 无频率字段时回退到 /proc/cpuinfo 当前频率
     [ -n "$cpu_mhz" ] || cpu_mhz=$(awk -F': +' '/^cpu MHz/{print $2; exit}' /proc/cpuinfo)
@@ -43,6 +53,7 @@ do_overview() {
     _info_line "CPU架构" "$(uname -m)"
     _info_line "CPU型号" "${cpu_model:-未知}"
     _info_line "CPU核心数" "${cpu_cores:-未知}"
+    _info_line "CPU线程数" "${cpu_threads:-未知}"
     [ -n "$cpu_mhz" ] && _info_line "CPU主频" "${cpu_mhz} MHz"
 
     # --- 性能 / 资源 ---
