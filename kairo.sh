@@ -347,9 +347,11 @@ while true; do
 
     case "$choice" in
         [Uu])
-            do_update
-            read -r -p "  按回车键重启 Kairo..." _
-            exec "$0"
+            if do_update; then
+                read -r -p "  按回车键返回命令行..." _
+                exit 0
+            fi
+            kairo_pause
             ;;
         [Xx]) do_uninstall; kairo_pause ;;
         0) echo -e "\n  👋 后会有期！\n"; exit 0 ;;

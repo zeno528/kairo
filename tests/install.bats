@@ -78,7 +78,7 @@ MOCK
     [ ! -s "$SUDO_LOG" ]
 }
 
-@test "升级完成提示显示新版本号" {
+@test "升级完成提示新版本并提示 ka 命令" {
     mkdir -p "$KAIRO_LIB_DIR"
     printf '1.1.30\n' > "${KAIRO_LIB_DIR}/VERSION"
     export MOCK_REMOTE_VERSION="1.1.31"
@@ -88,6 +88,7 @@ MOCK
     [ "$status" -eq 0 ]
     plain_output=$(printf '%s' "$output" | sed -E $'s/\x1B\\[[0-9;]*m//g')
     [[ "$plain_output" =~ "升级完成！v1.1.31" ]]
+    [[ "$plain_output" =~ "进入主菜单" ]]
     [ "$(tr -d '[:space:]' < "${KAIRO_LIB_DIR}/VERSION")" = "1.1.31" ]
 }
 
