@@ -248,7 +248,7 @@ do_cleanup() {
 }
 
 menu() {
-    local choice name
+    local choice name status_cache=""
     while true; do
         clear
         title "🐳 Docker 管理"
@@ -262,44 +262,78 @@ menu() {
             echo ""
             read -r -p "  请选择: " choice
             case "$choice" in
-                1) do_install; echo ""; kairo_pause ;;
+                1) do_install; status_cache=""; kairo_pause ;;
                 0) return ;;
                 *) error "无效选项"; sleep 1 ;;
             esac
             continue
         fi
-        do_status
+        # 只在首次或操作后刷新状态，避免每次回到菜单都跑 docker info
+        if [ -z "$status_cache" ]; then
+            status_cache=$(_render_status_cache)
+        fi
+        echo "$status_cache"
         divider
         _menu_actions 20 "${C_BOLD}[1]${C_RESET} 容器列表"
         _menu_actions 20 "${C_BOLD}[2]${C_RESET} 资源监控"
         _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 管理"
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} 镜像列表"
         _menu_actions 20 "${C_BOLD}[5]${C_RESET} 系统清理"
+        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice
         case "$choice" in
             0) return ;;
+            [Rr]) status_cache=""; continue ;;
             1)
-                do_list_containers
-                echo ""
+                _show_container_list
                 _compose_container_menu
                 ;;
             2) do_stats; echo ""; kairo_pause ;;
             3) do_compose; echo ""; kairo_pause ;;
             4) do_images; echo ""; kairo_pause ;;
-            5) do_cleanup; echo ""; kairo_pause ;;
+            5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
     done
+}
+
+# 缓存版状态渲染：收集输出为字符串，避免每次循环都查 docker info
+_render_status_cache() {
+    echo ""
+    docker --version 2>/dev/null
+    if docker compose version &>/dev/null; then
+        docker compose version 2>/dev/null | head -1
+    fi
+    echo ""
+    if ! docker info &>/dev/null 2>&1; then
+        echo -e "  ${C_YELLOW}⚠ Docker 服务未运行或当前用户无权限${C_RESET}"
+        return
+    fi
+    local containers images
+    containers=$(docker ps -aq 2>/dev/null | wc -l)
+    images=$(docker images -q 2>/dev/null | wc -l)
+    printf '  容器数    %s\n' "$containers"
+    printf '  镜像数    %s\n' "$images"
+}
+
+# 带编号的容器列表（供菜单选择用）
+_show_container_list() {
+    echo ""
+    mapfile -t DOCKER_CONTAINERS < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
+    echo -e "  ${C_BOLD}容器列表${C_RESET}"
+    docker ps -a --format '{{.Names}}\t{{.Status}}\t{{.Image}}' 2>/dev/null |
+        awk -F '\t' '{printf "  [%2d] %-20s  %-14s  %s\n", NR, $1, $2, $3}'
+    [ ${#DOCKER_CONTAINERS[@]} -eq 0 ] && info "当前没有容器"
 }
 
 # 容器列表后的选择+操作子菜单
 _compose_container_menu() {
     local choice name
     while true; do
-        mapfile -t DOCKER_CONTAINERS < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
+        _show_container_list
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择容器"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
