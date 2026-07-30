@@ -9,6 +9,8 @@ declare -A KAIRO_GROUP_LABELS=()
 declare -A KAIRO_MODULE_GROUPS=()
 # shellcheck disable=SC2034 # 由主入口读取。
 declare -A KAIRO_MODULE_LABELS=()
+# shellcheck disable=SC2034 # 由主入口读取。
+declare -A KAIRO_MODULE_DESCRIPTIONS=()
 # 每个模块显式暴露给 CLI 的 action，避免调用入口或其他模块的同名函数。
 declare -A KAIRO_MODULE_ACTIONS=()
 
@@ -20,7 +22,7 @@ kairo_register_group() {
 }
 
 kairo_register_module() {
-    local id="$1" group="$2" label="$3" actions="$4"
+    local id="$1" group="$2" label="$3" actions="$4" description="${5:-}"
     if [[ -z "${KAIRO_GROUP_LABELS[$group]+x}" ]]; then
         printf 'Kairo 注册表错误: 模块 %s 引用了未知分组 %s\n' "$id" "$group" >&2
         return 1
@@ -33,6 +35,8 @@ kairo_register_module() {
     # shellcheck disable=SC2034 # 由主入口读取。
     KAIRO_MODULE_GROUPS["$id"]="$group"
     KAIRO_MODULE_LABELS["$id"]="$label"
+    # shellcheck disable=SC2034 # 由主入口读取。
+    KAIRO_MODULE_DESCRIPTIONS["$id"]="$description"
     KAIRO_MODULE_ACTIONS["$id"]="$actions"
 }
 
@@ -52,6 +56,7 @@ kairo_module_supports_action() {
 kairo_register_group ssh "🔒 SSH"
 kairo_register_group system "💻  系统"
 kairo_register_group proxy "🌐  反代"
+kairo_register_group tools "🧰 工具"
 
 kairo_register_module ssh-passwd ssh "密码登录管理" "on off status"
 kairo_register_module ssh-keys ssh "公钥管理" "list add remove view rename"
@@ -65,3 +70,7 @@ kairo_register_module security-update system "软件更新" "check security_upda
 kairo_register_module network-test system "网络测试" "speedtest backtrace ping_test"
 kairo_register_module docker system "Docker 管理" "list_containers start stop restart logs images"
 kairo_register_module nginx proxy "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs security_scan enable_site disable_site snapshot restore log_top"
+kairo_register_module claude tools "Claude Code" "status install upgrade" "Anthropic AI 编程助手"
+kairo_register_module kimi tools "Kimi Code" "status install upgrade" "Kimi AI 编程助手"
+kairo_register_module github-cli tools "GitHub CLI" "status install upgrade" "GitHub 命令行工具"
+kairo_register_module openclaw tools "OpenClaw" "status install upgrade" "AI Agent 网关"

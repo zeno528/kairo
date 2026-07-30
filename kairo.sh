@@ -224,7 +224,7 @@ fi
 
 declare -A KAIRO_MENU_MODULES=()
 show_main_menu() {
-    local group module number=1
+    local group module number=1 description
     KAIRO_MENU_MODULES=()
     show_banner
     divider
@@ -234,7 +234,12 @@ show_main_menu() {
         title "${KAIRO_GROUP_LABELS[$group]}"
         for module in "${KAIRO_MODULE_IDS[@]}"; do
             [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] || continue
-            printf '   %b[%d]%b %s\n' "$C_BOLD" "$number" "$C_RESET" "${KAIRO_MODULE_LABELS[$module]}"
+            description="${KAIRO_MODULE_DESCRIPTIONS[$module]}"
+            if [ -n "$description" ]; then
+                printf '   %b[%d]%b %s %b— %s%b\n' "$C_BOLD" "$number" "$C_RESET" "${KAIRO_MODULE_LABELS[$module]}" "$C_DIM" "$description" "$C_RESET"
+            else
+                printf '   %b[%d]%b %s\n' "$C_BOLD" "$number" "$C_RESET" "${KAIRO_MODULE_LABELS[$module]}"
+            fi
             KAIRO_MENU_MODULES["$number"]="$module"
             ((number++))
         done

@@ -1,6 +1,6 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.1.36-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.1.37-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
@@ -40,6 +40,11 @@ ka  # 进入主菜单
 
 ### Docker
 - **Docker 管理** — 容器列表、启停重启、查看日志、镜像管理
+
+### 工具管理
+- **Claude Code / Kimi Code** — 使用各自官方安装器安装，并检查、升级 CLI。
+- **GitHub CLI** — 配置 GitHub 官方 apt 源后安装或升级 `gh`。
+- **OpenClaw** — 使用官方命令或 npm 升级，自动重启用户级 Gateway 并运行 doctor。
 
 ### Nginx 反向代理
 

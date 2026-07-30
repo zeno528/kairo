@@ -40,6 +40,16 @@ kairo_is_host() {
     [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]]
 }
 
+kairo_version_is_newer() {
+    local candidate="$1" current="$2"
+    [ -n "$candidate" ] && [ -n "$current" ] && [ "$candidate" != "$current" ] || return 1
+    [ "$(printf '%s\n%s\n' "$current" "$candidate" | sort -V | tail -n 1)" = "$candidate" ]
+}
+
+kairo_link() {
+    printf '\033]8;;%s\007%s\033]8;;\007' "$1" "$2"
+}
+
 kairo_require_systemctl() {
     if ! command -v systemctl &>/dev/null; then
         error "未找到 systemctl 命令"

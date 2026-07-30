@@ -123,6 +123,26 @@ setup() {
     done
 }
 
+@test "工具模块不包含代理检测或代理参数" {
+    run rg -ni 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
+        "$PWD/modules/claude.sh" "$PWD/modules/kimi.sh" \
+        "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh"
+    [ "$status" -eq 1 ]
+}
+
+@test "工具模块的升级操作默认回车继续" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/claude.sh"
+        claude() { [ "$1" = "--version" ] && echo 1.0.0 || echo upgraded; }
+        _claude_latest_version() { echo 1.1.0; }
+        _with_spinner() { shift; "$@"; }
+        printf "\n" | do_upgrade
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已升级至 1.0.0" ]]
+}
+
 @test "安装清单与全部运行时文件双向一致" {
     local expected actual
     expected=$(mktemp)

@@ -6,8 +6,10 @@ modules/registry.sh
 modules/crontab.sh
 modules/docker.sh
 modules/firewall.sh
+modules/github-cli.sh
 modules/network-test.sh
 modules/nginx.sh
+modules/openclaw.sh
 modules/port-proc.sh
 modules/security-update.sh
 modules/services.sh
@@ -15,3 +17,5 @@ modules/ssh-keys.sh
 modules/ssh-passwd.sh
 modules/ssl-check.sh
 modules/sys-info.sh
+modules/claude.sh
+modules/kimi.sh
