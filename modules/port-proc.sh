@@ -16,7 +16,7 @@ do_listen_ports() {
         "$(_pad_right "编号" 6)" "$(_pad_right "端口" 8)" "$(_pad_right "PID" 8)" "进程"
     while IFS= read -r line; do
         read -r -a ss_fields <<< "$line"
-        addr="${ss_fields[4]:-}"
+        addr="${ss_fields[3]:-}"
         port=${addr##*:}
         [ -n "$port_filter" ] && [ "$port" != "$port_filter" ] && continue
         if [[ "$line" =~ pid=([0-9]+) ]]; then

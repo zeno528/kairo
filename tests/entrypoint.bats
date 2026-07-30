@@ -480,9 +480,9 @@ setup() {
         count_file=$(mktemp)
         ss() {
             printf "%s\n" \
-                "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=123,fd=6))" \
-                "tcp LISTEN 0 4096 0.0.0.0:8081 0.0.0.0:* users:((\"nginx\",pid=123,fd=7))" \
-                "tcp LISTEN 0 4096 0.0.0.0:9000 0.0.0.0:* users:((\"app\",pid=456,fd=8))"
+                "LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=123,fd=6))" \
+                "LISTEN 0 4096 0.0.0.0:8081 0.0.0.0:* users:((\"nginx\",pid=123,fd=7))" \
+                "LISTEN 0 4096 0.0.0.0:9000 0.0.0.0:* users:((\"app\",pid=456,fd=8))"
         }
         ps() {
             printf x >> "$count_file"

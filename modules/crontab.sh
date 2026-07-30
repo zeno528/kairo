@@ -16,14 +16,14 @@ do_list() {
     local num=0 min hour day mon week cmd
     if crontab -l 2>/dev/null | grep -qvE '^#|^[[:space:]]*$|^[A-Za-z_][A-Za-z0-9_]*='; then
         printf "  ${C_GRAY}%s %s %s %s %s %s %s${C_RESET}\n" \
-            "$(_pad_right "编号" 5)" "$(_pad_right "分" 6)" "$(_pad_right "时" 6)" \
+            "$(_pad_right "编号" 5)" "$(_pad_right "分" 10)" "$(_pad_right "时" 10)" \
             "$(_pad_right "日" 6)" "$(_pad_right "月" 6)" "$(_pad_right "周" 6)" "命令"
         while IFS= read -r line; do
             num=$((num + 1))
             read -r min hour day mon week cmd <<< "$line"
             printf "  %s %s %s %s %s %s %s\n" \
                 "$(_pad_right "[$num]" 5)" \
-                "$(_pad_right "$min" 6)" "$(_pad_right "$hour" 6)" \
+                "$(_pad_right "$min" 10)" "$(_pad_right "$hour" 10)" \
                 "$(_pad_right "$day" 6)" "$(_pad_right "$mon" 6)" "$(_pad_right "$week" 6)" "$cmd"
         done < <(crontab -l 2>/dev/null | grep -vE '^#|^[[:space:]]*$|^[A-Za-z_][A-Za-z0-9_]*=')
     fi

@@ -72,15 +72,6 @@ do_overview() {
     if [ -n "$mem_total" ] && [ "$mem_total" -gt 0 ] 2>/dev/null; then
         _info_line "物理内存" "$(awk -v u="$mem_used" -v t="$mem_total" 'BEGIN{printf "%.0fM/%.0fM (%.1f%%)", u/1048576, t/1048576, u/t*100}')"
     fi
-    local mem_type mem_speed mem_info
-    if command -v dmidecode >/dev/null 2>&1; then
-        mem_info=$(sudo dmidecode -t memory 2>/dev/null)
-        mem_type=$(printf '%s' "$mem_info" | awk -F': +' '/Type:/{print $2; exit}')
-        mem_speed=$(printf '%s' "$mem_info" | awk -F': +' '/Speed:/{print $2; exit}')
-    fi
-    if [ -n "$mem_type" ] && [ "$mem_type" != "Unknown" ]; then
-        _info_line "内存类型" "${mem_type}${mem_speed:+ $mem_speed}"
-    fi
     read -r swap_total swap_used _ <<< "$(free -b 2>/dev/null | awk '/^Swap:/{print $2, $3}')"
     if [ -n "$swap_total" ] && [ "$swap_total" -gt 0 ] 2>/dev/null; then
         _info_line "虚拟内存" "$(awk -v u="$swap_used" -v t="$swap_total" 'BEGIN{printf "%.0fM/%.0fM (%.0f%%)", u/1048576, t/1048576, u/t*100}')"
