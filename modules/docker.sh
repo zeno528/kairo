@@ -92,7 +92,7 @@ do_upgrade() {
     fi
     sudo -v || { error "升级需要 sudo 权限"; return 1; }
 
-    local current candidate
+    local current candidate candidate_ver
     current=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
 
     _start_spinner "正在检查更新"
@@ -104,11 +104,14 @@ do_upgrade() {
         error "无法获取 Docker 最新版本信息，请确认已添加 Docker 官方源"; return 1
     fi
 
+    # 从 Debian 包版本中提取纯 Docker 引擎版本：5:29.6.2-1~debian.13~trixie → 29.6.2
+    candidate_ver=$(echo "$candidate" | sed -E 's/^[0-9]+://; s/-.*//')
+
     echo ""
     info "当前版本: $current"
-    info "最新版本: $candidate"
+    info "最新版本: $candidate_ver (包: $candidate)"
 
-    if [ "$current" = "$candidate" ]; then
+    if [ "$current" = "$candidate_ver" ]; then
         success "已是最新版本"; return 0
     fi
 
