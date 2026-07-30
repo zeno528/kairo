@@ -128,7 +128,7 @@ menu() {
         echo -e "  ${C_BOLD}[F]${C_RESET} 完整升级（可能安装或删除软件包）"
         echo -e "  ${C_BOLD}[P]${C_RESET} 预演完整升级（不修改系统）"
         echo -e "  ${C_BOLD}[C]${C_RESET} 清理孤立包和安装缓存    ${C_BOLD}[R]${C_RESET} 刷新列表"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择操作: " choice

@@ -53,7 +53,7 @@ menu() {
         title "🚀 BBR 加速"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 查看当前算法    ${C_BOLD}[2]${C_RESET} 启动加速面板"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice

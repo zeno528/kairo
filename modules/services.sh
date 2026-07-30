@@ -128,7 +128,7 @@ menu() {
         do_list || { kairo_pause "按 Enter 返回上级..."; return; }
         divider
         echo -e "  ${C_BOLD}[编号]${C_RESET} 选择服务    ${C_BOLD}[N]${C_RESET} 输入服务名"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择服务或操作: " choice
@@ -147,7 +147,7 @@ menu() {
         echo ""
         echo "  ${C_BOLD}${svc}${C_RESET}"
         echo "  [1] 查看状态  [2] 启动  [3] 停止"
-        echo "  [4] 重启      [5] 开关开机自启  [0] 返回列表"
+        echo "  [4] 重启      [5] 开关开机自启  [0] 返回上级"
         read -p "  选择操作: " choice
         case "$choice" in
             1) do_status "$svc" ;;

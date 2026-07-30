@@ -65,7 +65,7 @@ menu() {
         do_status || true
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 安装并启用    ${C_BOLD}[2]${C_RESET} 查看封禁 IP    ${C_BOLD}[3]${C_RESET} 卸载"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice

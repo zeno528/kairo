@@ -88,7 +88,7 @@ menu() {
         echo -e "  ${C_BOLD}[3]${C_RESET} 内存信息"
         echo -e "  ${C_BOLD}[4]${C_RESET} 磁盘信息"
         echo -e "  ${C_BOLD}[5]${C_RESET} 网络信息"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice

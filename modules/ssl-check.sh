@@ -192,7 +192,7 @@ menu() {
         echo -e "  ${C_BOLD}[1]${C_RESET} 查看本机证书"
         echo -e "  ${C_BOLD}[2]${C_RESET} 检查远程域名证书"
         echo -e "  ${C_BOLD}[3]${C_RESET} 批量检查本机证书到期"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice

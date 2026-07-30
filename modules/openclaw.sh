@@ -101,7 +101,7 @@ menu() {
         title "🦞 OpenClaw"
         do_status || true
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 安装    ${C_BOLD}[2]${C_RESET} 检查并升级    ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[1]${C_RESET} 安装    ${C_BOLD}[2]${C_RESET} 检查并升级    ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         read -r -p "  请选择: " choice
         case "$choice" in

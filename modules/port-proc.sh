@@ -116,7 +116,7 @@ menu() {
         divider
         echo -e "  ${C_BOLD}[编号]${C_RESET} 选择进程    ${C_BOLD}[P]${C_RESET} 按端口筛选    ${C_BOLD}[N]${C_RESET} 按名称筛选"
         echo -e "  ${C_BOLD}[R]${C_RESET} 清除筛选"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择进程或操作: " choice
@@ -128,7 +128,7 @@ menu() {
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
                     pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
                     echo ""
-                    echo "  [1] 查看进程详情  [2] 终止进程  [0] 返回列表"
+                    echo "  [1] 查看进程详情  [2] 终止进程  [0] 返回上级"
                     read -p "  选择操作: " choice
                     case "$choice" in
                         1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;

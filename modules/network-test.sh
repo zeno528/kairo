@@ -209,7 +209,7 @@ menu() {
         echo -e "  ${C_BOLD}[1]${C_RESET} 网络测速        ${C_BOLD}[2]${C_RESET} 三网回程路由"
         echo -e "  ${C_BOLD}[3]${C_RESET} Ping 延迟测试   ${C_BOLD}[4]${C_RESET} IP 质量体检"
         echo -e "  ${C_BOLD}[5]${C_RESET} 流媒体解锁      ${C_BOLD}[6]${C_RESET} 性能跑分"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -r -p "  请输入选项: " choice

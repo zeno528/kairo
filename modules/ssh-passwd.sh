@@ -138,7 +138,7 @@ menu() {
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 开启密码登录"
         echo -e "  ${C_BOLD}[2]${C_RESET} 关闭密码登录"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -r -p "  请输入选项: " choice

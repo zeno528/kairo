@@ -88,7 +88,7 @@ menu() {
         do_status
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 一键应用优化    ${C_BOLD}[2]${C_RESET} 恢复默认"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice

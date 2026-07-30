@@ -480,7 +480,7 @@ _select_enabled_site() {
     local sel
     _list_manageable_sites
     [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
-    echo "  [0] 返回上一级"
+    echo "  [0] 返回上级"
     read -p "  选择站点编号（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
@@ -751,7 +751,7 @@ _select_disabled_site() {
     local sel
     _list_disabled_sites
     [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
-    echo "  [0] 返回上一级"
+    echo "  [0] 返回上级"
     read -p "  选择要启用的站点编号（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
@@ -908,7 +908,7 @@ do_logs() {
     echo "  [1] 访问日志 (tail)"
     echo "  [2] 错误日志 (tail)"
     echo "  [3] 访问日志 Top 分析 (今天)"
-    echo "  [0] 返回"
+    echo "  [0] 返回上级"
     read -p "  选择: " log_type
     case "$log_type" in
         1) sudo tail -f "${NGINX_LOG_DIR}/access.log" ;;
@@ -1087,7 +1087,7 @@ do_restore() {
     fi
     _list_snapshots
     [ ${#NGINX_SNAPSHOT_ITEMS[@]} -gt 0 ] || return 0
-    echo "  [0] 返回上一级"
+    echo "  [0] 返回上级"
     local sel
     read -p "  选择要恢复的快照（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return; }
@@ -1138,7 +1138,7 @@ menu() {
         echo -e "  ${C_BOLD}[5]${C_RESET}  安全加固扫描"
         echo -e "  ${C_BOLD}[6]${C_RESET}  配置快照 / 回滚"
         echo -e "  ${C_BOLD}[7]${C_RESET}  卸载 Nginx"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice
@@ -1149,7 +1149,7 @@ menu() {
                 echo "  [1] 启动                      [2] 停止"
                 echo "  [3] 重启                      [4] 重载配置"
                 echo "  [5] 开关开机自启              [6] 测试配置语法"
-                echo "  [0] 返回上一级"
+                echo "  [0] 返回上级"
                 read -p "  选择服务操作: " sub
                 case "$sub" in
                     1) do_start ;;
@@ -1178,7 +1178,7 @@ menu() {
                             local site="${NGINX_SITE_ITEMS[$((sub - 1))]}"
                             echo ""
                             echo "  ${C_BOLD}${site}${C_RESET}"
-                            echo "  [1] 查看配置  [2] 申请 / 续期证书  [3] 删除站点  [0] 返回列表"
+                            echo "  [1] 查看配置  [2] 申请 / 续期证书  [3] 删除站点  [0] 返回上级"
                             read -p "  选择操作: " sub
                             case "$sub" in
                                 1) do_view_conf "$site" ;;
@@ -1197,7 +1197,7 @@ menu() {
             5) do_security_scan; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             6)
                 echo ""
-                echo "  [1] 创建快照    [2] 从快照恢复    [0] 返回上一级"
+                echo "  [1] 创建快照    [2] 从快照恢复    [0] 返回上级"
                 read -p "  选择: " sub
                 case "$sub" in
                     1) do_snapshot ;;

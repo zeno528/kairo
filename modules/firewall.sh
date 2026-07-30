@@ -144,7 +144,7 @@ menu() {
         divider
         echo -e "  ${C_BOLD}[编号]${C_RESET} 删除规则    ${C_BOLD}[O]${C_RESET} 开放端口    ${C_BOLD}[C]${C_RESET} 按端口关闭"
         echo -e "  ${C_BOLD}[E]${C_RESET} 开启防火墙（可能影响 SSH）    ${C_BOLD}[D]${C_RESET} 关闭防火墙"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择规则或操作: " choice

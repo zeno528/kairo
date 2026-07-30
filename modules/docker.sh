@@ -110,7 +110,7 @@ menu() {
         [ ${#DOCKER_CONTAINERS[@]} -eq 0 ] && info "当前没有容器"
         divider
         echo -e "  ${C_BOLD}[编号]${C_RESET} 选择容器    ${C_BOLD}[I]${C_RESET} 镜像管理"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择容器或操作: " choice
@@ -127,7 +127,7 @@ menu() {
         esac
         echo ""
         echo "  ${C_BOLD}${name}${C_RESET}"
-        echo "  [1] 启动  [2] 停止  [3] 重启  [4] 查看日志  [0] 返回列表"
+        echo "  [1] 启动  [2] 停止  [3] 重启  [4] 查看日志  [0] 返回上级"
         read -p "  选择操作: " choice
         case "$choice" in
             1) do_start "$name" ;;

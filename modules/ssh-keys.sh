@@ -220,7 +220,7 @@ menu() {
         do_list
         divider
         echo -e "  ${C_BOLD}[编号]${C_RESET} 选择公钥    ${C_BOLD}[A]${C_RESET} 添加公钥"
-        echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
+        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
         read -p "  选择公钥或操作: " choice
@@ -234,7 +234,7 @@ menu() {
                     error "无效选择"; sleep 1; continue
                 fi
                 echo ""
-                echo "  [1] 查看完整公钥  [2] 修改备注  [3] 删除公钥  [0] 返回列表"
+                echo "  [1] 查看完整公钥  [2] 修改备注  [3] 删除公钥  [0] 返回上级"
                 read -p "  选择操作: " action
                 case "$action" in
                     1) do_view "$choice" ;;
