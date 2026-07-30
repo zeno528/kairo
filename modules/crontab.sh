@@ -3,22 +3,34 @@
 
 do_list() {
     echo ""
-    if ! crontab -l 2>/dev/null | head -1 | read -r line; then
+    if ! crontab -l 2>/dev/null | grep -qvE '^#|^[[:space:]]*$'; then
         warn "当前没有定时任务"
         return
     fi
     echo -e "  ${C_BOLD}当前定时任务${C_RESET}"
-    echo -e "  ${C_GRAY}分  时  日  月  周  命令${C_RESET}"
-    echo -e "  ${C_GRAY}── ── ── ── ── ──────────────────────${C_RESET}"
-    local num=0
-    crontab -l 2>/dev/null | grep -v '^#' | grep -v '^$' | while IFS= read -r line; do
-        num=$((num + 1))
-        printf "  ${C_DIM}[%d]${C_RESET} %s\n" "$num" "$line"
+    # 环境变量（NAME=value，非任务，不编号）
+    crontab -l 2>/dev/null | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' | while IFS= read -r line; do
+        printf "  ${C_DIM}%s${C_RESET}\n" "$line"
     done
+    # 定时任务（分列对齐）
+    local num=0 min hour day mon week cmd
+    if crontab -l 2>/dev/null | grep -qvE '^#|^[[:space:]]*$|^[A-Za-z_][A-Za-z0-9_]*='; then
+        printf "  ${C_GRAY}%s %s %s %s %s %s %s${C_RESET}\n" \
+            "$(_pad_right "编号" 5)" "$(_pad_right "分" 6)" "$(_pad_right "时" 6)" \
+            "$(_pad_right "日" 6)" "$(_pad_right "月" 6)" "$(_pad_right "周" 6)" "命令"
+        while IFS= read -r line; do
+            num=$((num + 1))
+            read -r min hour day mon week cmd <<< "$line"
+            printf "  %s %s %s %s %s %s %s\n" \
+                "$(_pad_right "[$num]" 5)" \
+                "$(_pad_right "$min" 6)" "$(_pad_right "$hour" 6)" \
+                "$(_pad_right "$day" 6)" "$(_pad_right "$mon" 6)" "$(_pad_right "$week" 6)" "$cmd"
+        done < <(crontab -l 2>/dev/null | grep -vE '^#|^[[:space:]]*$|^[A-Za-z_][A-Za-z0-9_]*=')
+    fi
     echo ""
-    # 显示注释行
-    crontab -l 2>/dev/null | grep '^#' | grep -v '^#\s*$' | while IFS= read -r line; do
-        echo -e "  ${C_DIM}${line}${C_RESET}"
+    # 注释行
+    crontab -l 2>/dev/null | grep '^#' | grep -vE '^#[[:space:]]*$' | while IFS= read -r line; do
+        printf "  ${C_DIM}%s${C_RESET}\n" "$line"
     done
 }
 
@@ -28,13 +40,13 @@ do_add() {
     echo -e "  ${C_DIM}示例: */5 * * * * /path/to/script.sh${C_RESET}"
     echo -e "  ${C_DIM}在线生成: https://crontab.guru/${C_RESET}"
     echo ""
-    read -p "  输入定时任务表达式: " expr
+    read -r -p "  输入定时任务表达式: " expr
     [ -z "$expr" ] && info "已取消" && return
-    read -p "  输入要执行的命令: " cmd
+    read -r -p "  输入要执行的命令: " cmd
     [ -z "$cmd" ] && info "已取消" && return
     echo ""
     info "将添加: $expr $cmd"
-    read -p "  确认? [Y/n]: " confirm
+    read -r -p "  确认? [Y/n]: " confirm
     [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     (crontab -l 2>/dev/null; echo "$expr $cmd") | crontab - && success "定时任务已添加"
 }
@@ -43,7 +55,7 @@ do_remove() {
     local num="${1:-}"
     echo ""
     local tasks
-    tasks=$(crontab -l 2>/dev/null | grep -v '^#' | grep -v '^$')
+    tasks=$(crontab -l 2>/dev/null | grep -vE '^#|^[[:space:]]*$|^[A-Za-z_][A-Za-z0-9_]*=')
     if [ -z "$tasks" ]; then
         warn "当前没有定时任务"
         return
@@ -51,7 +63,7 @@ do_remove() {
     if [ -z "$num" ]; then
         do_list
         echo ""
-        read -p "  输入要删除的编号: " num
+        read -r -p "  输入要删除的编号: " num
     fi
     [ -z "$num" ] && info "已取消" && return
     kairo_is_positive_integer "$num" || { error "请输入正整数"; return 1; }
@@ -61,7 +73,7 @@ do_remove() {
     local current=0
     local new_crontab=""
     while IFS= read -r line; do
-        [[ -z "$line" || "$line" =~ ^# ]] && {
+        [[ -z "$line" || "$line" =~ ^# || "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && {
             new_crontab="${new_crontab}${line}"$'\n'
             continue
         }
@@ -98,7 +110,7 @@ menu() {
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
-        read -p "  选择任务或操作: " choice
+        read -r -p "  选择任务或操作: " choice
         case "$choice" in
             [Aa]) do_add; echo ""; kairo_pause "按 Enter 返回任务列表..." ;;
             [Ee]) do_edit; echo ""; kairo_pause "按 Enter 返回任务列表..." ;;

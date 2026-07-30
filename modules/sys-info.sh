@@ -36,13 +36,14 @@ do_overview() {
     else
         cpu_model=$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)
         cpu_cores=$(grep -c '^processor' /proc/cpuinfo)
-        cpu_mhz=$(awk -F': ' '/^cpu MHz/{print int($2); exit}' /proc/cpuinfo)
     fi
+    # lscpu 无频率字段时回退到 /proc/cpuinfo 当前频率
+    [ -n "$cpu_mhz" ] || cpu_mhz=$(awk -F': +' '/^cpu MHz/{print $2; exit}' /proc/cpuinfo)
     cpu_mhz=${cpu_mhz%.*}
     _info_line "CPU架构" "$(uname -m)"
     _info_line "CPU型号" "${cpu_model:-未知}"
     _info_line "CPU核心数" "${cpu_cores:-未知}"
-    [ -n "$cpu_mhz" ] && _info_line "CPU频率" "${cpu_mhz} MHz"
+    [ -n "$cpu_mhz" ] && _info_line "CPU主频" "${cpu_mhz} MHz"
 
     # --- 性能 / 资源 ---
     _info_sep
@@ -59,6 +60,15 @@ do_overview() {
     read -r mem_total mem_used _ <<< "$(free -b 2>/dev/null | awk '/^Mem:/{print $2, $3}')"
     if [ -n "$mem_total" ] && [ "$mem_total" -gt 0 ] 2>/dev/null; then
         _info_line "物理内存" "$(awk -v u="$mem_used" -v t="$mem_total" 'BEGIN{printf "%.0fM/%.0fM (%.1f%%)", u/1048576, t/1048576, u/t*100}')"
+    fi
+    local mem_type mem_speed mem_info
+    if command -v dmidecode >/dev/null 2>&1; then
+        mem_info=$(sudo dmidecode -t memory 2>/dev/null)
+        mem_type=$(printf '%s' "$mem_info" | awk -F': +' '/Type:/{print $2; exit}')
+        mem_speed=$(printf '%s' "$mem_info" | awk -F': +' '/Speed:/{print $2; exit}')
+    fi
+    if [ -n "$mem_type" ] && [ "$mem_type" != "Unknown" ]; then
+        _info_line "内存类型" "${mem_type}${mem_speed:+ $mem_speed}"
     fi
     read -r swap_total swap_used _ <<< "$(free -b 2>/dev/null | awk '/^Swap:/{print $2, $3}')"
     if [ -n "$swap_total" ] && [ "$swap_total" -gt 0 ] 2>/dev/null; then
@@ -96,6 +106,9 @@ do_overview() {
     fi
     _info_line "运营商" "${org:-查询失败}"
     _info_line "IPv4地址" "${pub_ip:-查询失败}"
+    local ipv6_local
+    ipv6_local=$(ip -6 addr show scope global 2>/dev/null | awk '/inet6/{split($2,a,"/");print a[1]; exit}')
+    [ -n "$ipv6_local" ] && _info_line "IPv6地址" "$ipv6_local"
     dns=$(grep -E '^[[:space:]]*nameserver' /etc/resolv.conf 2>/dev/null | awk '{print $2}' | head -3 | paste -sd ' ')
     _info_line "DNS地址" "${dns:-无}"
     _info_line "地理位置" "${geo:-查询失败}"
