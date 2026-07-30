@@ -5,17 +5,14 @@ _SINGBOX_EOOCE_URL="https://raw.githubusercontent.com/eooce/sing-box/main/sing-b
 _SINGBOX_YONGGEKKK_URL="https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh"
 
 do_install() {
-    local version="${1:-}"
+    local version
     echo ""
-    if [ -z "$version" ]; then
-        echo ""
-        _menu_actions 24 "${C_BOLD}[1]${C_RESET} eooce 版（轻量，Docker 部署）"
-        _menu_actions 24 "${C_BOLD}[2]${C_RESET} yonggekkk 版（reality/hysteria2/订阅）"
-        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
-        divider
-        echo ""
-        read -r -p "  选择版本: " version
-    fi
+    _menu_actions 24 "${C_BOLD}[1]${C_RESET} eooce 版（轻量，Docker 部署）"
+    _menu_actions 24 "${C_BOLD}[2]${C_RESET} yonggekkk 版（reality/hysteria2/订阅）"
+    _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
+    divider
+    echo ""
+    read -r -p "  选择版本: " version
     case "$version" in
         1) bash -c \
             'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
