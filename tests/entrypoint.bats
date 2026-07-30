@@ -369,12 +369,19 @@ setup() {
             esac
         }
         du() { printf "24M /var/cache/apt/archives\n"; }
+        journalctl() {
+            case "$1" in
+                "--disk-usage") printf "Archived and active journal takes 50M in the file system.\n" ;;
+                "--vacuum-size") : ;;
+            esac
+        }
         printf "y\n" | do_cleanup
     '
     [ "$status" -eq 0 ]
     [[ "$output" == *"unused-lib"* ]]
     [[ "$output" == *"安装缓存占用: 24M"* ]]
-    [[ "$output" == *"孤立包和安装缓存已清理"* ]]
+    [[ "$output" == *"系统日志占用: 50M"* ]]
+    [[ "$output" == *"孤立包、安装缓存和旧日志已清理"* ]]
 }
 
 @test "完整升级预演只执行 apt 模拟命令" {

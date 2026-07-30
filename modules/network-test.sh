@@ -7,6 +7,12 @@ NODE_DATA_REF="3443ba80e9114b9732ceadd8d35561c728e8e05f"
 BENCH_URL="https://raw.githubusercontent.com/teddysun/across/${BENCH_REF}/bench.sh"
 BACKTRACE_RELEASE_URL="https://github.com/zhanghanyun/backtrace/releases/latest/download"
 NODE_BASE_URL="https://raw.githubusercontent.com/spiritLHLS/speedtest.cn-CN-ID/${NODE_DATA_REF}"
+IPQUALITY_REF="44a55baec6cdd166a68b37f9c07d62d9e0a04f23"
+STREAMING_REF="b6d4a6f9a87fc6eae6d3e62d0092ececcec8e844"
+YABS_REF="f8c6a48cd6ff85b54c5cd2504f0807462dc58938"
+IPQUALITY_URL="https://raw.githubusercontent.com/xykt/IPQuality/${IPQUALITY_REF}/ip.sh"
+STREAMING_URL="https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/${STREAMING_REF}/check.sh"
+YABS_URL="https://raw.githubusercontent.com/masonr/yet-another-bench-script/${YABS_REF}/yabs.sh"
 
 do_speedtest() (
     echo ""
@@ -153,24 +159,71 @@ do_ping_test() (
     done
 )
 
+do_ip_quality() (
+    echo ""
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-ipq.XXXXXX") || {
+        error "无法创建临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+
+    bash -c \
+        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$IPQUALITY_URL"
+)
+
+do_streaming() (
+    echo ""
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-stream.XXXXXX") || {
+        error "无法创建临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+
+    bash -c \
+        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$STREAMING_URL"
+)
+
+do_bench() (
+    echo ""
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-yabs.XXXXXX") || {
+        error "无法创建临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+
+    bash -c \
+        'curl --connect-timeout 10 --max-time 600 --retry 2 -fsSL "$0" | bash' "$YABS_URL"
+)
+
 menu() {
     while true; do
         clear
         title "🌐 网络测试"
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 网络测速"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 三网回程路由"
-        echo -e "  ${C_BOLD}[3]${C_RESET} Ping 延迟测试"
+        echo -e "  ${C_BOLD}[1]${C_RESET} 网络测速        ${C_BOLD}[2]${C_RESET} 三网回程路由"
+        echo -e "  ${C_BOLD}[3]${C_RESET} Ping 延迟测试   ${C_BOLD}[4]${C_RESET} IP 质量体检"
+        echo -e "  ${C_BOLD}[5]${C_RESET} 流媒体解锁      ${C_BOLD}[6]${C_RESET} 性能跑分"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -r -p "  请输入选项: " choice
         case "$choice" in
-            1) do_speedtest; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_backtrace; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_ping_test; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            1) do_speedtest ;;
+            2) do_backtrace ;;
+            3) do_ping_test ;;
+            4) do_ip_quality ;;
+            5) do_streaming ;;
+            6) do_bench ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac
+        echo ""
+        kairo_pause "按 Enter 返回当前菜单..."
     done
 }

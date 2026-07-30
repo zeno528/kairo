@@ -85,7 +85,7 @@ do_full_update_preview() {
 }
 
 do_cleanup() {
-    local preview packages cache_size confirm
+    local preview packages cache_size journal_size confirm
 
     preview=$(LC_ALL=C apt-get -s autoremove 2>&1) || {
         error "无法预演孤立包清理"
@@ -94,6 +94,7 @@ do_cleanup() {
     }
     packages=$(printf '%s\n' "$preview" | awk '/^Remv / { print $2 }')
     cache_size=$(du -sh /var/cache/apt/archives 2>/dev/null | awk 'NR == 1 { print $1 }')
+    journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)?[KMGT]?' | head -1)
 
     echo ""
     if [ -n "$packages" ]; then
@@ -103,13 +104,14 @@ do_cleanup() {
         info "没有需要移除的孤立软件包"
     fi
     printf '  安装缓存占用: %s\n' "${cache_size:-未知}"
+    printf '  系统日志占用: %s（将压缩到 500M）\n' "${journal_size:-未知}"
     echo ""
-    read -r -p "  确认清理以上孤立包并清空安装缓存? [y/N]: " confirm
+    read -r -p "  确认清理孤立包、清空缓存并压缩日志到 500M? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
     sudo -v || { error "清理需要 sudo 权限"; return 1; }
-    if sudo apt-get autoremove -y && sudo apt-get clean; then
-        success "孤立包和安装缓存已清理"
+    if sudo apt-get autoremove -y && sudo apt-get clean && sudo journalctl --vacuum-size=500M >/dev/null; then
+        success "孤立包、安装缓存和旧日志已清理"
     else
         error "清理失败"
         return 1
