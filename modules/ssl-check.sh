@@ -1,5 +1,5 @@
 #!/bin/bash
-# ssl-check 模块 - SSL 证书检查
+# ssl-check 模块 - SSL 证书管理
 
 LE_LIVE_DIR="${LE_LIVE_DIR:-/etc/letsencrypt/live}"
 
@@ -57,6 +57,40 @@ _show_cert_info() {
         sed 's/^/  /'
 }
 
+# 按剩余天数输出带颜色的状态文本。
+_format_days_status() {
+    local days="$1"
+    if [ "$days" -lt 0 ]; then
+        printf "${C_RED}%6s  %s${C_RESET}" "N/A" "已过期"
+    elif [ "$days" -lt 30 ]; then
+        printf "${C_YELLOW}%6s  %s${C_RESET}" "$days" "即将过期"
+    else
+        printf "${C_GREEN}%6s  %s${C_RESET}" "$days" "正常"
+    fi
+}
+
+# landing page：自动展示所有本机证书的到期概况
+_do_cert_overview() {
+    local certs=()
+    mapfile -t certs < <(_local_cert_files)
+    if [ "${#certs[@]}" -eq 0 ]; then
+        info "未发现 Let's Encrypt 证书"
+        return 0
+    fi
+    echo ""
+    echo -e "  ${C_BOLD}本机证书${C_RESET}"
+    echo -e "  ${C_BOLD}域名${C_RESET}                        ${C_BOLD}剩余    状态${C_RESET}"
+    echo -e "  ${C_GRAY}────────────────────────── ─────── ──────${C_RESET}"
+    local cert_path domain days i
+    i=0
+    for cert_path in "${certs[@]}"; do
+        i=$((i + 1))
+        domain=$(basename "$(dirname "$cert_path")")
+        days=$(_get_local_cert_days "$cert_path")
+        printf "  %s %-26s %b\n" "$(_pad_right "[$i]" 5)" "$domain" "$(_format_days_status "$days")"
+    done
+}
+
 do_local_check() {
     _check_openssl || return
     local certs=() cert_path choice days
@@ -92,7 +126,7 @@ do_local_check() {
         return
     fi
     echo ""
-    openssl x509 -in "$cert_path" -noout -subject -issuer -dates 2>/dev/null | sed 's/^/  /'
+    openssl x509 -in "$cert_path" -noout -subject -issuer -dates -serial 2>/dev/null | sed 's/^/  /'
     echo ""
     days=$(_get_local_cert_days "$cert_path")
     if [ "$days" -lt 0 ]; then
@@ -184,24 +218,101 @@ do_batch_check() {
     done
 }
 
+do_verify_chain() {
+    _check_openssl || return
+    local certs=() choice
+    mapfile -t certs < <(_local_cert_files)
+
+    if [ "${#certs[@]}" -eq 0 ]; then
+        info "未发现 Let's Encrypt 证书"
+        read -p "  输入证书文件路径（直接回车取消）: " cert_path
+        [ -z "$cert_path" ] && info "已取消" && return
+    else
+        echo ""
+        echo -e "  ${C_BOLD}选择要验证的证书${C_RESET}"
+        local i
+        for i in "${!certs[@]}"; do
+            printf "  %s %s\n" "$(_pad_right "[$((i + 1))]" 5)" "$(basename "$(dirname "${certs[$i]}")")"
+        done
+        echo ""
+        read -p "  选择证书编号（直接回车取消）: " choice
+        [ -z "$choice" ] && info "已取消" && return
+        if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#certs[@]}" ]; then
+            cert_path="${certs[$((choice - 1))]}"
+        else
+            error "编号无效"
+            return 1
+        fi
+    fi
+    [ -z "$cert_path" ] && info "已取消" && return
+    if [ ! -f "$cert_path" ]; then
+        error "文件不存在: $cert_path"
+        return
+    fi
+
+    local domain
+    domain=$(basename "$(dirname "$cert_path")")
+    echo ""
+    _start_spinner "正在验证证书链: $domain"
+    local result
+    result=$(openssl verify -CAfile "$cert_path" "$cert_path" 2>&1)
+    _stop_spinner
+    echo "$result" | sed 's/^/  /'
+    if echo "$result" | grep -q ': OK$'; then
+        echo ""
+        success "证书链验证通过"
+    else
+        echo ""
+        error "证书链验证未通过"
+        return 1
+    fi
+}
+
 menu() {
+    local choice certs cert_path
     while true; do
         clear
-        title "🔒 SSL 证书检查"
+        title "🔒 SSL 证书管理"
+        _do_cert_overview
         divider
-        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 查看本机证书"
-        _menu_actions 24 "${C_BOLD}[2]${C_RESET} 检查远程域名证书"
-        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 批量检查本机证书到期"
-        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 查看证书详情"
+        _menu_actions 20 "${C_BOLD}[C]${C_RESET} 检查远程域名证书"
+        _menu_actions 20 "${C_BOLD}[V]${C_RESET} 验证证书链完整性"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
-        read -p "  请输入选项: " choice
+        read -r -p "  请选择: " choice
         case "$choice" in
-            1) do_local_check; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_remote_check; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            3) do_batch_check; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
-            *) error "无效选项"; sleep 1 ;;
+            [Cc]) do_remote_check; echo ""; kairo_pause "按 Enter 返回..." ;;
+            [Vv]) do_verify_chain; echo ""; kairo_pause "按 Enter 返回..." ;;
+            *)
+                mapfile -t certs < <(_local_cert_files)
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#certs[@]}" ]; then
+                    cert_path="${certs[$((choice - 1))]}"
+                    _show_cert_detail "$cert_path"
+                    echo ""; kairo_pause "按 Enter 返回..."
+                else
+                    error "无效选项"; sleep 1
+                fi
+                ;;
         esac
     done
+}
+
+# 展示单个证书的完整信息（菜单 [编号] 入口）
+_show_cert_detail() {
+    local cert_path="$1"
+    local days
+    echo ""
+    openssl x509 -in "$cert_path" -noout -subject -issuer -dates -serial -ext subjectAltName 2>/dev/null | sed 's/^/  /'
+    echo ""
+    days=$(_get_local_cert_days "$cert_path")
+    if [ "$days" -lt 0 ]; then
+        echo -e "  ${C_RED}证书已过期${C_RESET}"
+    elif [ "$days" -lt 30 ]; then
+        echo -e "  ${C_YELLOW}剩余 $days 天（即将过期）${C_RESET}"
+    else
+        echo -e "  ${C_GREEN}剩余 $days 天${C_RESET}"
+    fi
 }
