@@ -222,9 +222,75 @@ do_compose() {
 
 do_images() {
     _check_docker || return
-    echo ""
-    echo -e "  ${C_BOLD}镜像列表${C_RESET}"
-    docker images --format "table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}" 2>/dev/null | sed 's/^/  /'
+    local choice imgs=() img_id repo_tag size created i
+    local -A USED_IMAGES
+    while true; do
+        # 收集正在被容器使用的镜像
+        USED_IMAGES=()
+        while IFS= read -r img; do
+            [ -n "$img" ] && USED_IMAGES["$img"]=1
+        done < <(docker ps --format '{{.Image}}' 2>/dev/null)
+
+        mapfile -t imgs < <(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null)
+        echo ""
+        echo -e "  ${C_BOLD}镜像列表${C_RESET} （${C_GREEN}●${C_RESET} = 有容器在用）"
+        i=1
+        while IFS=$'\t' read -r repo_tag size created; do
+            created="${created#"${created%%[![:space:]]*}"}"
+            if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
+                printf "  ${C_GREEN}●${C_RESET} [%2d] %-40s  %-8s  %s\n" "$i" "$repo_tag" "$size" "$created"
+            else
+                printf '    [%2d] %-40s  %-8s  %s\n' "$i" "$repo_tag" "$size" "$created"
+            fi
+            ((i++))
+        done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}' 2>/dev/null)
+
+        if [ "${#imgs[@]}" -eq 0 ]; then
+            info "当前没有镜像"
+            kairo_pause
+            return
+        fi
+        divider
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除镜像"
+        _menu_actions 20 "${C_BOLD}[p]${C_RESET} 清理未使用的镜像"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回"
+        divider
+        echo ""
+        read -r -p "  请选择: " choice
+        case "$choice" in
+            0) return ;;
+            [Pp])
+                if docker image prune -f 2>&1; then
+                    success "清理完成"
+                else
+                    error "清理失败"
+                fi
+                kairo_pause
+                ;;
+            *)
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#imgs[@]}" ]; then
+                    img_id="${imgs[$((choice - 1))]}"
+                    if [ -n "${USED_IMAGES[$img_id]:-}" ]; then
+                        warn "$img_id 正被运行中的容器使用，无法删除"
+                        info "若要更换版本，请先停止容器，再用新镜像重建"
+                        kairo_pause
+                        continue
+                    fi
+                    echo ""
+                    read -r -p "  确认删除镜像 $img_id? [y/N]: " confirm
+                    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; kairo_pause; continue; }
+                    if docker rmi "$img_id" 2>&1; then
+                        success "已删除 $img_id"
+                    else
+                        error "删除失败（可能被容器引用）"
+                    fi
+                else
+                    error "无效选项"; sleep 1
+                fi
+                kairo_pause
+                ;;
+        esac
+    done
 }
 
 do_cleanup() {
@@ -233,16 +299,17 @@ do_cleanup() {
     echo -e "  ${C_BOLD}当前磁盘占用${C_RESET}"
     docker system df 2>/dev/null | sed 's/^/  /'
     echo ""
-    warn "将清理所有已停止容器、无用网络、悬空镜像"
-    read -r -p "  是否同时清理未使用的镜像（包括 tagged）? [y/N]: " all
+    _menu_actions 24 "${C_BOLD}[1]${C_RESET} 基础清理（容器、网络、悬空镜像）"
+    _menu_actions 24 "${C_BOLD}[2]${C_RESET} 深度清理（含所有未使用镜像和卷）"
+    _menu_actions 24 "${C_BOLD}[0]${C_RESET} 取消"
     echo ""
-    read -r -p "  确认执行清理? [y/N]: " confirm
-    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    if [[ "$all" =~ ^[Yy]$ ]]; then
-        docker system prune -a -f --volumes 2>&1
-    else
-        docker system prune -f 2>&1
-    fi
+    read -r -p "  请选择: " choice
+    case "$choice" in
+        1) docker system prune -f 2>&1 ;;
+        2) docker system prune -a -f --volumes 2>&1 ;;
+        0) info "已取消"; return 0 ;;
+        *) error "无效选项"; return 1 ;;
+    esac
     echo ""
     success "清理完成"
 }
@@ -293,7 +360,7 @@ menu() {
                 ;;
             2) do_stats; echo ""; kairo_pause ;;
             3) do_compose; echo ""; kairo_pause ;;
-            4) do_images; echo ""; kairo_pause ;;
+            4) do_images ;;
             5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
