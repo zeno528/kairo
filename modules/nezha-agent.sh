@@ -25,9 +25,15 @@ _agent_binary() {
     grep -oP '^ExecStart=\K\S+' "$svc_file" 2>/dev/null | head -1
 }
 
+_agent_version() {
+    local binary="$1"
+    [ -z "$binary" ] || [ ! -x "$binary" ] && return
+    "$binary" -v 2>/dev/null | grep -oP 'v?\d+\.\d+\.\d+\S*' | head -1
+}
+
 # landing page：列出所有 agent 实例
 _render_agent_list() {
-    local i=1 svc svc_file status install_date
+    local i=1 svc svc_file status install_date binary version
     mapfile -t NEZHA_AGENTS < <(_find_agents)
     echo ""
     if [ "${#NEZHA_AGENTS[@]}" -eq 0 ]; then
@@ -37,14 +43,16 @@ _render_agent_list() {
     echo -e "  ${C_BOLD}Agent 列表${C_RESET}"
     for svc in "${NEZHA_AGENTS[@]}"; do
         svc_file=$(_agent_service_file "$svc")
+        binary=$(_agent_binary "$svc_file")
+        version=$(_agent_version "$binary")
         install_date=$(_agent_install_date "$svc_file")
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             status="${C_GREEN}运行中${C_RESET}"
         else
             status="${C_YELLOW}已停止${C_RESET}"
         fi
-        printf '  [%d] %-18s %b     安装于 %s\n' \
-            "$i" "${svc%.service}" "$status" "${install_date:-未知}"
+        printf '  [%d] %-18s %b  %-10s  安装于 %s\n' \
+            "$i" "${svc%.service}" "$status" "${version:-未知}" "${install_date:-未知}"
         ((i++))
     done
 }
@@ -71,8 +79,11 @@ do_status() {
     else
         warn "${svc%.service} 已停止"
     fi
-    local svc_file install_date
+    local svc_file install_date binary version
     svc_file=$(_agent_service_file "$svc")
+    binary=$(_agent_binary "$svc_file")
+    version=$(_agent_version "$binary")
+    [ -n "$version" ] && echo "  版本: $version"
     install_date=$(_agent_install_date "$svc_file")
     [ -n "$install_date" ] && echo "  安装时间: $install_date"
 }
