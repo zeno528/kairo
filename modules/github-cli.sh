@@ -38,7 +38,7 @@ _github_cli_add_repo() {
 }
 
 _github_cli_install() {
-    _github_cli_add_repo && sudo apt update && sudo apt install -y gh
+    _github_cli_add_repo && sudo apt-get update && sudo apt-get install -y gh
 }
 
 do_status() {
@@ -59,7 +59,7 @@ do_status() {
 
 do_install() {
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
-    command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
+    command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
     if _github_cli_install; then
         success "GitHub CLI 安装完成: $(_github_cli_version)"
@@ -77,7 +77,7 @@ do_upgrade() {
         return 1
     fi
     sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if ! sudo apt update; then
+    if ! sudo apt-get update; then
         error "刷新软件源失败"
         return 1
     fi
@@ -94,7 +94,7 @@ do_upgrade() {
     info "$installed → $candidate"
     read -r -p "  升级 GitHub CLI? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if sudo apt install --only-upgrade -y gh; then
+    if sudo apt-get install --only-upgrade -y gh; then
         success "GitHub CLI 已升级至 $(_github_cli_version)"
     else
         error "GitHub CLI 升级失败"

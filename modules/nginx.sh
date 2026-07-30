@@ -94,7 +94,7 @@ _configure_nginx_official_repo() {
 
     info "配置 nginx 官方 apt 源..."
 
-    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
+    if ! sudo apt-get install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
         error "安装 nginx 官方源依赖失败"
         return 1
     fi
@@ -122,7 +122,7 @@ _configure_nginx_official_repo() {
         sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
 
     info "首次刷新软件源可能需要 1–2 分钟，请勿中断..."
-    if ! sudo apt update; then
+    if ! sudo apt-get update; then
         error "刷新 apt 索引失败，无法获取 nginx 官方版本"
         return 1
     fi
@@ -217,7 +217,7 @@ do_install() {
         fi
     fi
 
-    # 首次安装在确认后配置官方源；升级路径已刷新过，无需重复 apt update。
+    # 首次安装在确认后配置官方源；升级路径已刷新过，无需重复 apt-get update。
     if [ "$repo_configured" -eq 0 ]; then
         _configure_nginx_official_repo "$distro" "$codename" || return
         candidate_ver=$(_get_nginx_candidate_version)
@@ -229,7 +229,7 @@ do_install() {
 
     info "检测到已有 Nginx 配置时将保留现有文件，不覆盖站点配置"
     if sudo env DEBIAN_FRONTEND=noninteractive \
-        apt -o Dpkg::Options::=--force-confold install -y nginx; then
+        apt-get -o Dpkg::Options::=--force-confold install -y nginx; then
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
@@ -257,13 +257,13 @@ do_uninstall() {
     _check_nginx || return
     echo ""
     warn "即将卸载 Nginx:"
-    echo -e "  ${C_GRAY}apt purge nginx nginx-common${C_RESET}"
+    echo -e "  ${C_GRAY}apt-get purge nginx nginx-common${C_RESET}"
     echo -e "  ${C_GRAY}配置 / 站点 conf / 日志 不会被自动删除${C_RESET}"
     echo ""
     read -p "  确认卸载? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     sudo systemctl stop nginx 2>/dev/null
-    if sudo apt purge -y nginx nginx-common; then
+    if sudo apt-get purge -y nginx nginx-common; then
         success "已卸载 Nginx"
     else
         error "卸载 Nginx 失败"
@@ -839,7 +839,7 @@ _check_certbot() {
         fi
     else
         info "snap 不可用，使用 apt 安装 python3-certbot-nginx"
-        if ! sudo apt install -y python3-certbot-nginx; then
+        if ! sudo apt-get install -y python3-certbot-nginx; then
             error "certbot 安装失败"
             return 1
         fi

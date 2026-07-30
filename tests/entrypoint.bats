@@ -315,7 +315,7 @@ setup() {
         count_file=$(mktemp)
         _start_spinner() { printf "spinner: %s\\n" "$1"; }
         _stop_spinner() { :; }
-        apt() { printf x >> "$count_file"; printf "Listing...\\nfoo/stable 1 amd64 [upgradable from: 0]\\n"; }
+        apt-get() { printf x >> "$count_file"; printf "Inst foo [0] (1 stable [amd64])\\n"; }
         do_check
         [ "$(wc -c < "$count_file")" -eq 1 ]
     '
@@ -349,7 +349,7 @@ setup() {
         do_full_update_preview
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"apt -s full-upgrade"* ]]
+    [[ "$output" == *"apt-get -s full-upgrade"* ]]
 }
 
 @test "services 拒绝可能改变 shell 语义的服务名" {

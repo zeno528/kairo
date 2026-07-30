@@ -295,4 +295,4 @@ else
 fi
 echo -e ">>> 🎉 完成！Kairo ${transition}\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
-echo "  主菜单: ka"
+echo "  主菜单命令: ka"

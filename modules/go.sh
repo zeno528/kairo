@@ -70,7 +70,7 @@ _go_install_archive() {
 }
 
 _go_upgrade_apt() {
-    sudo apt update && sudo apt install --only-upgrade -y "$GO_PACKAGE"
+    sudo apt-get update && sudo apt-get install --only-upgrade -y "$GO_PACKAGE"
 }
 
 do_status() {
@@ -131,7 +131,7 @@ do_upgrade() {
             ;;
         apt)
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! sudo apt update; then
+            if ! sudo apt-get update; then
                 error "刷新软件源失败"
                 return 1
             fi

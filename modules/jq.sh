@@ -56,7 +56,7 @@ _jq_install_release() {
 }
 
 _jq_upgrade_apt() {
-    sudo apt update && sudo apt install --only-upgrade -y "$JQ_PACKAGE"
+    sudo apt-get update && sudo apt-get install --only-upgrade -y "$JQ_PACKAGE"
 }
 
 do_status() {
@@ -76,9 +76,9 @@ do_status() {
 }
 
 do_install() {
-    command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
+    command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if sudo apt update && sudo apt install -y jq; then
+    if sudo apt-get update && sudo apt-get install -y jq; then
         _jq_detect_channel
         success "jq 安装完成: $(_jq_version)"
     else
@@ -93,7 +93,7 @@ do_upgrade() {
     case "$JQ_CHANNEL" in
         apt)
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! sudo apt update; then
+            if ! sudo apt-get update; then
                 error "刷新软件源失败"
                 return 1
             fi

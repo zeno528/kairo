@@ -8,7 +8,7 @@ _apt_update_smart() {
         error "无法创建软件源更新日志"
         return 1
     }
-    sudo apt update 2>&1 | tee "$update_log"
+    sudo apt-get update 2>&1 | tee "$update_log"
     update_status=${PIPESTATUS[0]}
     update_output=$(<"$update_log")
     rm -f -- "$update_log"
@@ -40,10 +40,10 @@ do_check() {
     echo ""
     echo -e "  ${C_BOLD}可更新的包${C_RESET}"
     _start_spinner "正在扫描可更新的软件包"
-    packages=$(apt list --upgradable 2>/dev/null | grep -v "^Listing")
+    packages=$(LC_ALL=C apt-get -s upgrade 2>/dev/null | awk '/^Inst / { print $2 }')
     _stop_spinner
     [ -n "$packages" ] && printf '%s\n' "$packages" | head -20 | sed 's/^/  /'
-    total=$(printf '%s\n' "$packages" | grep -c '/')
+    total=$(printf '%s\n' "$packages" | sed '/^$/d' | wc -l)
     echo ""
     info "共 $total 个包可更新"
 }
@@ -55,7 +55,7 @@ do_security_update() {
     read -p "  确认执行常规升级? [Y/n]: " confirm
     [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     _apt_update_smart || return
-    if sudo apt upgrade -y; then
+    if sudo apt-get upgrade -y; then
         success "常规升级完成"
     else
         error "常规升级失败"
@@ -70,7 +70,7 @@ do_full_update() {
     read -p "  确认执行完整升级? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     _apt_update_smart || return
-    if sudo apt full-upgrade -y; then
+    if sudo apt-get full-upgrade -y; then
         success "完整更新完成"
     else
         error "完整更新失败"
@@ -81,13 +81,13 @@ do_full_update() {
 do_full_update_preview() {
     echo ""
     info "以下仅为预演，不会修改系统"
-    sudo apt -s full-upgrade
+    sudo apt-get -s full-upgrade
 }
 
 do_cleanup() {
     echo ""
     echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
-    if sudo apt autoremove -y && sudo apt clean; then
+    if sudo apt-get autoremove -y && sudo apt-get clean; then
         success "清理完成"
     else
         error "清理失败"
