@@ -39,15 +39,18 @@ show_banner() {
     local width=42 header="─ Kairo "
     local version_line="  v${VERSION}"
     local repo_line="  https://github.com/zeno528/kairo"
-    local i dash="" fill="" version_padding="" repo_padding=""
+    local cmd_line="  本脚本启动命令: ka"
+    local i dash="" fill="" version_padding="" repo_padding="" cmd_padding=""
 
     for ((i=${#header}; i<width; i++)); do fill+="─"; done
     for ((i=0; i<width; i++)); do dash+="─"; done
-    for ((i=${#version_line}; i<width; i++)); do version_padding+=" "; done
-    for ((i=${#repo_line}; i<width; i++)); do repo_padding+=" "; done
+    for ((i=$(_menu_display_width "$version_line"); i<width; i++)); do version_padding+=" "; done
+    for ((i=$(_menu_display_width "$repo_line"); i<width; i++)); do repo_padding+=" "; done
+    for ((i=$(_menu_display_width "$cmd_line"); i<width; i++)); do cmd_padding+=" "; done
     echo -e "  ${C_CYAN}╭${C_BOLD}${header}${C_RESET}${C_CYAN}${fill}╮${C_RESET}"
     echo -e "  ${C_CYAN}│${C_RESET}${C_BOLD}${C_CYAN}${version_line}${C_RESET}${version_padding}${C_CYAN}│${C_RESET}"
     echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${repo_line}${C_RESET}${repo_padding}${C_CYAN}│${C_RESET}"
+    echo -e "  ${C_CYAN}│${C_RESET}${C_DIM}${cmd_line}${C_RESET}${cmd_padding}${C_CYAN}│${C_RESET}"
     echo -e "  ${C_CYAN}╰${dash}╯${C_RESET}"
 }
 

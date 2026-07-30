@@ -316,4 +316,4 @@ else
 fi
 echo -e ">>> 🎉 \033[1mKairo\033[0m ${done_msg}！\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
-echo "  主菜单命令: ka"
+echo -e "  \033[1m💡 输入 \033[1;36mka\033[0m\033[1m 进入主菜单\033[0m"
