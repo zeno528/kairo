@@ -124,7 +124,7 @@ setup() {
 }
 
 @test "工具模块不包含代理检测或代理参数" {
-    run rg -ni 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
+    run grep -Ein 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
         "$PWD/modules/claude.sh" "$PWD/modules/kimi.sh" \
         "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
         "$PWD/modules/go.sh" "$PWD/modules/jq.sh"
