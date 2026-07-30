@@ -73,7 +73,7 @@ kairo_register_module firewall system "防火墙管理" "status install open_por
 kairo_register_module services system "系统服务管理" "list status start stop restart toggle_enable reboot"
 kairo_register_module crontab system "定时任务" "list add remove edit"
 kairo_register_module docker system "Docker 管理" "list_containers start stop restart remove logs exec stats images compose cleanup status install"
-kairo_register_module nezha-agent system "哪吒监控 Agent" "status start stop"
+kairo_register_module nezha-agent system "哪吒监控 Agent" "status start stop remove logs"
 kairo_register_module network-test network "网络测试" "speedtest backtrace ping_test ip_quality streaming node_quality ecs_test"
 kairo_register_module ssl-check network "SSL 证书检查" "local_check remote_check batch_check verify_chain"
 kairo_register_module optimize network "网络与BBR内核优化" "status apply restore launch bbrv3"
