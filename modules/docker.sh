@@ -664,7 +664,7 @@ do_overview() {
 
         # 列标题
         if [ "${#IMAGE_LIST[@]}" -gt 0 ]; then
-            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}NAME${C_RESET}" 42)" "$(_pad_right "${C_BOLD}STATUS${C_RESET}" 18)" "${C_BOLD}PORTS${C_RESET}"
+            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}名称${C_RESET}" 42)" "$(_pad_right "${C_BOLD}状态${C_RESET}" 18)" "${C_BOLD}端口${C_RESET}"
             echo ""
         fi
 
