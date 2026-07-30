@@ -1190,11 +1190,13 @@ menu() {
                             _menu_actions 22 "[2] 申请 / 续期证书"
                             _menu_actions 22 "[3] 删除站点"
                             _menu_actions 22 "[0] 返回上级"
+                            _menu_actions 22 "[H] 返回主菜单"
                             read -p "  选择操作: " sub
                             case "$sub" in
                                 1) do_view_conf "$site" ;;
                                 2) do_cert "$site" ;;
                                 3) do_del_proxy "$site" ;;
+                                [Hh]) return ;;
                                 0) continue ;;
                                 *) error "无效选项"; sleep 1; continue ;;
                             esac

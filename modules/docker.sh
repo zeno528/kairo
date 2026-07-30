@@ -1,6 +1,9 @@
 #!/bin/bash
 # docker 模块 - Docker 管理
 
+# 子菜单退出时置 1 表示需要一路返回主菜单（跨三级菜单的信号）
+DOCKER_GO_HOME=0
+
 _check_docker() {
     if ! command -v docker &>/dev/null; then
         error "未安装 Docker"
@@ -225,7 +228,8 @@ do_compose() {
         _menu_actions 24 "${C_BOLD}[4]${C_RESET} 查看日志 (logs --tail 50)"
         _menu_actions 24 "${C_BOLD}[5]${C_RESET} 拉取新镜像 (pull)"
         _menu_actions 24 "${C_BOLD}[6]${C_RESET} 切换镜像版本"
-        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回上级"
+        _menu_actions 24 "${C_BOLD}[H]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择操作: " sub
@@ -242,6 +246,7 @@ do_compose() {
                 _compose_switch_version "$compose_file" "$compose_dir" "$current_img"
                 kairo_pause
                 ;;
+            [Hh]) DOCKER_GO_HOME=1; break ;;
             0) break ;;
             *) error "无效选项"; sleep 1 ;;
         esac
@@ -345,11 +350,13 @@ do_images() {
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除镜像"
         _menu_actions 20 "${C_BOLD}[p]${C_RESET} 清理未使用的镜像"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
+        _menu_actions 20 "${C_BOLD}[H]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice
         case "$choice" in
+            [Hh]) DOCKER_GO_HOME=1; return ;;
             0) return ;;
             [Pp])
                 if docker image prune -f 2>&1; then
@@ -449,10 +456,11 @@ menu() {
             1)
                 _show_container_list
                 _compose_container_menu
+                [ "$DOCKER_GO_HOME" -eq 1 ] && return
                 ;;
             2) do_stats; echo ""; kairo_pause ;;
-            3) do_compose ;;
-            4) do_images ;;
+            3) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
+            4) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
@@ -519,6 +527,7 @@ _compose_container_menu() {
         _menu_actions 18 "[5] 进入终端"
         _menu_actions 18 "[6] 删除容器"
         _menu_actions 18 "[0] 返回上级"
+        _menu_actions 18 "[H] 返回主菜单"
         read -r -p "  选择操作: " choice
         case "$choice" in
             1) do_start "$name" ;;
@@ -527,6 +536,7 @@ _compose_container_menu() {
             4) do_logs "$name" ;;
             5) do_exec "$name" ;;
             6) do_remove "$name" ;;
+            [Hh]) DOCKER_GO_HOME=1; return ;;
             0) continue ;;
             *) error "无效选项"; sleep 1; continue ;;
         esac

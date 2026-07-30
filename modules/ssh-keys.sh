@@ -239,11 +239,13 @@ menu() {
                 _menu_actions 20 "[2] 修改备注"
                 _menu_actions 20 "[3] 删除公钥"
                 _menu_actions 20 "[0] 返回上级"
+                _menu_actions 20 "[H] 返回主菜单"
                 read -p "  选择操作: " action
                 case "$action" in
                     1) do_view "$choice" ;;
                     2) do_rename "$choice" ;;
                     3) do_remove "$choice" ;;
+                    [Hh]) return ;;
                     0) continue ;;
                     *) error "无效选项"; sleep 1; continue ;;
                 esac

@@ -171,6 +171,7 @@ menu() {
         _menu_actions 18 "[4] 重启"
         _menu_actions 18 "[5] 开关开机自启"
         _menu_actions 18 "[0] 返回上级"
+        _menu_actions 18 "[H] 返回主菜单"
         read -p "  选择操作: " choice
         case "$choice" in
             1) do_status "$svc" ;;
@@ -178,6 +179,7 @@ menu() {
             3) do_stop "$svc" ;;
             4) do_restart "$svc" ;;
             5) do_toggle_enable "$svc" ;;
+            [Hh]) return ;;
             0) continue ;;
             *) error "无效选项"; sleep 1; continue ;;
         esac
