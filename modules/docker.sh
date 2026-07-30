@@ -585,16 +585,18 @@ do_overview() {
         if [ "${#containers[@]}" -gt 0 ]; then
             echo -e "  ${C_BOLD}容器 (${#containers[@]})${C_RESET}"
             i=1
+            local c_mark name_col status_col
             for c_name in "${containers[@]}"; do
                 c_status=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Status}}' 2>/dev/null | head -1)
                 c_img=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Image}}' 2>/dev/null | head -1)
                 if [[ "$c_status" =~ ^Up ]]; then
-                    printf "  ${C_GREEN}●${C_RESET} ${C_BOLD}[%d]${C_RESET} %-20s ${C_DIM}%s${C_RESET}  %s\n" \
-                        "$i" "$c_name" "${c_status:0:14}" "$c_img"
+                    c_mark="${C_GREEN}●${C_RESET}"
                 else
-                    printf "  ${C_GRAY}○${C_RESET} ${C_BOLD}[%d]${C_RESET} %-20s ${C_DIM}%s${C_RESET}  %s\n" \
-                        "$i" "$c_name" "${c_status:0:14}" "$c_img"
+                    c_mark="${C_GRAY}○${C_RESET}"
                 fi
+                name_col="${c_mark} ${C_BOLD}[${i}]${C_RESET} ${c_name}"
+                status_col="${C_DIM}${c_status:0:14}${C_RESET}"
+                printf "  %s %s %s\n" "$(_pad_right "$name_col" 35)" "$(_pad_right "$status_col" 20)" "$c_img"
                 ((i++))
             done
         else
@@ -611,13 +613,16 @@ do_overview() {
 
         if [ "${#imgs[@]}" -gt 0 ]; then
             echo -e "  ${C_BOLD}镜像 (${#imgs[@]})${C_RESET}"
+            local i_mark img_line
             for img_tag in "${imgs[@]}"; do
                 img_size=$(docker images --format '{{.Size}}' "$img_tag" 2>/dev/null | head -1)
                 if [ -n "${USED_IMAGES[$img_tag]:-}" ]; then
-                    printf "  ${C_GREEN}●${C_RESET} %-45s %s\n" "$img_tag" "$img_size"
+                    i_mark="${C_GREEN}●${C_RESET} "
                 else
-                    printf "    %-45s %s\n" "$img_tag" "$img_size"
+                    i_mark="  "
                 fi
+                img_line="${i_mark}${img_tag}"
+                printf "  %s %s\n" "$(_pad_right "$img_line" 48)" "$img_size"
             done
         else
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
