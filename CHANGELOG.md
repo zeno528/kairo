@@ -1,5 +1,11 @@
 # 更新日志
 
+## v1.1.94 (2026-07-31)
+- ✨ feat(docker): 新增资源总览视图，树形结构整合容器与镜像
+- ✨ feat(docker): 新增 [R] 从镜像快速运行容器
+- ✨ feat(docker): 新增 [X] 重置环境，清空容器/镜像/卷但保留 Docker
+- 🎨 refactor(docker): 提取 _container_ops_menu 公共函数，消除重复代码
+
 ## v1.1.93 (2026-07-31)
 - ✨ feat(docker): 新增 Docker 完整卸载功能
 - 🐛 fix(docker): 修复 _docker_installed 因 bash 命令哈希缓存误判为已安装
