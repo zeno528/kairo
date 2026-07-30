@@ -6,6 +6,9 @@ _github_cli_exists() {
 }
 
 _github_cli_version() {
+    if _github_cli_via_apt; then
+        dpkg-query -W -f='${Version}' gh 2>/dev/null && return
+    fi
     gh --version 2>/dev/null | sed -n '1s/^gh version \([^ ]*\).*/\1/p' | sed 's/^v//'
 }
 

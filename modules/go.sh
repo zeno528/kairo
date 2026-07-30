@@ -26,6 +26,9 @@ _go_detect_channel() {
 }
 
 _go_version() {
+    if [ "$GO_CHANNEL" = "apt" ] && [ -n "$GO_PACKAGE" ]; then
+        dpkg-query -W -f='${Version}' "$GO_PACKAGE" 2>/dev/null && return
+    fi
     "$GO_BINARY" version 2>/dev/null | sed -n 's/^go version go\([^ ]*\).*/\1/p'
 }
 

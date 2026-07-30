@@ -25,6 +25,9 @@ _jq_detect_channel() {
 }
 
 _jq_version() {
+    if [ "$JQ_CHANNEL" = "apt" ] && [ -n "$JQ_PACKAGE" ]; then
+        dpkg-query -W -f='${Version}' "$JQ_PACKAGE" 2>/dev/null && return
+    fi
     "$JQ_BINARY" --version 2>/dev/null | sed 's/^jq-//'
 }
 
