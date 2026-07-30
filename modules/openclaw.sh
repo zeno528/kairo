@@ -38,10 +38,6 @@ do_status() {
 }
 
 do_install() {
-    if _openclaw_exists; then
-        info "OpenClaw 已安装: $(_openclaw_version)"
-        return 0
-    fi
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
     if _with_spinner "正在安装 OpenClaw" _openclaw_run_installer; then
         _openclaw_exists

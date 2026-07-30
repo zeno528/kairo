@@ -58,14 +58,6 @@ do_status() {
 }
 
 do_install() {
-    if _github_cli_exists; then
-        if _github_cli_via_apt; then
-            info "GitHub CLI 已安装: $(_github_cli_version)"
-            return 0
-        fi
-        error "检测到非 apt 安装的 gh，未自动替换: $(command -v gh)"
-        return 1
-    fi
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
     command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }

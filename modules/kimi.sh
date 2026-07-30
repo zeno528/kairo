@@ -55,10 +55,6 @@ do_status() {
 
 do_install() {
     local latest
-    if _kimi_detect_channel; then
-        info "Kimi Code 已安装: $(_kimi_version)（${KIMI_CHANNEL}）"
-        return 0
-    fi
     latest=$(_kimi_latest_version)
     [ -n "$latest" ] || { error "无法获取 Kimi Code 最新版本"; return 1; }
     if _with_spinner "正在安装 Kimi Code" _kimi_run_installer "$latest"; then

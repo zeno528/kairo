@@ -38,10 +38,6 @@ do_status() {
 }
 
 do_install() {
-    if _sqlite3_exists; then
-        info "SQLite3 已安装: $(_sqlite3_version)"
-        return 0
-    fi
     command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
     if _with_spinner "正在通过 apt 安装 SQLite3" sudo apt update -qq && sudo apt install -y sqlite3; then

@@ -52,10 +52,6 @@ do_status() {
 }
 
 do_install() {
-    if _codex_detect_channel; then
-        info "Codex CLI 已安装: $(_codex_version)（${CODEX_CHANNEL}）"
-        return 0
-    fi
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
     if _with_spinner "正在安装 Codex CLI" _codex_run_installer; then
         export PATH="$HOME/.local/bin:$PATH"

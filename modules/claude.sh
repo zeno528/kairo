@@ -58,10 +58,6 @@ do_status() {
 }
 
 do_install() {
-    if _claude_detect_channel; then
-        info "Claude Code 已安装: $(_claude_version)（${CLAUDE_CHANNEL}）"
-        return 0
-    fi
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
     if _with_spinner "正在安装 Claude Code" _claude_run_installer; then
         success "Claude Code 安装完成: $(_claude_version)"

@@ -91,10 +91,6 @@ do_status() {
 
 do_install() {
     local latest architecture
-    if _go_detect_channel; then
-        info "Go 已安装: $(_go_version)（${GO_CHANNEL}）"
-        return 0
-    fi
     latest=$(_go_latest_version)
     architecture=$(_go_architecture) || { error "不支持的架构: $(uname -m)"; return 1; }
     [ -n "$latest" ] || { error "无法获取 Go 最新版本"; return 1; }

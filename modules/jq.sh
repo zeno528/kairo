@@ -76,10 +76,6 @@ do_status() {
 }
 
 do_install() {
-    if _jq_detect_channel; then
-        info "jq 已安装: $(_jq_version)（${JQ_CHANNEL}）"
-        return 0
-    fi
     command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
     if _with_spinner "正在通过 apt 安装 jq" sudo apt update -qq && sudo apt install -y jq; then
