@@ -602,7 +602,6 @@ menu() {
             0) return ;;
             [Rr]) status_cache=""; continue ;;
             1)
-                _show_container_list
                 _compose_container_menu
                 [ "$DOCKER_GO_HOME" -eq 1 ] && return
                 ;;
