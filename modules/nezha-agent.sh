@@ -142,6 +142,28 @@ do_logs() {
     sudo journalctl -u "$svc" --no-pager -n "$lines" 2>&1
 }
 
+do_mgmt() {
+    local mgmt_file
+    # 优先用当前目录下的 nezha.sh
+    if [ -f "./nezha.sh" ]; then
+        mgmt_file="./nezha.sh"
+    elif [ -f "/opt/nezha/nezha.sh" ]; then
+        mgmt_file="/opt/nezha/nezha.sh"
+    else
+        echo ""
+        info "未找到 nezha.sh，将从官方源下载"
+        read -r -p "  确认下载并运行? [Y/n]: " confirm
+        [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
+        curl --connect-timeout 10 --max-time 60 --retry 2 -fsSL \
+            "https://raw.githubusercontent.com/nezhahq/nezha/master/script/install.sh" \
+            -o ./nezha.sh && chmod +x ./nezha.sh || {
+            error "下载失败"; return 1
+        }
+        mgmt_file="./nezha.sh"
+    fi
+    "$mgmt_file" "$@"
+}
+
 menu() {
     local choice svc svc_name go_home=0
     while true; do
@@ -150,11 +172,13 @@ menu() {
         _render_agent_list
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择 Agent"
+        _menu_actions 20 "${C_BOLD}[M]${C_RESET} Nezha 管理面板"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice
         case "$choice" in
+            [Mm]) do_mgmt; echo ""; kairo_pause; continue ;;
             0) return ;;
             *)
                 if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#NEZHA_AGENTS[@]}" ]; then
