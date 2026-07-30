@@ -616,27 +616,46 @@ do_overview() {
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
         fi
 
+        # 列标题
+        if [ "${#IMAGE_LIST[@]}" -gt 0 ]; then
+            echo -e "  ${C_BOLD}镜像 / 容器${C_RESET}"
+            echo ""
+        fi
+
         for img_tag in "${IMAGE_LIST[@]}"; do
             img_size="${IMG_SIZE[$img_tag]:-}"
             if [ -n "${IMG_USED[$img_tag]:-}" ]; then
-                i_mark="${C_GREEN}●${C_RESET} "
+                i_mark="${C_GREEN}●${C_RESET}"
             else
-                i_mark="  "
+                i_mark=" "
             fi
-            printf "  %s %s\n" "$(_pad_right "${i_mark}${img_tag}" 48)" "${img_size}"
+            printf "  %s  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_tag}${C_RESET}" 48)" "${img_size}"
 
             # 显示该镜像下的容器
-            local has_ct=0
+            local has_ct=0 total_ct=0
             for c_name in "${CONTAINER_LIST[@]}"; do
+                [ "${CT_META[$c_name]}" = "" ] && continue
+                IFS='|' read -r c_status c_img c_idx <<< "${CT_META[$c_name]}"
+                [ "$c_img" != "$img_tag" ] && continue
+                ((total_ct++))
+            done
+
+            for c_name in "${CONTAINER_LIST[@]}"; do
+                [ "${CT_META[$c_name]}" = "" ] && continue
                 IFS='|' read -r c_status c_img c_idx <<< "${CT_META[$c_name]}"
                 [ "$c_img" != "$img_tag" ] && continue
                 has_ct=1
                 if [[ "$c_status" =~ ^Up ]]; then
-                    c_mark=" ${C_GREEN}●${C_RESET}"
+                    c_mark="${C_GREEN}●${C_RESET}"
                 else
-                    c_mark=" ${C_GRAY}○${C_RESET}"
+                    c_mark="${C_GRAY}○${C_RESET}"
                 fi
-                name_col="${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                # 最后一个容器用 └─，前面的用 ├─
+                if [ "$has_ct" -eq "$total_ct" ]; then
+                    name_col="  ${C_DIM}└─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                else
+                    name_col="  ${C_DIM}├─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                fi
                 status_col="${C_DIM}${c_status:0:14}${C_RESET}"
                 printf "  %s %s\n" "$(_pad_right "$name_col" 42)" "$status_col"
             done
