@@ -158,6 +158,42 @@ setup() {
     [[ "$output" =~ "已升级至 1.0.0" ]]
 }
 
+@test "Codex 缓存版本相同时不进入升级确认" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/codex.sh"
+        _codex_detect_channel() { CODEX_CHANNEL=official_standalone; CODEX_BINARY=codex; }
+        _codex_version() { echo 0.146.0; }
+        _codex_cached_latest_version() { echo 0.146.0; }
+        codex() { echo SHOULD_NOT_UPDATE; }
+        do_upgrade
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已是最新版本 (0.146.0)" ]]
+    [[ ! "$output" =~ "SHOULD_NOT_UPDATE" ]]
+}
+
+@test "OpenClaw 无更新时不进入升级确认" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/openclaw.sh"
+        _openclaw_exists() { OPENCLAW_BINARY=openclaw; }
+        _openclaw_version() { echo 2026.7.1-2; }
+        timeout() { shift; "$@"; }
+        openclaw() {
+            if [ "$1" = "update" ] && [ "$2" = "status" ]; then
+                printf "%s\n" "{\"availability\":{\"available\":false}}"
+            else
+                echo SHOULD_NOT_UPDATE
+            fi
+        }
+        do_upgrade
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已是最新版本 (2026.7.1-2)" ]]
+    [[ ! "$output" =~ "SHOULD_NOT_UPDATE" ]]
+}
+
 @test "安装清单与全部运行时文件双向一致" {
     local expected actual
     expected=$(mktemp)

@@ -21,6 +21,12 @@ _codex_version() {
     "$CODEX_BINARY" --version 2>/dev/null | awk 'NR == 1 { print $2; exit }' | sed 's/^v//'
 }
 
+_codex_cached_latest_version() {
+    local cache_file="$HOME/.codex/version.json"
+    [ -f "$cache_file" ] || return 0
+    sed -n 's/.*"latest_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cache_file" | head -n 1
+}
+
 _codex_run_installer() {
     local installer rc
     installer=$(mktemp) || return 1
@@ -64,14 +70,23 @@ do_install() {
 }
 
 do_upgrade() {
-    local current confirm
+    local current latest confirm
     _codex_detect_channel || { do_install; return $?; }
     if [ "$CODEX_CHANNEL" != "official_standalone" ]; then
         error "未识别 Codex CLI 的安装渠道，未自动升级: $CODEX_BINARY"
         return 1
     fi
     current=$(_codex_version)
-    info "当前版本: $current"
+    latest=$(_codex_cached_latest_version)
+    if [ -n "$latest" ] && [ "$current" = "$latest" ]; then
+        success "已是最新版本 ($current)"
+        return 0
+    fi
+    if [ -n "$latest" ]; then
+        info "$current → $latest"
+    else
+        info "未找到本地版本缓存，将由 Codex 官方更新器在线检查"
+    fi
     read -r -p "  使用 Codex 官方更新器检查并升级? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
     if "$CODEX_BINARY" update; then
