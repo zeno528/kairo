@@ -496,28 +496,28 @@ do_uninstall() {
     # 停止所有运行中的容器
     if [ "$running_containers" -gt 0 ]; then
         _start_spinner "正在停止 $running_containers 个运行中的容器"
-        docker stop $(docker ps -q) 2>/dev/null || true
+        docker ps -q | xargs -r docker stop 2>/dev/null || true
         _stop_spinner
     fi
 
     # 删除所有容器
     if [ "$total_containers" -gt 0 ]; then
         _start_spinner "正在删除 $total_containers 个容器"
-        docker rm -f $(docker ps -aq) 2>/dev/null || true
+        docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
         _stop_spinner
     fi
 
     # 删除所有镜像
     if [ "$total_images" -gt 0 ]; then
         _start_spinner "正在删除 $total_images 个镜像"
-        docker rmi -f $(docker images -q) 2>/dev/null || true
+        docker images -q | xargs -r docker rmi -f 2>/dev/null || true
         _stop_spinner
     fi
 
     # 删除所有卷
     if [ "$total_volumes" -gt 0 ]; then
         _start_spinner "正在删除 $total_volumes 个卷"
-        docker volume rm $(docker volume ls -q) 2>/dev/null || true
+        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
         _stop_spinner
     fi
 
@@ -574,25 +574,25 @@ do_reset() {
 
     if [ "$running_containers" -gt 0 ]; then
         _start_spinner "正在停止 $running_containers 个运行中的容器"
-        docker stop $(docker ps -q) 2>/dev/null || true
+        docker ps -q | xargs -r docker stop 2>/dev/null || true
         _stop_spinner
     fi
 
     if [ "$total_containers" -gt 0 ]; then
         _start_spinner "正在删除 $total_containers 个容器"
-        docker rm -f $(docker ps -aq) 2>/dev/null || true
+        docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
         _stop_spinner
     fi
 
     if [ "$total_images" -gt 0 ]; then
         _start_spinner "正在删除 $total_images 个镜像"
-        docker rmi -f $(docker images -q) 2>/dev/null || true
+        docker images -q | xargs -r docker rmi -f 2>/dev/null || true
         _stop_spinner
     fi
 
     if [ "$total_volumes" -gt 0 ]; then
         _start_spinner "正在删除 $total_volumes 个卷"
-        docker volume rm $(docker volume ls -q) 2>/dev/null || true
+        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
         _stop_spinner
     fi
 
