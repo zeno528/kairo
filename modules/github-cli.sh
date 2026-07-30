@@ -41,7 +41,7 @@ _github_cli_add_repo() {
 }
 
 _github_cli_install() {
-    _github_cli_add_repo && sudo apt-get update && sudo apt-get install -y gh
+    _github_cli_add_repo && kairo_apt_install gh
 }
 
 do_status() {
@@ -80,7 +80,7 @@ do_upgrade() {
         return 1
     fi
     sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if ! sudo apt-get update; then
+    if ! kairo_apt_update; then
         error "刷新软件源失败"
         return 1
     fi

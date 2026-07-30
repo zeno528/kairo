@@ -98,6 +98,25 @@ kairo_require_systemctl() {
     fi
 }
 
+# 刷新 apt 软件源索引；失败时返回非零（错误提示由调用方决定）。
+kairo_apt_update() {
+    sudo apt-get update
+}
+
+# 刷新索引后安装一个或多个 apt 包。用法: kairo_apt_install curl wget htop
+kairo_apt_install() {
+    [ $# -gt 0 ] || return 0
+    kairo_apt_update || return $?
+    sudo apt-get install -y "$@"
+}
+
+# 刷新索引后仅升级已安装的 apt 包。用法: kairo_apt_upgrade gh sqlite3
+kairo_apt_upgrade() {
+    [ $# -gt 0 ] || return 0
+    kairo_apt_update || return $?
+    sudo apt-get install -y --only-upgrade "$@"
+}
+
 _with_spinner() {
     local msg="${1:-处理中}"
     shift

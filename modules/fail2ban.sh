@@ -21,7 +21,7 @@ do_install() {
     echo ""
     command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if sudo apt-get update && sudo apt-get install -y fail2ban; then
+    if kairo_apt_install fail2ban; then
         sudo systemctl enable --now fail2ban 2>/dev/null || true
         success "fail2ban 安装完成，已保护 SSH"
         info "默认策略：10 分钟内失败 5 次即封禁 10 分钟"

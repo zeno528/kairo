@@ -3,10 +3,9 @@ kairo.sh
 VERSION
 lib/core.sh
 modules/registry.sh
-modules/3x-ui.sh
+modules/proxy-setup.sh
 modules/crontab.sh
 modules/docker.sh
-modules/ecs-test.sh
 modules/fail2ban.sh
 modules/firewall.sh
 modules/github-cli.sh
@@ -15,13 +14,11 @@ modules/jq.sh
 modules/nezha-agent.sh
 modules/network-test.sh
 modules/nginx.sh
-modules/node-quality.sh
 modules/openclaw.sh
 modules/optimize.sh
 modules/port-proc.sh
 modules/security-update.sh
 modules/services.sh
-modules/sing-box.sh
 modules/ssh-keys.sh
 modules/ssh-passwd.sh
 modules/ssl-check.sh

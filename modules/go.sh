@@ -72,10 +72,6 @@ _go_install_archive() {
     return "$rc"
 }
 
-_go_upgrade_apt() {
-    sudo apt-get update && sudo apt-get install --only-upgrade -y "$GO_PACKAGE"
-}
-
 do_status() {
     title "当前状态"
     if ! _go_detect_channel; then
@@ -134,7 +130,7 @@ do_upgrade() {
             ;;
         apt)
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! sudo apt-get update; then
+            if ! kairo_apt_update; then
                 error "刷新软件源失败"
                 return 1
             fi
@@ -148,7 +144,7 @@ do_upgrade() {
             info "$installed → $candidate"
             read -r -p "  通过 apt 升级 Go? [Y/n]: " confirm
             [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-            if _go_upgrade_apt; then
+            if kairo_apt_upgrade "$GO_PACKAGE"; then
                 _go_detect_channel
                 success "Go 已升级至 $(_go_version)"
             else

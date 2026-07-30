@@ -58,10 +58,6 @@ _jq_install_release() {
     sudo install -m 755 "$binary" "$_jq_target"
 }
 
-_jq_upgrade_apt() {
-    sudo apt-get update && sudo apt-get install --only-upgrade -y "$JQ_PACKAGE"
-}
-
 do_status() {
     title "当前状态"
     if ! _jq_detect_channel; then
@@ -81,7 +77,7 @@ do_status() {
 do_install() {
     command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if sudo apt-get update && sudo apt-get install -y jq; then
+    if kairo_apt_install jq; then
         _jq_detect_channel
         success "jq 安装完成: $(_jq_version)"
     else
@@ -96,7 +92,7 @@ do_upgrade() {
     case "$JQ_CHANNEL" in
         apt)
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! sudo apt-get update; then
+            if ! kairo_apt_update; then
                 error "刷新软件源失败"
                 return 1
             fi
@@ -110,7 +106,7 @@ do_upgrade() {
             info "$installed → $candidate"
             read -r -p "  通过 apt 升级 jq? [Y/n]: " confirm
             [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-            if _jq_upgrade_apt; then
+            if kairo_apt_upgrade "$JQ_PACKAGE"; then
                 _jq_detect_channel
                 success "jq 已升级至 $(_jq_version)"
             else

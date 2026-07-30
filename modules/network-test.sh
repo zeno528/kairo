@@ -11,6 +11,8 @@ IPQUALITY_REF="44a55baec6cdd166a68b37f9c07d62d9e0a04f23"
 STREAMING_REF="b6d4a6f9a87fc6eae6d3e62d0092ececcec8e844"
 IPQUALITY_URL="https://raw.githubusercontent.com/xykt/IPQuality/${IPQUALITY_REF}/ip.sh"
 STREAMING_URL="https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/${STREAMING_REF}/check.sh"
+NODEQUALITY_URL="https://run.NodeQuality.com"
+ECS_TEST_URL="https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh"
 
 do_speedtest() (
     echo ""
@@ -185,6 +187,27 @@ do_streaming() (
         'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$STREAMING_URL"
 )
 
+do_node_quality() (
+    echo ""
+    bash -c \
+        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
+        "$NODEQUALITY_URL"
+)
+
+do_ecs_test() (
+    echo ""
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/kairo-ecs.XXXXXX") || {
+        error "无法创建临时目录"
+        return 1
+    }
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+    cd -- "$tmp_dir" || return 1
+    bash -c \
+        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
+        "$ECS_TEST_URL"
+)
+
 menu() {
     while true; do
         clear
@@ -195,6 +218,8 @@ menu() {
         _menu_actions 20 "${C_BOLD}[3]${C_RESET} Ping 延迟测试"
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} IP 质量体检"
         _menu_actions 20 "${C_BOLD}[5]${C_RESET} 流媒体解锁"
+        _menu_actions 20 "${C_BOLD}[6]${C_RESET} NodeQuality 节点测速"
+        _menu_actions 20 "${C_BOLD}[7]${C_RESET} 融合怪测评"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
@@ -205,6 +230,8 @@ menu() {
             3) do_ping_test ;;
             4) do_ip_quality ;;
             5) do_streaming ;;
+            6) do_node_quality ;;
+            7) do_ecs_test ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

@@ -122,7 +122,7 @@ _configure_nginx_official_repo() {
         sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
 
     info "首次刷新软件源可能需要 1–2 分钟，请勿中断..."
-    if ! sudo apt-get update; then
+    if ! kairo_apt_update; then
         error "刷新 apt 索引失败，无法获取 nginx 官方版本"
         return 1
     fi

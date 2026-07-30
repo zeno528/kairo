@@ -26,7 +26,7 @@ _ensure_ufw() {
     warn "未检测到 ufw"
     read -r -p "  是否安装 ufw? [Y/n]: " confirm
     [[ "$confirm" =~ ^[Nn]$ ]] && { info "已取消"; return 1; }
-    sudo apt-get update -qq && sudo apt-get install -y ufw && return 0
+    kairo_apt_install ufw && return 0
     error "ufw 安装失败"
     return 1
 }
