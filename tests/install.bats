@@ -6,7 +6,6 @@ setup() {
     TEST_TMP=$(mktemp -d)
     export KAIRO_BIN_DIR="${TEST_TMP}/bin"
     export KAIRO_LIB_DIR="${TEST_TMP}/lib/kairo"
-    export KAIRO_LEGACY_LIB_DIR="${TEST_TMP}/lib/opstool"
     export KAIRO_RELEASE_SHA="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     export MOCK_REPO_ROOT="$PWD"
     mkdir -p "$KAIRO_BIN_DIR" "${TEST_TMP}/lib" "${TEST_TMP}/mock-bin"
@@ -118,16 +117,14 @@ MOCK
     [ "$(cat "${KAIRO_BIN_DIR}/ka")" = "old-bin" ]
 }
 
-@test "远程卸载清理新旧运行时" {
-    mkdir -p "$KAIRO_LIB_DIR" "$KAIRO_LEGACY_LIB_DIR"
-    touch "${KAIRO_BIN_DIR}/ka" "${KAIRO_BIN_DIR}/ot"
+@test "远程卸载清理运行时" {
+    mkdir -p "$KAIRO_LIB_DIR"
+    touch "${KAIRO_BIN_DIR}/ka"
     printf '1.1.3\n' > "${KAIRO_LIB_DIR}/VERSION"
 
     run bash "$PWD/install.sh" uninstall
     [ "$status" -eq 0 ]
     [[ "$output" =~ "运行文件已全部清理" ]]
     [ ! -e "${KAIRO_BIN_DIR}/ka" ]
-    [ ! -e "${KAIRO_BIN_DIR}/ot" ]
     [ ! -e "$KAIRO_LIB_DIR" ]
-    [ ! -e "$KAIRO_LEGACY_LIB_DIR" ]
 }

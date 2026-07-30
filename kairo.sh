@@ -5,7 +5,6 @@
 
 BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/kairo"
-LEGACY_LIB_DIR="/usr/local/lib/opstool"
 REPO="zeno528/kairo"
 # shellcheck disable=SC2034 # 由 lib/core.sh 的 fetch_remote_file 使用。
 KAIRO_BRANCH="main"
@@ -87,9 +86,7 @@ do_uninstall() {
     echo ""
     warn "即将卸载 Kairo，以下文件将被删除:"
     echo -e "  ${C_GRAY}${BIN_DIR}/ka${C_RESET}"
-    echo -e "  ${C_GRAY}${BIN_DIR}/ot（旧版入口，如存在）${C_RESET}"
     echo -e "  ${C_GRAY}${LIB_DIR}/${C_RESET}"
-    echo -e "  ${C_GRAY}${LEGACY_LIB_DIR}/（旧版运行库，如存在）${C_RESET}"
     echo ""
     info "Nginx、SSH、防火墙、证书等业务配置不会被删除"
     echo ""
@@ -101,11 +98,11 @@ do_uninstall() {
         elevate=(sudo)
     fi
 
-    "${elevate[@]}" rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || failed=1
-    "${elevate[@]}" rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || failed=1
+    "${elevate[@]}" rm -f -- "${BIN_DIR}/ka" || failed=1
+    "${elevate[@]}" rm -rf -- "$LIB_DIR" || failed=1
     "${elevate[@]}" rm -rf -- /var/cache/kairo 2>/dev/null || true
 
-    for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
+    for target in "${BIN_DIR}/ka" "$LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
             error "仍有残留: $target"
             failed=1

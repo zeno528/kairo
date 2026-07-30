@@ -96,7 +96,7 @@ setup() {
 
 @test "更新安装器以当前用户身份运行" {
     run bash -c '
-        source <(sed -n "55,59p" "'"$PWD"'/kairo.sh")
+        source <(sed -n "/^kairo_run_installer()/,/^}/p" "'"$PWD"'/kairo.sh")
         fetch_remote_file() { printf "true\n"; }
         sudo() { return 1; }
         kairo_run_installer

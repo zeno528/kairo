@@ -7,7 +7,6 @@ set -Eeuo pipefail
 
 BIN_DIR="${KAIRO_BIN_DIR:-/usr/local/bin}"
 LIB_DIR="${KAIRO_LIB_DIR:-/usr/local/lib/kairo}"
-LEGACY_LIB_DIR="${KAIRO_LEGACY_LIB_DIR:-/usr/local/lib/opstool}"
 VERSION_FILE="${LIB_DIR}/VERSION"
 REPO="${KAIRO_REPO:-zeno528/kairo}"
 KAIRO_BRANCH="${KAIRO_BRANCH:-main}"
@@ -29,7 +28,7 @@ trap cleanup_stage EXIT
 
 validate_install_paths() {
     local path
-    for path in "$BIN_DIR" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
+    for path in "$BIN_DIR" "$LIB_DIR"; do
         case "$path" in
             /*) ;;
             *)
@@ -230,17 +229,17 @@ if [ "${1:-}" = "uninstall" ]; then
     require_install_permissions
     local_ver=$(get_local_version)
     echo ">>> 卸载 Kairo v${local_ver}..."
-    run_privileged rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || {
+    run_privileged rm -f -- "${BIN_DIR}/ka" || {
         echo ">>> 删除命令入口失败" >&2
         exit 1
     }
-    run_privileged rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || {
+    run_privileged rm -rf -- "$LIB_DIR" || {
         echo ">>> 删除运行库失败" >&2
         exit 1
     }
     # 清理 Kairo 运行时缓存（发布日期等；丢失会自动重建）
     run_privileged rm -rf -- /var/cache/kairo 2>/dev/null || true
-    for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
+    for target in "${BIN_DIR}/ka" "$LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
             echo ">>> 卸载后仍有残留: $target" >&2
             exit 1
@@ -307,9 +306,6 @@ fi
 chmod 644 "${runtime_dir}/VERSION"
 find "${runtime_dir}/lib" "${runtime_dir}/modules" -type f -name '*.sh' -exec chmod 755 {} +
 deploy_staged_release "$runtime_dir" "$bin_file"
-
-run_privileged rm -f -- "${BIN_DIR}/ot"
-run_privileged rm -rf -- "$LEGACY_LIB_DIR"
 
 if [ "$local_ver" != "未安装" ] && [ "$local_ver" != "$remote_ver" ]; then
     transition="v${local_ver} → "

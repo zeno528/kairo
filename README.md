@@ -1,6 +1,6 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.1.52-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.1.53-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
@@ -22,15 +22,15 @@ curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | bas
 
 | 用途 | 路径 | 备注 |
 | --- | --- | --- |
-| 命令入口 | `/usr/local/bin/ka` | 主菜单入口；旧版入口 `ot` 在升级时会被清理 |
+| 命令入口 | `/usr/local/bin/ka` | 主菜单入口 |
 | 运行库根目录 | `/usr/local/lib/kairo/` | 包含 `VERSION` / `lib/` / `modules/` |
 | └ 版本号 | `/usr/local/lib/kairo/VERSION` | 安装时校验和升级比对都靠它 |
 | └ 核心库 | `/usr/local/lib/kairo/lib/` | `core.sh` 等共享逻辑 |
 | └ 模块 | `/usr/local/lib/kairo/modules/` | 完整列表见仓库根目录的 [`manifest.txt`](./manifest.txt) |
 | 运行时缓存 | `/var/cache/kairo/` | 由各模块按需写入（如版本探测结果），丢失可自动重建 |
-| 旧版兼容目录 | `/usr/local/lib/opstool/` | 升级时会自动删除 |
 
-源码与安装产物是两回事：仓库本身在 `/home/zwf/my-projects/kairo/`，运行靠 `/usr/local/lib/kairo/`。
+
+
 
 ## 使用
 
