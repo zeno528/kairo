@@ -664,7 +664,7 @@ do_overview() {
 
         # 列标题
         if [ "${#IMAGE_LIST[@]}" -gt 0 ]; then
-            echo -e "  ${C_BOLD}镜像 / 容器${C_RESET}"
+            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}NAME${C_RESET}" 42)" "$(_pad_right "${C_BOLD}STATUS${C_RESET}" 18)" "${C_BOLD}PORTS${C_RESET}"
             echo ""
         fi
 
@@ -703,7 +703,7 @@ do_overview() {
                     name_col="  ${C_DIM}├─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
                 fi
                 status_col="${C_DIM}${c_status:0:14}${C_RESET}"
-                printf "  %s %s  %s\n" "$(_pad_right "$name_col" 36)" "$(_pad_right "$status_col" 18)" "${C_DIM}${c_ports}${C_RESET}"
+                printf "  %s %s  %s\n" "$(_pad_right "$name_col" 42)" "$(_pad_right "$status_col" 18)" "${c_ports}"
             done
             [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}  (无容器)${C_RESET}"
             echo ""
