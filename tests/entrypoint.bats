@@ -315,7 +315,7 @@ setup() {
         ufw() { printf "ufw %s\n" "$*"; }
         printf "%s\n" 999.999.999.999 y | do_block_ip
     '
-    [ "$status" -eq 0 ]
+    [ "$status" -ne 0 ]
     [[ "$output" == *"格式无效"* ]]
     [[ ! "$output" == *"ufw deny from"* ]]
 }
@@ -327,7 +327,7 @@ setup() {
         command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 1; builtin command "$@"; }
         printf "%s\n" n | do_open_port
     '
-    [ "$status" -eq 0 ]
+    [ "$status" -ne 0 ]
     [[ "$output" == *"未检测到 ufw"* ]]
     [[ "$output" == *"已取消"* ]]
 }

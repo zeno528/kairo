@@ -13,19 +13,25 @@ _valid_service_name() {
 
 do_list() {
     kairo_require_systemctl || return
-    local svc state i total
+    local svc state i total row max_svc=0 svc_width
     local -a service_rows=()
     SERVICE_ITEMS=()
     mapfile -t service_rows < <(systemctl list-units --type=service --no-pager --no-legend 2>/dev/null |
         awk '$2 == "loaded" { print $1 "\t" $3 }')
     total=${#service_rows[@]}
+    # 先扫一遍算最长服务名宽度，让状态列上下对齐
+    for row in "${service_rows[@]}"; do
+        IFS=$'\t' read -r svc _ <<< "$row"
+        [ "${#svc}" -gt "$max_svc" ] && max_svc=${#svc}
+    done
+    svc_width=$((max_svc + 2))
     echo ""
     echo -e "  ${C_BOLD}已加载的服务${C_RESET}"
     for i in "${!service_rows[@]}"; do
         [ "$i" -lt 20 ] || break
         IFS=$'\t' read -r svc state <<< "${service_rows[$i]}"
         SERVICE_ITEMS+=("$svc")
-        printf "  [%d] %-34s %s\n" "$((i + 1))" "$svc" "$state"
+        printf "  [%d] %s %s\n" "$((i + 1))" "$(_pad_right "$svc" "$svc_width")" "$state"
     done
     echo ""
     info "共 $total 个已加载服务（显示前 20 个）"
