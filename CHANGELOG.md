@@ -1,5 +1,10 @@
 # 更新日志
 
+## v1.1.96 (2026-07-31)
+- ✨ feat(github-cli): do_status 增加 gh 认证状态显示
+- ✨ feat(github-cli): 新增 [A] 认证登录，支持 Token/浏览器/设备码三种方式
+- 🐛 fix(github-cli): 认证状态显示修复单引号导致颜色变量未展开
+
 ## v1.1.95 (2026-07-31)
 - ✨ feat(docker): 总览新增端口映射列和名称/状态/端口中文列标题
 - 🎨 refactor(docker): 优化总览列宽与对齐，使用 _pad_right 统一排版
