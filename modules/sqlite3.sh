@@ -12,6 +12,11 @@ _sqlite3_package() {
 }
 
 _sqlite3_version() {
+    local package
+    package=$(_sqlite3_package 2>/dev/null)
+    if [ -n "$package" ]; then
+        dpkg-query -W -f='${Version}' "$package" 2>/dev/null && return
+    fi
     sqlite3 --version 2>/dev/null | awk 'NR == 1 { print $1; exit }'
 }
 
