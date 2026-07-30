@@ -86,9 +86,7 @@ do_status() {
         apt) printf '  方式    apt 包: %s\n' "$GO_PACKAGE" ;;
         *) printf '  方式    未识别的安装渠道\n' ;;
     esac
-    printf '  来源    '
-    kairo_link "https://go.dev/dl/" "https://go.dev/dl/"
-    printf '\n'
+    printf '  来源    https://go.dev/dl/\n'
 }
 
 do_install() {

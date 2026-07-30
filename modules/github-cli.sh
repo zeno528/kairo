@@ -54,9 +54,7 @@ do_status() {
     else
         printf '  方式    非 apt 安装\n'
     fi
-    printf '  来源    '
-    kairo_link "https://github.com/cli/cli/releases" "https://github.com/cli/cli/releases"
-    printf '\n'
+    printf '  来源    https://github.com/cli/cli/releases\n'
 }
 
 do_install() {

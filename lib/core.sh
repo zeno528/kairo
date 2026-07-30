@@ -46,10 +46,6 @@ kairo_version_is_newer() {
     [ "$(printf '%s\n%s\n' "$current" "$candidate" | sort -V | tail -n 1)" = "$candidate" ]
 }
 
-kairo_link() {
-    printf '\033]8;;%s\007%s\033]8;;\007' "$1" "$2"
-}
-
 kairo_deb_package_for_path() {
     local path="$1" owner packages
     path=$(readlink -f -- "$path") || return 1

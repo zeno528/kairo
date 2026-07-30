@@ -34,9 +34,7 @@ do_status() {
     else
         printf '  方式    未识别的安装渠道\n'
     fi
-    printf '  来源    '
-    kairo_link "https://www.sqlite.org/download.html" "https://www.sqlite.org/download.html"
-    printf '\n'
+    printf '  来源    https://www.sqlite.org/download.html\n'
 }
 
 do_install() {

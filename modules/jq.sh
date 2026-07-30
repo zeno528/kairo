@@ -72,9 +72,7 @@ do_status() {
         official_release) printf '  方式    jq 官方 Releases 二进制\n' ;;
         *) printf '  方式    未识别的安装渠道\n' ;;
     esac
-    printf '  来源    '
-    kairo_link "https://github.com/jqlang/jq/releases" "https://github.com/jqlang/jq/releases"
-    printf '\n'
+    printf '  来源    https://github.com/jqlang/jq/releases\n'
 }
 
 do_install() {

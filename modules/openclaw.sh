@@ -34,9 +34,7 @@ do_status() {
     printf '  版本    %s\n' "$(_openclaw_version)"
     printf '  路径    %s\n' "$OPENCLAW_BINARY"
     printf '  方式    OpenClaw 官方更新器\n'
-    printf '  来源    '
-    kairo_link "https://openclaw.ai/" "https://openclaw.ai/"
-    printf '\n'
+    printf '  来源    https://openclaw.ai/\n'
 }
 
 do_install() {
