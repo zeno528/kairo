@@ -271,7 +271,7 @@ _menu_box_line() {
 }
 
 show_main_menu() {
-    local group module number=1 width column_width=52 gap=8 wide_layout=0
+    local group module number=1 width column_width=0 gap=4 wide_layout=0
     local i max left_padding row_width right_width side num_width module_count
     local util_text util_style util_width
     local -a groups_ref=() left_groups=() right_groups=() left_lines=() right_lines=() left_widths=() right_widths=()
@@ -287,8 +287,6 @@ show_main_menu() {
     done
 
     width=$(tput cols 2>/dev/null || echo 80)
-    MENU_BOX_INNER_WIDTH=$((width - 4))
-    [ "$MENU_BOX_INNER_WIDTH" -lt 40 ] && MENU_BOX_INNER_WIDTH=40
     module_count=${#KAIRO_MODULE_IDS[@]}
     num_width=${#module_count}
     if [ "$width" -ge 112 ] && [ "${#right_groups[@]}" -gt 0 ]; then
@@ -336,6 +334,30 @@ show_main_menu() {
         done
     done
 
+    # 底部系统操作行（提前计算宽度，参与自适应）
+    util_text="   [U] 检查更新    [X] 卸载 Kairo    [0] 退出"
+    util_style="   ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
+    util_width=$(_str_width "$util_text")
+
+    # 宽屏双列：column_width 取左列实际最宽行
+    if [ "$wide_layout" -eq 1 ]; then
+        for ((i = 0; i < ${#left_widths[@]}; i++)); do
+            [ "${left_widths[$i]:-0}" -gt "$column_width" ] && column_width=${left_widths[$i]:-0}
+        done
+    fi
+
+    # 自适应框宽：取所有内容行的最大显示宽度，右侧留 1 列呼吸空间
+    local max_content="$util_width" row_w
+    for ((i = 0; i < ${#left_widths[@]}; i++)); do
+        if [ "$wide_layout" -eq 1 ]; then
+            row_w=$((column_width + gap + ${right_widths[$i]:-0}))
+        else
+            row_w=${left_widths[$i]:-0}
+        fi
+        [ "$row_w" -gt "$max_content" ] && max_content=$row_w
+    done
+    MENU_BOX_INNER_WIDTH=$((max_content + 1))
+
     _menu_box_border "╭" "╮"
     max=${#left_lines[@]}
     [ "${#right_lines[@]}" -gt "$max" ] && max=${#right_lines[@]}
@@ -352,9 +374,6 @@ show_main_menu() {
     done
 
     _menu_box_border "├" "┤"
-    util_text="   [U] 检查更新    [X] 卸载 Kairo    [0] 退出"
-    util_style="   ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
-    util_width=$(_str_width "$util_text")
     _menu_box_line "$util_style" "$util_width"
     _menu_box_border "╰" "╯"
 }
