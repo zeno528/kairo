@@ -18,7 +18,7 @@ do_speedtest() (
     trap 'rm -rf -- "$tmp_dir"' EXIT
     cd -- "$tmp_dir" || return 1
 
-    _with_spinner "执行测速脚本" bash -c \
+    bash -c \
         'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$BENCH_URL"
 )
 
@@ -38,7 +38,7 @@ do_backtrace() (
         *) error "不支持的 CPU 架构: $(uname -m)"; return 1 ;;
     esac
     release_url="${BACKTRACE_RELEASE_URL}/backtrace-linux-${arch}.tar.gz"
-    _with_spinner "下载并执行回程测试" bash -c '
+    bash -c '
         curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL -o backtrace.tar.gz "$1" &&
             tar -xzf backtrace.tar.gz && [ -x ./backtrace ] && ./backtrace
     ' _ "$release_url"

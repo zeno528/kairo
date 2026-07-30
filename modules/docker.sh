@@ -87,7 +87,7 @@ do_images() {
     echo ""
     read -p "  清理未使用的镜像? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        if _with_spinner "正在清理未使用的镜像" docker image prune -f; then
+        if docker image prune -f; then
             success "清理完成"
         else
             error "清理失败"

@@ -94,7 +94,7 @@ _configure_nginx_official_repo() {
 
     info "配置 nginx 官方 apt 源..."
 
-    if ! _with_spinner "正在安装官方源依赖" sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
+    if ! sudo apt install -y curl gnupg2 ca-certificates lsb-release "$keyring_package"; then
         error "安装 nginx 官方源依赖失败"
         return 1
     fi
@@ -122,7 +122,7 @@ _configure_nginx_official_repo() {
         sudo tee /etc/apt/preferences.d/99nginx >/dev/null || return 1
 
     info "首次刷新软件源可能需要 1–2 分钟，请勿中断..."
-    if ! _with_spinner "正在刷新软件源" sudo apt update; then
+    if ! sudo apt update; then
         error "刷新 apt 索引失败，无法获取 nginx 官方版本"
         return 1
     fi
@@ -228,7 +228,7 @@ do_install() {
     fi
 
     info "检测到已有 Nginx 配置时将保留现有文件，不覆盖站点配置"
-    if _with_spinner "正在安装 Nginx v${candidate_ver}" sudo env DEBIAN_FRONTEND=noninteractive \
+    if sudo env DEBIAN_FRONTEND=noninteractive \
         apt -o Dpkg::Options::=--force-confold install -y nginx; then
         sudo systemctl enable --now nginx &>/dev/null
         local new_ver
@@ -263,8 +263,12 @@ do_uninstall() {
     read -p "  确认卸载? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     sudo systemctl stop nginx 2>/dev/null
-    _with_spinner "正在卸载 Nginx" sudo apt purge -y nginx nginx-common
-    success "已卸载 Nginx"
+    if sudo apt purge -y nginx nginx-common; then
+        success "已卸载 Nginx"
+    else
+        error "卸载 Nginx 失败"
+        return 1
+    fi
     info "如需彻底清理: rm -rf /etc/nginx /var/log/nginx /var/lib/nginx"
 }
 
@@ -825,7 +829,7 @@ _check_certbot() {
 
     if command -v snap &>/dev/null; then
         info "使用 snap 安装 certbot（官方推荐路径）"
-        if ! _with_spinner "正在安装 certbot" sudo snap install --classic certbot; then
+        if ! sudo snap install --classic certbot; then
             error "certbot 安装失败"
             return 1
         fi
@@ -835,7 +839,7 @@ _check_certbot() {
         fi
     else
         info "snap 不可用，使用 apt 安装 python3-certbot-nginx"
-        if ! _with_spinner "正在安装 certbot" sudo apt install -y python3-certbot-nginx; then
+        if ! sudo apt install -y python3-certbot-nginx; then
             error "certbot 安装失败"
             return 1
         fi
@@ -863,7 +867,7 @@ _do_cert_for_domain() {
     args+=(-d "$domain")
     [ "$with_www" = "y" ] && args+=(-d "www.${domain}")
 
-    if _with_spinner "正在为 ${domain} 申请证书" sudo certbot "${args[@]}"; then
+    if sudo certbot "${args[@]}"; then
         success "证书申请/续期完成"
     else
         error "证书申请失败，请检查:"
@@ -893,7 +897,7 @@ do_cert_list() {
         return
     fi
     echo ""
-    _with_spinner "正在查询证书列表" sudo certbot certificates
+    sudo certbot certificates
 }
 
 # ─── 日志 ────────────────────────────────────────────────────

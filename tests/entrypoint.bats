@@ -333,6 +333,14 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "持续输出的安装、测速和证书流程不套 spinner" {
+    run grep -E '_with_spinner.*(apt |snap |certbot|docker image prune)' \
+        "$PWD/modules/nginx.sh" "$PWD/modules/docker.sh"
+    [ "$status" -eq 1 ]
+    run grep -q '_with_spinner' "$PWD/modules/network-test.sh"
+    [ "$status" -eq 1 ]
+}
+
 @test "完整升级预演只执行 apt 模拟命令" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
