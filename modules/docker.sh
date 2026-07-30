@@ -87,9 +87,6 @@ do_status() {
     images=$(docker images -q 2>/dev/null | wc -l)
     printf '  容器数    %s\n' "$containers"
     printf '  镜像数    %s\n' "$images"
-    echo ""
-    echo -e "  ${C_BOLD}磁盘占用${C_RESET}"
-    docker system df 2>/dev/null | sed 's/^/  /'
 }
 
 do_list_containers() {
