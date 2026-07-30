@@ -57,7 +57,7 @@ do_install() {
     local latest
     latest=$(_kimi_latest_version)
     [ -n "$latest" ] || { error "无法获取 Kimi Code 最新版本"; return 1; }
-    if _with_spinner "正在安装 Kimi Code" _kimi_run_installer "$latest"; then
+    if _kimi_run_installer "$latest"; then
         export PATH="$HOME/.kimi-code/bin:$PATH"
         success "Kimi Code 安装完成: $(_kimi_version)"
     else
@@ -83,7 +83,7 @@ do_upgrade() {
     info "$current → $latest"
     read -r -p "  升级 Kimi Code? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if _with_spinner "正在升级 Kimi Code" _kimi_run_installer "$latest"; then
+    if _kimi_run_installer "$latest"; then
         export PATH="$HOME/.kimi-code/bin:$PATH"
         success "Kimi Code 已升级至 $(_kimi_version)"
     else

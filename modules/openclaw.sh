@@ -39,7 +39,7 @@ do_status() {
 
 do_install() {
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
-    if _with_spinner "正在安装 OpenClaw" _openclaw_run_installer; then
+    if _openclaw_run_installer; then
         _openclaw_exists
         success "OpenClaw 安装完成: $(_openclaw_version)"
     else
@@ -55,7 +55,7 @@ do_upgrade() {
     info "当前版本: $current"
     read -r -p "  使用 OpenClaw 官方更新器检查并升级? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if _with_spinner "正在通过官方更新器检查 OpenClaw" "$OPENCLAW_BINARY" update; then
+    if "$OPENCLAW_BINARY" update; then
         _openclaw_exists
         if [ "$(_openclaw_version)" = "$current" ]; then
             success "已是最新版本 ($current)"

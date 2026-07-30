@@ -56,7 +56,7 @@ _jq_install_release() {
 }
 
 _jq_upgrade_apt() {
-    sudo apt update -qq && sudo apt install --only-upgrade -y "$JQ_PACKAGE"
+    sudo apt update && sudo apt install --only-upgrade -y "$JQ_PACKAGE"
 }
 
 do_status() {
@@ -78,7 +78,7 @@ do_status() {
 do_install() {
     command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if _with_spinner "正在通过 apt 安装 jq" sudo apt update -qq && sudo apt install -y jq; then
+    if sudo apt update && sudo apt install -y jq; then
         _jq_detect_channel
         success "jq 安装完成: $(_jq_version)"
     else
@@ -93,7 +93,7 @@ do_upgrade() {
     case "$JQ_CHANNEL" in
         apt)
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! _with_spinner "正在刷新 jq 软件源" sudo apt update -qq; then
+            if ! sudo apt update; then
                 error "刷新软件源失败"
                 return 1
             fi
@@ -107,7 +107,7 @@ do_upgrade() {
             info "$installed → $candidate"
             read -r -p "  通过 apt 升级 jq? [Y/n]: " confirm
             [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-            if _with_spinner "正在升级 jq" _jq_upgrade_apt; then
+            if _jq_upgrade_apt; then
                 _jq_detect_channel
                 success "jq 已升级至 $(_jq_version)"
             else
@@ -128,7 +128,7 @@ do_upgrade() {
             read -r -p "  通过 jq 官方 Releases 升级? [Y/n]: " confirm
             [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
             sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if _with_spinner "正在升级 jq ${latest}" _jq_install_release "$latest" "$asset"; then
+            if _jq_install_release "$latest" "$asset"; then
                 _jq_detect_channel
                 success "jq 已升级至 $(_jq_version)"
             else

@@ -59,7 +59,7 @@ do_status() {
 
 do_install() {
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
-    if _with_spinner "正在安装 Claude Code" _claude_run_installer; then
+    if _claude_run_installer; then
         success "Claude Code 安装完成: $(_claude_version)"
     else
         error "Claude Code 安装失败"
@@ -84,7 +84,7 @@ do_upgrade() {
     info "$current → $latest"
     read -r -p "  升级 Claude Code? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if _with_spinner "正在升级 Claude Code" "$CLAUDE_BINARY" update; then
+    if "$CLAUDE_BINARY" update; then
         success "Claude Code 已升级至 $(_claude_version)"
     else
         error "Claude Code 升级失败"

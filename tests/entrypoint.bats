@@ -131,6 +131,14 @@ setup() {
     [ "$status" -eq 1 ]
 }
 
+@test "工具模块不包装官方流程的 spinner" {
+    run grep -En '_with_spinner' \
+        "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/kimi.sh" \
+        "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
+        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh"
+    [ "$status" -eq 1 ]
+}
+
 @test "Claude Code、Codex CLI 与 OpenClaw 不由 Kairo 直接调用 npm 管理" {
     run grep -Ein '\<npm\>' "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/openclaw.sh"
     [ "$status" -eq 1 ]
@@ -528,4 +536,10 @@ setup() {
     [[ "$output" =~ "a" ]]
     [[ "$output" =~ "b" ]]
     [[ "$output" =~ "c" ]]
+}
+
+@test "_with_spinner 终端模式在子进程结束后退出" {
+    run timeout 5 script -qfec "bash -c 'source \"$PWD/lib/core.sh\"; _with_spinner test printf \"done\\n\"'" /dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "done" ]]
 }

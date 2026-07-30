@@ -92,14 +92,13 @@ _with_spinner() {
         cmd_pid=$!
         exec {fifo_fd}<"$fifo"
 
-        while true; do
+        while jobs -pr | grep -qx "$cmd_pid"; do
             if IFS= read -r -t 0.1 -u "$fifo_fd" line 2>/dev/null; then
                 printf "\r\033[K%s%s\n" "$partial" "$line"
                 partial=""
             else
                 partial="${partial}${line}"
             fi
-            kill -0 "$cmd_pid" 2>/dev/null || break
             printf "\r\033[K  ${C_CYAN}%s${C_RESET} %s..." "${spin:i++%10:1}" "$msg"
         done
 

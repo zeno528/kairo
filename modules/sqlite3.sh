@@ -16,7 +16,7 @@ _sqlite3_version() {
 }
 
 _sqlite3_upgrade_apt() {
-    sudo apt update -qq && sudo apt install --only-upgrade -y "$1"
+    sudo apt update && sudo apt install --only-upgrade -y "$1"
 }
 
 do_status() {
@@ -40,7 +40,7 @@ do_status() {
 do_install() {
     command -v apt >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
-    if _with_spinner "正在通过 apt 安装 SQLite3" sudo apt update -qq && sudo apt install -y sqlite3; then
+    if sudo apt update && sudo apt install -y sqlite3; then
         success "SQLite3 安装完成: $(_sqlite3_version)"
     else
         error "SQLite3 安装失败"
@@ -54,7 +54,7 @@ do_upgrade() {
     package=$(_sqlite3_package)
     [ -n "$package" ] || { error "未识别 SQLite3 的安装渠道，未自动升级"; return 1; }
     sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if ! _with_spinner "正在刷新 SQLite3 软件源" sudo apt update -qq; then
+    if ! sudo apt update; then
         error "刷新软件源失败"
         return 1
     fi
@@ -68,7 +68,7 @@ do_upgrade() {
     info "$installed → $candidate"
     read -r -p "  通过 apt 升级 SQLite3? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if _with_spinner "正在升级 SQLite3" _sqlite3_upgrade_apt "$package"; then
+    if _sqlite3_upgrade_apt "$package"; then
         success "SQLite3 已升级至 $(_sqlite3_version)"
     else
         error "SQLite3 升级失败"
