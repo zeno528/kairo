@@ -322,11 +322,12 @@ do_images() {
             [ -n "$img" ] && USED_IMAGES["$img"]=1
         done < <(docker ps --format '{{.Image}}' 2>/dev/null)
 
-        mapfile -t imgs < <(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null)
+        imgs=()
         echo ""
         echo -e "  ${C_BOLD}镜像列表${C_RESET} （${C_GREEN}●${C_RESET} = 有容器在用）"
         i=1
         while IFS=$'\t' read -r repo_tag size created; do
+            imgs+=("$repo_tag")
             created="${created#"${created%%[![:space:]]*}"}"
             if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
                 printf "  ${C_GREEN}●${C_RESET} [%2d] %-40s  %-8s  %s\n" "$i" "$repo_tag" "$size" "$created"
@@ -466,7 +467,8 @@ _render_status_cache() {
         docker compose version 2>/dev/null | head -1
     fi
     echo ""
-    if ! docker info &>/dev/null 2>&1; then
+    # 用 docker ps 做轻量 daemon 探活，比 docker info 快得多
+    if ! docker ps &>/dev/null; then
         echo -e "  ${C_YELLOW}⚠ Docker 服务未运行或当前用户无权限${C_RESET}"
         return
     fi
