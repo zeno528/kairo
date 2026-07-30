@@ -679,13 +679,9 @@ do_overview() {
                 read -r -p "  镜像名: " img_tag
                 [ -z "$img_tag" ] && { info "已取消"; sleep 1; continue; }
                 docker image inspect "$img_tag" &>/dev/null || { error "镜像不存在: $img_tag"; sleep 1; continue; }
-                read -r -p "  容器名 (可选): " c_name
                 echo ""
-                local run_args=(-d)
-                [ -n "$c_name" ] && run_args+=(--name "$c_name")
-                run_args+=("$img_tag")
-                if docker run "${run_args[@]}" 2>&1; then
-                    success "容器已启动: ${c_name:-$img_tag}"
+                if docker run -d "$img_tag" 2>&1; then
+                    success "容器已启动"
                 else
                     error "启动失败，请检查镜像是否可后台运行"
                 fi
