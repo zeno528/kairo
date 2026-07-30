@@ -561,76 +561,91 @@ do_uninstall() {
 
 do_overview() {
     _check_docker || return
-    local choice containers=() i c_name c_status c_img
-    local -A USED_IMAGES
+    local choice i
+    local -A CT_META      # container_name → "status|image|idx"
+    local -A IMG_SIZE     # image → size
+    local -A IMG_USED     # image → 1 if has running container
+    local CONTAINER_LIST=() IMAGE_LIST=()
+    local -A IMG_HAS_CT   # image → 1 if has containers
+    local -A img_seen
+
     while true; do
         clear
         title "🐳 Docker 资源总览"
 
-        # 收集运行中容器使用的镜像（用于镜像绿点标记）
-        USED_IMAGES=()
-        while IFS= read -r img; do
-            [ -n "$img" ] && USED_IMAGES["$img"]=1
-        done < <(docker ps --format '{{.Image}}' 2>/dev/null)
+        # 刷新数据
+        CT_META=()
+        IMG_SIZE=()
+        IMG_USED=()
+        IMG_HAS_CT=()
+        img_seen=()
+        CONTAINER_LIST=()
+        IMAGE_LIST=()
+        i=1
 
-        # 收集容器
-        containers=()
-        while IFS= read -r c_name; do
-            containers+=("$c_name")
-        done < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
+        while IFS=$'\t' read -r c_name c_img c_status; do
+            [ -z "$c_name" ] && continue
+            CONTAINER_LIST+=("$c_name")
+            CT_META["$c_name"]="${c_status}|${c_img}|${i}"
+            IMG_HAS_CT["$c_img"]=1
+            if [[ "$c_status" =~ ^Up ]]; then
+                IMG_USED["$c_img"]=1
+            fi
+            ((i++))
+        done < <(docker ps -a --format '{{.Names}}\t{{.Image}}\t{{.Status}}' 2>/dev/null)
 
-        echo ""
-
-        # 容器区域
-        if [ "${#containers[@]}" -gt 0 ]; then
-            echo -e "  ${C_BOLD}容器 (${#containers[@]})${C_RESET}"
-            i=1
-            local c_mark name_col status_col
-            for c_name in "${containers[@]}"; do
-                c_status=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Status}}' 2>/dev/null | head -1)
-                c_img=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Image}}' 2>/dev/null | head -1)
-                if [[ "$c_status" =~ ^Up ]]; then
-                    c_mark="${C_GREEN}●${C_RESET}"
-                else
-                    c_mark="${C_GRAY}○${C_RESET}"
-                fi
-                name_col="${c_mark} ${C_BOLD}[${i}]${C_RESET} ${c_name}"
-                status_col="${C_DIM}${c_status:0:14}${C_RESET}"
-                printf "  %s %s %s\n" "$(_pad_right "$name_col" 35)" "$(_pad_right "$status_col" 20)" "$c_img"
-                ((i++))
-            done
-        else
-            echo -e "  ${C_DIM}(无容器)${C_RESET}"
-        fi
-
-        echo ""
-
-        # 镜像区域
-        local imgs=() img_tag img_size
+        # 收集所有镜像，有容器的排前面
         while IFS=$'\t' read -r img_tag img_size; do
-            imgs+=("$img_tag")
+            IMG_SIZE["$img_tag"]="$img_size"
         done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' 2>/dev/null)
 
-        if [ "${#imgs[@]}" -gt 0 ]; then
-            echo -e "  ${C_BOLD}镜像 (${#imgs[@]})${C_RESET}"
-            local i_mark img_line
-            for img_tag in "${imgs[@]}"; do
-                img_size=$(docker images --format '{{.Size}}' "$img_tag" 2>/dev/null | head -1)
-                if [ -n "${USED_IMAGES[$img_tag]:-}" ]; then
-                    i_mark="${C_GREEN}●${C_RESET} "
-                else
-                    i_mark="  "
-                fi
-                img_line="${i_mark}${img_tag}"
-                printf "  %s %s\n" "$(_pad_right "$img_line" 48)" "$img_size"
-            done
-        else
+        for img_tag in "${!IMG_SIZE[@]}"; do
+            if [ -n "${IMG_HAS_CT[$img_tag]:-}" ]; then
+                IMAGE_LIST+=("$img_tag")
+                img_seen["$img_tag"]=1
+            fi
+        done
+        for img_tag in "${!IMG_SIZE[@]}"; do
+            [ -z "${img_seen[$img_tag]:-}" ] && IMAGE_LIST+=("$img_tag")
+        done
+
+        echo ""
+        local img_tag img_size c_mark i_mark name_col status_col c_status c_img c_idx
+
+        if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
         fi
 
-        echo ""
+        for img_tag in "${IMAGE_LIST[@]}"; do
+            img_size="${IMG_SIZE[$img_tag]:-}"
+            if [ -n "${IMG_USED[$img_tag]:-}" ]; then
+                i_mark="${C_GREEN}●${C_RESET} "
+            else
+                i_mark="  "
+            fi
+            printf "  %s %s\n" "$(_pad_right "${i_mark}${img_tag}" 48)" "${img_size}"
+
+            # 显示该镜像下的容器
+            local has_ct=0
+            for c_name in "${CONTAINER_LIST[@]}"; do
+                IFS='|' read -r c_status c_img c_idx <<< "${CT_META[$c_name]}"
+                [ "$c_img" != "$img_tag" ] && continue
+                has_ct=1
+                if [[ "$c_status" =~ ^Up ]]; then
+                    c_mark=" ${C_GREEN}●${C_RESET}"
+                else
+                    c_mark=" ${C_GRAY}○${C_RESET}"
+                fi
+                name_col="${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                status_col="${C_DIM}${c_status:0:14}${C_RESET}"
+                printf "  %s %s\n" "$(_pad_right "$name_col" 42)" "$status_col"
+            done
+            [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}  (无容器)${C_RESET}"
+            echo ""
+        done
+
         divider
-        _menu_actions 24 "${C_BOLD}[1-${#containers[@]}]${C_RESET} 管理容器"
+        _menu_actions 24 "${C_BOLD}[1-${#CONTAINER_LIST[@]}]${C_RESET} 管理容器"
         _menu_actions 24 "${C_BOLD}[I]${C_RESET} 镜像管理"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
         divider
@@ -641,8 +656,8 @@ do_overview() {
             0) return ;;
             [Ii]) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             *)
-                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
-                    _container_ops_menu "${containers[$((choice-1))]}"
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#CONTAINER_LIST[@]}" ]; then
+                    _container_ops_menu "${CONTAINER_LIST[$((choice-1))]}"
                     [ "$DOCKER_GO_HOME" -eq 1 ] && return
                 else
                     error "无效选项"; sleep 1
