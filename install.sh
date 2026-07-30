@@ -307,11 +307,13 @@ chmod 644 "${runtime_dir}/VERSION"
 find "${runtime_dir}/lib" "${runtime_dir}/modules" -type f -name '*.sh' -exec chmod 755 {} +
 deploy_staged_release "$runtime_dir" "$bin_file"
 
-if [ "$local_ver" != "未安装" ] && [ "$local_ver" != "$remote_ver" ]; then
-    transition="v${local_ver} → "
+if [ "$local_ver" = "未安装" ]; then
+    done_msg="安装完成"
+elif [ "$local_ver" = "$remote_ver" ]; then
+    done_msg="修复完成"
 else
-    transition=""
+    done_msg="升级完成"
 fi
-echo -e ">>> 🎉 完成！Kairo ${transition}\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
+echo -e ">>> 🎉 \033[1mKairo\033[0m ${done_msg}！\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
 echo "  主菜单命令: ka"

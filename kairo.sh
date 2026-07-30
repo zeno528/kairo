@@ -75,7 +75,7 @@ do_update() {
         error "更新需要 sudo 权限"
         return 1
     fi
-    info "正在更新，请稍候..."
+    echo -e "  ${C_CYAN}🚀 正在更新，请稍候...${C_RESET}"
     kairo_run_installer
 }
 
