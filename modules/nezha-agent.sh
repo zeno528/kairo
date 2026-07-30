@@ -142,6 +142,8 @@ do_logs() {
     sudo journalctl -u "$svc" --no-pager -n "$lines" 2>&1
 }
 
+# CLI 调用时通过 run_module_action 传参 ($@)
+# shellcheck disable=SC2120
 do_mgmt() {
     local mgmt_file
     # 优先用当前目录下的 nezha.sh

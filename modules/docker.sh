@@ -35,22 +35,37 @@ do_install() {
     if _docker_installed; then
         success "Docker 已安装"
         docker --version 2>/dev/null
-        return 0
+        echo ""
+        read -r -p "  是否检查并升级到最新版本? [Y/n]: " confirm
+        [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && return 0
+        do_upgrade
+        return $?
     fi
     command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
 
     info "使用 Docker 官方 apt 源安装"
     _start_spinner "正在添加 Docker GPG key 和 apt 源"
+
+    # 移除旧版源文件（防止冲突）
+    sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources 2>/dev/null
+
     sudo apt-get update -qq
     sudo apt-get install -y -qq ca-certificates curl
     sudo install -m 0755 -d /etc/apt/keyrings
     sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
-    echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-        $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # 使用官方推荐的 deb822 .sources 格式
+    sudo tee /etc/apt/sources.list.d/docker.sources <<EOF > /dev/null
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
     sudo apt-get update -qq
     _stop_spinner
 
@@ -66,6 +81,48 @@ do_install() {
     else
         _stop_spinner
         error "Docker 安装失败"
+        return 1
+    fi
+}
+
+do_upgrade() {
+    echo ""
+    if ! _docker_installed; then
+        info "Docker 未安装，请先安装"; return 1
+    fi
+    sudo -v || { error "升级需要 sudo 权限"; return 1; }
+
+    local current candidate
+    current=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
+
+    _start_spinner "正在检查更新"
+    sudo apt-get update -qq
+    candidate=$(apt-cache policy docker-ce 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    _stop_spinner
+
+    if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
+        error "无法获取 Docker 最新版本信息，请确认已添加 Docker 官方源"; return 1
+    fi
+
+    echo ""
+    info "当前版本: $current"
+    info "最新版本: $candidate"
+
+    if [ "$current" = "$candidate" ]; then
+        success "已是最新版本"; return 0
+    fi
+
+    read -r -p "  确认升级? [Y/n]: " confirm
+    [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
+
+    _start_spinner "正在升级 Docker"
+    if sudo apt-get install -y --only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+        _stop_spinner
+        success "Docker 升级完成"
+        docker --version 2>/dev/null
+    else
+        _stop_spinner
+        error "升级失败"
         return 1
     fi
 }
@@ -434,7 +491,7 @@ menu() {
             esac
             continue
         fi
-        # 只在首次或操作后刷新状态，避免每次回到菜单都跑 docker info
+        # 只在首次或操作后刷新状态，避免每次回到菜单都跑 docker ps
         if [ -z "$status_cache" ]; then
             status_cache=$(_render_status_cache)
         fi
@@ -445,6 +502,7 @@ menu() {
         _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 项目"
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} 镜像列表"
         _menu_actions 20 "${C_BOLD}[5]${C_RESET} 系统清理"
+        _menu_actions 20 "${C_BOLD}[U]${C_RESET} 检查升级"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
@@ -462,6 +520,7 @@ menu() {
             3) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             4) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
+            [Uu]) do_upgrade; status_cache=""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
     done
