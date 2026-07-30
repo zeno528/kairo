@@ -473,6 +473,90 @@ do_cleanup() {
     success "清理完成"
 }
 
+do_uninstall() {
+    echo ""
+    if ! _docker_installed; then
+        info "Docker 未安装，无需卸载"
+        return 0
+    fi
+
+    warn "此操作将删除所有 Docker 容器、镜像、卷和网络，并彻底卸载 Docker Engine"
+    echo ""
+    read -r -p "  确认卸载? 输入 YES 继续: " confirm
+    [ "$confirm" != "YES" ] && { info "已取消"; return 0; }
+
+    # 收集统计信息用于最终报告
+    local running_containers total_containers total_images total_volumes
+    running_containers=$(docker ps -q 2>/dev/null | wc -l)
+    total_containers=$(docker ps -aq 2>/dev/null | wc -l)
+    total_images=$(docker images -q 2>/dev/null | wc -l)
+    total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
+
+    # 停止所有运行中的容器
+    if [ "$running_containers" -gt 0 ]; then
+        _start_spinner "正在停止 $running_containers 个运行中的容器"
+        docker stop $(docker ps -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    # 删除所有容器
+    if [ "$total_containers" -gt 0 ]; then
+        _start_spinner "正在删除 $total_containers 个容器"
+        docker rm -f $(docker ps -aq) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    # 删除所有镜像
+    if [ "$total_images" -gt 0 ]; then
+        _start_spinner "正在删除 $total_images 个镜像"
+        docker rmi -f $(docker images -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    # 删除所有卷
+    if [ "$total_volumes" -gt 0 ]; then
+        _start_spinner "正在删除 $total_volumes 个卷"
+        docker volume rm $(docker volume ls -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    # 清理剩余网络和构建缓存
+    _start_spinner "正在清理网络和构建缓存"
+    docker system prune -a -f --volumes 2>/dev/null || true
+    _stop_spinner
+
+    # 停止并禁用 Docker 服务
+    _start_spinner "正在停止 Docker 服务"
+    sudo systemctl stop docker docker.socket 2>/dev/null || true
+    sudo systemctl disable docker docker.socket 2>/dev/null || true
+    _stop_spinner
+
+    # apt purge 卸载所有 Docker 包
+    _start_spinner "正在卸载 Docker 软件包"
+    sudo apt-get purge -y docker-ce docker-ce-cli containerd.io \
+        docker-buildx-plugin docker-compose-plugin \
+        docker-ce-rootless-extras 2>/dev/null || true
+    sudo apt-get autoremove -y --purge 2>/dev/null || true
+    _stop_spinner
+
+    # 清理 Docker 数据目录
+    _start_spinner "正在清理 Docker 数据目录"
+    sudo rm -rf /var/lib/docker /var/lib/containerd 2>/dev/null || true
+    _stop_spinner
+
+    # 清理 Docker apt 源和 GPG key
+    _start_spinner "正在清理 Docker apt 源"
+    sudo rm -f /etc/apt/sources.list.d/docker.list \
+        /etc/apt/sources.list.d/docker.sources 2>/dev/null || true
+    sudo rm -f /etc/apt/keyrings/docker.asc 2>/dev/null || true
+    sudo apt-get update -qq 2>/dev/null || true
+    _stop_spinner
+
+    echo ""
+    success "Docker 已完全卸载"
+    info "已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+}
+
 menu() {
     local choice name status_cache=""
     while true; do
@@ -506,6 +590,7 @@ menu() {
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} 镜像列表"
         _menu_actions 20 "${C_BOLD}[5]${C_RESET} 系统清理"
         _menu_actions 20 "${C_BOLD}[U]${C_RESET} 检查升级"
+        _menu_actions 20 "${C_BOLD}[D]${C_RESET} 卸载 Docker"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
@@ -524,6 +609,7 @@ menu() {
             4) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             [Uu]) do_upgrade; status_cache=""; kairo_pause ;;
+            [Dd]) do_uninstall; status_cache=""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
     done
