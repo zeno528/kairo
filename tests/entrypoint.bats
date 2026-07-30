@@ -147,7 +147,8 @@ setup() {
     run grep -Ein 'proxy|v2ray|127\.0\.0\.1|ensure_proxy|with_proxy' \
         "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/kimi.sh" \
         "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
-        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh"
+        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh" \
+        "$PWD/modules/basics.sh"
     [ "$status" -eq 1 ]
 }
 
@@ -155,7 +156,8 @@ setup() {
     run grep -En '_with_spinner' \
         "$PWD/modules/claude.sh" "$PWD/modules/codex.sh" "$PWD/modules/kimi.sh" \
         "$PWD/modules/github-cli.sh" "$PWD/modules/openclaw.sh" \
-        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh"
+        "$PWD/modules/go.sh" "$PWD/modules/jq.sh" "$PWD/modules/sqlite3.sh" \
+        "$PWD/modules/basics.sh"
     [ "$status" -eq 1 ]
 }
 

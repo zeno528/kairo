@@ -58,8 +58,8 @@ kairo_module_supports_action() {
 }
 
 kairo_register_group ssh "🔒 SSH"
-kairo_register_group system "💻  系统"
-kairo_register_group network "🌐  网络"
+kairo_register_group system "💻 系统"
+kairo_register_group network "🌐 网络"
 kairo_register_group proxy "🚀 代理"
 kairo_register_group tools "🧰 工具"
 kairo_register_group agents "🤖 AI Agent" "right_column"
@@ -87,4 +87,5 @@ kairo_register_module openclaw agents "OpenClaw" "status install upgrade" "AI Ag
 kairo_register_module go tools "Go" "status install upgrade" "Go 语言工具链"
 kairo_register_module jq tools "jq" "status install upgrade" "JSON 命令行处理器"
 kairo_register_module sqlite3 tools "SQLite3" "status install upgrade" "轻量数据库命令行工具"
+kairo_register_module basics tools "基础工具" "status install upgrade" "运维常用工具合集"
 kairo_register_module codex agents "Codex CLI" "status install upgrade" "OpenAI AI 编程助手"

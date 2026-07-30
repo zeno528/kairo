@@ -4,6 +4,7 @@ VERSION
 lib/core.sh
 modules/registry.sh
 modules/proxy-setup.sh
+modules/basics.sh
 modules/crontab.sh
 modules/docker.sh
 modules/fail2ban.sh
