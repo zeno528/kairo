@@ -2,7 +2,6 @@
 # fail2ban — 用官方 apt 包保护 SSH 免遭暴力破解。
 
 do_status() {
-    echo ""
     title "当前状态"
     if ! command -v fail2ban-client >/dev/null 2>&1; then
         warn "未安装"

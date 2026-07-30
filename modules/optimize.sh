@@ -32,7 +32,6 @@ EOF
 }
 
 do_status() {
-    echo ""
     title "当前状态"
     local cc qdisc avail
     cc=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "未知")

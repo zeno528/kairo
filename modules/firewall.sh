@@ -38,10 +38,10 @@ do_status() {
 do_open_port() {
     [ -z "$FW" ] && error "未检测到防火墙工具" && return
     echo ""
-    read -p "  输入端口号: " port
+    read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -p "  协议 (tcp/udp，默认 tcp): " proto
+    read -r -p "  协议 (tcp/udp，默认 tcp): " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将放行入站端口 $port/$proto"
@@ -62,10 +62,10 @@ do_open_port() {
 do_close_port() {
     [ -z "$FW" ] && error "未检测到防火墙工具" && return
     echo ""
-    read -p "  输入端口号: " port
+    read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -p "  协议 (tcp/udp，默认 tcp): " proto
+    read -r -p "  协议 (tcp/udp，默认 tcp): " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将关闭 $port/$proto，可能中断现有服务"
@@ -108,7 +108,7 @@ do_enable() {
         ufw)
             warn "确保已放行 SSH 端口 (22)，否则可能无法远程连接"
             warn "开启后，未明确放行的入站连接可能被阻止"
-            read -p "  确认开启? [y/N]: " confirm
+            read -r -p "  确认开启? [y/N]: " confirm
             [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
             sudo ufw enable && success "防火墙已开启"
             ;;
@@ -124,7 +124,7 @@ do_disable() {
     echo ""
     case "$FW" in
         ufw)
-            read -p "  确认关闭防火墙? [y/N]: " confirm
+            read -r -p "  确认关闭防火墙? [y/N]: " confirm
             [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
             sudo ufw disable && success "防火墙已关闭"
             ;;
@@ -147,7 +147,7 @@ menu() {
         echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
         divider
         echo ""
-        read -p "  选择规则或操作: " choice
+        read -r -p "  选择规则或操作: " choice
         case "$choice" in
             [Oo]) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Cc]) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
