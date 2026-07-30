@@ -629,16 +629,16 @@ do_overview() {
         IMAGE_LIST=()
         i=1
 
-        while IFS=$'\t' read -r c_name c_img c_status; do
+        while IFS=$'\t' read -r c_name c_img c_status c_ports; do
             [ -z "$c_name" ] && continue
             CONTAINER_LIST+=("$c_name")
-            CT_META["$c_name"]="${c_status}|${c_img}|${i}"
+            CT_META["$c_name"]="${c_status}|${c_img}|${i}|${c_ports}"
             IMG_HAS_CT["$c_img"]=1
             if [[ "$c_status" =~ ^Up ]]; then
                 IMG_USED["$c_img"]=1
             fi
             ((i++))
-        done < <(docker ps -a --format '{{.Names}}\t{{.Image}}\t{{.Status}}' 2>/dev/null)
+        done < <(docker ps -a --format '{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null)
 
         # 收集所有镜像，有容器的排前面
         while IFS=$'\t' read -r img_tag img_size; do
@@ -656,7 +656,7 @@ do_overview() {
         done
 
         echo ""
-        local img_tag img_size c_mark i_mark name_col status_col c_status c_img c_idx
+        local img_tag img_size c_mark i_mark name_col status_col c_status c_img c_idx c_ports
 
         if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
@@ -681,14 +681,14 @@ do_overview() {
             local has_ct=0 total_ct=0
             for c_name in "${CONTAINER_LIST[@]}"; do
                 [ "${CT_META[$c_name]}" = "" ] && continue
-                IFS='|' read -r c_status c_img c_idx <<< "${CT_META[$c_name]}"
+                IFS='|' read -r c_status c_img c_idx _ <<< "${CT_META[$c_name]}"
                 [ "$c_img" != "$img_tag" ] && continue
                 ((total_ct++))
             done
 
             for c_name in "${CONTAINER_LIST[@]}"; do
                 [ "${CT_META[$c_name]}" = "" ] && continue
-                IFS='|' read -r c_status c_img c_idx <<< "${CT_META[$c_name]}"
+                IFS='|' read -r c_status c_img c_idx c_ports <<< "${CT_META[$c_name]}"
                 [ "$c_img" != "$img_tag" ] && continue
                 has_ct=1
                 if [[ "$c_status" =~ ^Up ]]; then
@@ -703,7 +703,7 @@ do_overview() {
                     name_col="  ${C_DIM}├─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
                 fi
                 status_col="${C_DIM}${c_status:0:14}${C_RESET}"
-                printf "  %s %s\n" "$(_pad_right "$name_col" 42)" "$status_col"
+                printf "  %s %s  %s\n" "$(_pad_right "$name_col" 36)" "$(_pad_right "$status_col" 18)" "${C_DIM}${c_ports}${C_RESET}"
             done
             [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}  (无容器)${C_RESET}"
             echo ""
