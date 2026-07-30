@@ -559,6 +559,52 @@ do_uninstall() {
     hash -r
 }
 
+do_reset() {
+    echo ""
+    warn "此操作将删除所有 Docker 容器、镜像、卷和网络，但保留 Docker Engine 本身"
+    echo ""
+    read -r -p "  确认重置? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+
+    local running_containers total_containers total_images total_volumes
+    running_containers=$(docker ps -q 2>/dev/null | wc -l)
+    total_containers=$(docker ps -aq 2>/dev/null | wc -l)
+    total_images=$(docker images -q 2>/dev/null | wc -l)
+    total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
+
+    if [ "$running_containers" -gt 0 ]; then
+        _start_spinner "正在停止 $running_containers 个运行中的容器"
+        docker stop $(docker ps -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_containers" -gt 0 ]; then
+        _start_spinner "正在删除 $total_containers 个容器"
+        docker rm -f $(docker ps -aq) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_images" -gt 0 ]; then
+        _start_spinner "正在删除 $total_images 个镜像"
+        docker rmi -f $(docker images -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_volumes" -gt 0 ]; then
+        _start_spinner "正在删除 $total_volumes 个卷"
+        docker volume rm $(docker volume ls -q) 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    _start_spinner "正在清理网络和构建缓存"
+    docker system prune -a -f --volumes 2>/dev/null || true
+    _stop_spinner
+
+    echo ""
+    success "Docker 环境已重置"
+    info "已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+}
+
 do_overview() {
     _check_docker || return
     local choice i
@@ -736,6 +782,7 @@ menu() {
         _menu_actions 20 "${C_BOLD}[2]${C_RESET} 资源监控"
         _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 项目"
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} 系统清理"
+        _menu_actions 20 "${C_BOLD}[X]${C_RESET} 重置环境"
         _menu_actions 20 "${C_BOLD}[U]${C_RESET} 检查升级"
         _menu_actions 20 "${C_BOLD}[D]${C_RESET} 卸载 Docker"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
@@ -750,6 +797,7 @@ menu() {
             2) do_stats; echo ""; kairo_pause ;;
             3) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             4) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
+            [Xx]) do_reset; status_cache=""; kairo_pause ;;
             [Uu]) do_upgrade; status_cache=""; kairo_pause ;;
             [Dd]) do_uninstall; status_cache=""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
