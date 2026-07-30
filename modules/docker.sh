@@ -559,6 +559,94 @@ do_uninstall() {
     hash -r
 }
 
+do_overview() {
+    _check_docker || return
+    local choice containers=() i c_name c_status c_img
+    local -A USED_IMAGES
+    while true; do
+        clear
+        title "🐳 Docker 资源总览"
+
+        # 收集运行中容器使用的镜像（用于镜像绿点标记）
+        USED_IMAGES=()
+        while IFS= read -r img; do
+            [ -n "$img" ] && USED_IMAGES["$img"]=1
+        done < <(docker ps --format '{{.Image}}' 2>/dev/null)
+
+        # 收集容器
+        containers=()
+        while IFS= read -r c_name; do
+            containers+=("$c_name")
+        done < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
+
+        echo ""
+
+        # 容器区域
+        if [ "${#containers[@]}" -gt 0 ]; then
+            echo -e "  ${C_BOLD}容器 (${#containers[@]})${C_RESET}"
+            i=1
+            for c_name in "${containers[@]}"; do
+                c_status=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Status}}' 2>/dev/null | head -1)
+                c_img=$(docker ps -a --filter "name=^${c_name}$" --format '{{.Image}}' 2>/dev/null | head -1)
+                if [[ "$c_status" =~ ^Up ]]; then
+                    printf "  ${C_GREEN}●${C_RESET} ${C_BOLD}[%d]${C_RESET} %-20s ${C_DIM}%s${C_RESET}  %s\n" \
+                        "$i" "$c_name" "${c_status:0:14}" "$c_img"
+                else
+                    printf "  ${C_GRAY}○${C_RESET} ${C_BOLD}[%d]${C_RESET} %-20s ${C_DIM}%s${C_RESET}  %s\n" \
+                        "$i" "$c_name" "${c_status:0:14}" "$c_img"
+                fi
+                ((i++))
+            done
+        else
+            echo -e "  ${C_DIM}(无容器)${C_RESET}"
+        fi
+
+        echo ""
+
+        # 镜像区域
+        local imgs=() img_tag img_size
+        while IFS=$'\t' read -r img_tag img_size; do
+            imgs+=("$img_tag")
+        done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' 2>/dev/null)
+
+        if [ "${#imgs[@]}" -gt 0 ]; then
+            echo -e "  ${C_BOLD}镜像 (${#imgs[@]})${C_RESET}"
+            for img_tag in "${imgs[@]}"; do
+                img_size=$(docker images --format '{{.Size}}' "$img_tag" 2>/dev/null | head -1)
+                if [ -n "${USED_IMAGES[$img_tag]:-}" ]; then
+                    printf "  ${C_GREEN}●${C_RESET} %-45s %s\n" "$img_tag" "$img_size"
+                else
+                    printf "    %-45s %s\n" "$img_tag" "$img_size"
+                fi
+            done
+        else
+            echo -e "  ${C_DIM}(无镜像)${C_RESET}"
+        fi
+
+        echo ""
+        divider
+        _menu_actions 24 "${C_BOLD}[1-${#containers[@]}]${C_RESET} 管理容器"
+        _menu_actions 24 "${C_BOLD}[I]${C_RESET} 镜像管理"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
+        divider
+        echo ""
+        read -r -p "  请选择: " choice
+
+        case "$choice" in
+            0) return ;;
+            [Ii]) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
+                    _container_ops_menu "${containers[$((choice-1))]}"
+                    [ "$DOCKER_GO_HOME" -eq 1 ] && return
+                else
+                    error "无效选项"; sleep 1
+                fi
+                ;;
+        esac
+    done
+}
+
 menu() {
     local choice name status_cache=""
     while true; do
@@ -586,11 +674,10 @@ menu() {
         fi
         echo "$status_cache"
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 容器列表"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 资源总览"
         _menu_actions 20 "${C_BOLD}[2]${C_RESET} 资源监控"
         _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 项目"
-        _menu_actions 20 "${C_BOLD}[4]${C_RESET} 镜像列表"
-        _menu_actions 20 "${C_BOLD}[5]${C_RESET} 系统清理"
+        _menu_actions 20 "${C_BOLD}[4]${C_RESET} 系统清理"
         _menu_actions 20 "${C_BOLD}[U]${C_RESET} 检查升级"
         _menu_actions 20 "${C_BOLD}[D]${C_RESET} 卸载 Docker"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
@@ -601,14 +688,10 @@ menu() {
         case "$choice" in
             0) return ;;
             [Rr]) status_cache=""; continue ;;
-            1)
-                _compose_container_menu
-                [ "$DOCKER_GO_HOME" -eq 1 ] && return
-                ;;
+            1) do_overview; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             2) do_stats; echo ""; kairo_pause ;;
             3) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
-            4) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
-            5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
+            4) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             [Uu]) do_upgrade; status_cache=""; kairo_pause ;;
             [Dd]) do_uninstall; status_cache=""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
@@ -667,28 +750,35 @@ _compose_container_menu() {
                 fi
                 ;;
         esac
-        echo ""
-        echo "  ${C_BOLD}${name}${C_RESET}"
-        _menu_actions 18 "[1] 启动"
-        _menu_actions 18 "[2] 停止"
-        _menu_actions 18 "[3] 重启"
-        _menu_actions 18 "[4] 查看日志"
-        _menu_actions 18 "[5] 进入终端"
-        _menu_actions 18 "[6] 删除容器"
-        _menu_actions 18 "[0] 返回上级"
-        _menu_actions 18 "[H] 返回主菜单"
-        read -r -p "  选择操作: " choice
-        case "$choice" in
-            1) do_start "$name" ;;
-            2) do_stop "$name" ;;
-            3) do_restart "$name" ;;
-            4) do_logs "$name" ;;
-            5) do_exec "$name" ;;
-            6) do_remove "$name" ;;
-            [Hh]) DOCKER_GO_HOME=1; return ;;
-            0) continue ;;
-            *) error "无效选项"; sleep 1; continue ;;
-        esac
+        _container_ops_menu "$name"
+        [ "$DOCKER_GO_HOME" -eq 1 ] && return
         echo ""; kairo_pause "按 Enter 返回容器列表..."
     done
+}
+
+# 容器操作子菜单（可被总览视图复用）
+_container_ops_menu() {
+    local name="$1" choice
+    echo ""
+    echo "  ${C_BOLD}${name}${C_RESET}"
+    _menu_actions 18 "[1] 启动"
+    _menu_actions 18 "[2] 停止"
+    _menu_actions 18 "[3] 重启"
+    _menu_actions 18 "[4] 查看日志"
+    _menu_actions 18 "[5] 进入终端"
+    _menu_actions 18 "[6] 删除容器"
+    _menu_actions 18 "[0] 返回"
+    _menu_actions 18 "[H] 返回主菜单"
+    read -r -p "  选择操作: " choice
+    case "$choice" in
+        1) do_start "$name" ;;
+        2) do_stop "$name" ;;
+        3) do_restart "$name" ;;
+        4) do_logs "$name" ;;
+        5) do_exec "$name" ;;
+        6) do_remove "$name" ;;
+        [Hh]) DOCKER_GO_HOME=1; return ;;
+        0) return ;;
+        *) error "无效选项"; sleep 1 ;;
+    esac
 }
