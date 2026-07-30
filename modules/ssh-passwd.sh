@@ -136,7 +136,9 @@ menu() {
         title "🔑 SSH 密码登录管理"
         do_status
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 开启密码登录" "${C_BOLD}[2]${C_RESET} 关闭密码登录" "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 开启密码登录"
+        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 关闭密码登录"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请输入选项: " choice

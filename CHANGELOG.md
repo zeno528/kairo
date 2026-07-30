@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.75 (2026-07-31)
+- 🌈 style(menu-output): 统一使用 _menu_actions 函数重构菜单输出格式
+
 ## v1.1.74 (2026-07-31)
 - 🌈 style(menu-output): 重构菜单输出格式，统一使用 _menu_actions 函数
 

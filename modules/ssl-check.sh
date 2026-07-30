@@ -189,8 +189,10 @@ menu() {
         clear
         title "🔒 SSL 证书检查"
         divider
-        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 查看本机证书" "${C_BOLD}[2]${C_RESET} 检查远程域名证书"
-        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 批量检查本机证书到期" "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 查看本机证书"
+        _menu_actions 24 "${C_BOLD}[2]${C_RESET} 检查远程域名证书"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 批量检查本机证书到期"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice

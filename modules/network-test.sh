@@ -190,9 +190,12 @@ menu() {
         clear
         title "🌐 网络测试"
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 网络测速" "${C_BOLD}[2]${C_RESET} 三网回程路由"
-        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Ping 延迟测试" "${C_BOLD}[4]${C_RESET} IP 质量体检"
-        _menu_actions 20 "${C_BOLD}[5]${C_RESET} 流媒体解锁" "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 网络测速"
+        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 三网回程路由"
+        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Ping 延迟测试"
+        _menu_actions 20 "${C_BOLD}[4]${C_RESET} IP 质量体检"
+        _menu_actions 20 "${C_BOLD}[5]${C_RESET} 流媒体解锁"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请输入选项: " choice

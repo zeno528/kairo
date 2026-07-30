@@ -133,7 +133,8 @@ menu() {
         title "⚙ 系统服务管理"
         do_list || { kairo_pause "按 Enter 返回上级..."; return; }
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择服务" "${C_BOLD}[N]${C_RESET} 输入服务名"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择服务"
+        _menu_actions 20 "${C_BOLD}[N]${C_RESET} 输入服务名"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
@@ -152,8 +153,12 @@ menu() {
         [ -z "${svc:-}" ] && continue
         echo ""
         echo "  ${C_BOLD}${svc}${C_RESET}"
-        _menu_actions 18 "[1] 查看状态" "[2] 启动" "[3] 停止"
-        _menu_actions 18 "[4] 重启" "[5] 开关开机自启" "[0] 返回上级"
+        _menu_actions 18 "[1] 查看状态"
+        _menu_actions 18 "[2] 启动"
+        _menu_actions 18 "[3] 停止"
+        _menu_actions 18 "[4] 重启"
+        _menu_actions 18 "[5] 开关开机自启"
+        _menu_actions 18 "[0] 返回上级"
         read -p "  选择操作: " choice
         case "$choice" in
             1) do_status "$svc" ;;

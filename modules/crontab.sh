@@ -106,7 +106,9 @@ menu() {
         title "⏰ 定时任务"
         do_list
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除任务" "${C_BOLD}[A]${C_RESET} 添加任务" "${C_BOLD}[E]${C_RESET} 编辑全部任务"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除任务"
+        _menu_actions 20 "${C_BOLD}[A]${C_RESET} 添加任务"
+        _menu_actions 20 "${C_BOLD}[E]${C_RESET} 编辑全部任务"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""

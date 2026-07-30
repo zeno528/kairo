@@ -23,11 +23,26 @@ _pad_right() {
     printf '%s%s' "$1" "$pad"
 }
 
-# 格式化操作按钮行：每项对齐到指定列宽（CJK 感知）。用法: _menu_actions <列宽> "[1]项" "[2]项" ...
+# 格式化操作按钮行：先对齐每项的 [标记] 列到本行最宽标记（CJK 感知），再按列宽拼接。
+# 用法: _menu_actions <列宽> "[1]项" "[编号]项" ...
 _menu_actions() {
     local width="$1"; shift
-    local item line=""
+    local item plain max_tag=0 tw pad padsp line=""
     for item in "$@"; do
+        plain=$(printf '%s' "$item" | sed -E $'s/\x1b\\[[0-9;]*[mK]//g')
+        [[ "$plain" =~ ^(\[[^]]*\]) ]] || continue
+        tw=$(_str_width "${BASH_REMATCH[1]}")
+        (( tw > max_tag )) && max_tag=$tw
+    done
+    for item in "$@"; do
+        if (( max_tag > 0 )); then
+            plain=$(printf '%s' "$item" | sed -E $'s/\x1b\\[[0-9;]*[mK]//g')
+            if [[ "$plain" =~ ^(\[[^]]*\]) ]]; then
+                tw=$(_str_width "${BASH_REMATCH[1]}")
+                pad=$(( max_tag - tw ))
+                (( pad > 0 )) && { printf -v padsp '%*s' "$pad" ''; item=${item/]/]"$padsp"}; }
+            fi
+        fi
         line+="$(_pad_right "$item" "$width")"
     done
     echo -e "  ${line}"

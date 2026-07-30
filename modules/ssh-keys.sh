@@ -38,7 +38,7 @@ do_list() {
         if [ ${#comment} -gt 50 ]; then
             comment="${comment:0:47}..."
         fi
-        printf "  ${C_DIM}%s${C_RESET} %-12s %s\n" "$(_pad_right "[$count]" 5)" "$key_type" "${comment:-（无注释）}"
+        printf "  ${C_BOLD}%s${C_RESET} %-12s %s\n" "$(_pad_right "[$count]" 5)" "$key_type" "${comment:-（无注释）}"
     done < "$AUTHORIZED_KEYS"
 
     if [ "$count" -eq 0 ]; then
@@ -219,7 +219,8 @@ menu() {
         title "🗝 SSH 公钥管理"
         do_list
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择公钥" "${C_BOLD}[A]${C_RESET} 添加公钥"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择公钥"
+        _menu_actions 20 "${C_BOLD}[A]${C_RESET} 添加公钥"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
@@ -234,7 +235,10 @@ menu() {
                     error "无效选择"; sleep 1; continue
                 fi
                 echo ""
-                _menu_actions 20 "[1] 查看完整公钥" "[2] 修改备注" "[3] 删除公钥" "[0] 返回上级"
+                _menu_actions 20 "[1] 查看完整公钥"
+                _menu_actions 20 "[2] 修改备注"
+                _menu_actions 20 "[3] 删除公钥"
+                _menu_actions 20 "[0] 返回上级"
                 read -p "  选择操作: " action
                 case "$action" in
                     1) do_view "$choice" ;;

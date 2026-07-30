@@ -1146,9 +1146,12 @@ menu() {
             1) do_install; ;;
             2)
                 echo ""
-                _menu_actions 20 "[1] 启动" "[2] 停止"
-                _menu_actions 20 "[3] 重启" "[4] 重载配置"
-                _menu_actions 20 "[5] 开关开机自启" "[6] 测试配置语法"
+                _menu_actions 20 "[1] 启动"
+                _menu_actions 20 "[2] 停止"
+                _menu_actions 20 "[3] 重启"
+                _menu_actions 20 "[4] 重载配置"
+                _menu_actions 20 "[5] 开关开机自启"
+                _menu_actions 20 "[6] 测试配置语法"
                 _menu_actions 20 "[0] 返回上级"
                 read -p "  选择服务操作: " sub
                 case "$sub" in
@@ -1165,8 +1168,12 @@ menu() {
             3)
                 _list_manageable_sites
                 echo ""
-                _menu_actions 18 "[编号] 选择站点" "[A] 添加" "[D] 禁用站点"
-                _menu_actions 18 "[E] 启用站点" "[C] 证书概览" "[0] 返回上级"
+                _menu_actions 18 "[编号] 选择站点"
+                _menu_actions 18 "[A] 添加"
+                _menu_actions 18 "[D] 禁用站点"
+                _menu_actions 18 "[E] 启用站点"
+                _menu_actions 18 "[C] 证书概览"
+                _menu_actions 18 "[0] 返回上级"
                 read -p "  选择站点或操作: " sub
                 case "$sub" in
                     [Aa]) do_add_proxy; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
@@ -1179,7 +1186,10 @@ menu() {
                             local site="${NGINX_SITE_ITEMS[$((sub - 1))]}"
                             echo ""
                             echo "  ${C_BOLD}${site}${C_RESET}"
-                            _menu_actions 22 "[1] 查看配置" "[2] 申请 / 续期证书" "[3] 删除站点" "[0] 返回上级"
+                            _menu_actions 22 "[1] 查看配置"
+                            _menu_actions 22 "[2] 申请 / 续期证书"
+                            _menu_actions 22 "[3] 删除站点"
+                            _menu_actions 22 "[0] 返回上级"
                             read -p "  选择操作: " sub
                             case "$sub" in
                                 1) do_view_conf "$site" ;;
@@ -1198,7 +1208,9 @@ menu() {
             5) do_security_scan; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             6)
                 echo ""
-                _menu_actions 20 "[1] 创建快照" "[2] 从快照恢复" "[0] 返回上级"
+                _menu_actions 20 "[1] 创建快照"
+                _menu_actions 20 "[2] 从快照恢复"
+                _menu_actions 20 "[0] 返回上级"
                 read -p "  选择: " sub
                 case "$sub" in
                     1) do_snapshot ;;

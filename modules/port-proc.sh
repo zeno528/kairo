@@ -117,8 +117,11 @@ menu() {
         title "📡 端口/进程管理"
         do_listen_ports "$port_filter" "$name_filter"
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程" "${C_BOLD}[P]${C_RESET} 按端口筛选" "${C_BOLD}[N]${C_RESET} 按名称筛选"
-        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 清除筛选" "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
+        _menu_actions 20 "${C_BOLD}[P]${C_RESET} 按端口筛选"
+        _menu_actions 20 "${C_BOLD}[N]${C_RESET} 按名称筛选"
+        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 清除筛选"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择进程或操作: " choice
@@ -130,7 +133,9 @@ menu() {
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
                     pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
                     echo ""
-                    _menu_actions 20 "[1] 查看进程详情" "[2] 终止进程" "[0] 返回上级"
+                    _menu_actions 20 "[1] 查看进程详情"
+                    _menu_actions 20 "[2] 终止进程"
+                    _menu_actions 20 "[0] 返回上级"
                     read -r -p "  选择操作: " choice
                     case "$choice" in
                         1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;

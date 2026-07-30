@@ -31,11 +31,16 @@ _ensure_ufw() {
     return 1
 }
 
+do_install() {
+    command -v ufw &>/dev/null && { info "ufw 已安装"; return 0; }
+    _ensure_ufw
+}
+
 do_status() {
     echo ""
     if ! command -v ufw &>/dev/null; then
         error "未检测到 ufw"
-        info "选择下方任意操作将自动引导安装 ufw"
+        info "选择 [I] 安装 ufw，或任意操作也会引导安装"
         return
     fi
     local status
@@ -139,9 +144,15 @@ menu() {
         title "🛡 防火墙管理"
         do_status
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除规则" "${C_BOLD}[O]${C_RESET} 开放端口" "${C_BOLD}[C]${C_RESET} 按端口关闭"
-        _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单" "${C_BOLD}[B]${C_RESET} IP 黑名单"
-        _menu_actions 20 "${C_BOLD}[E]${C_RESET} 开启防火墙" "${C_BOLD}[D]${C_RESET} 关闭防火墙" "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除规则"
+        _menu_actions 20 "${C_BOLD}[O]${C_RESET} 开放端口"
+        _menu_actions 20 "${C_BOLD}[C]${C_RESET} 按端口关闭"
+        _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单"
+        _menu_actions 20 "${C_BOLD}[B]${C_RESET} IP 黑名单"
+        _menu_actions 20 "${C_BOLD}[E]${C_RESET} 开启防火墙"
+        _menu_actions 20 "${C_BOLD}[D]${C_RESET} 关闭防火墙"
+        _menu_actions 20 "${C_BOLD}[I]${C_RESET} 安装 ufw"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择规则或操作: " choice
@@ -152,6 +163,7 @@ menu() {
             [Bb]) do_block_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Ee]) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Dd]) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Ii]) do_install; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             0) return ;;
             *)
                 if [[ "$choice" =~ ^[1-9][0-9]*$ ]]; then
