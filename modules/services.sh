@@ -126,6 +126,16 @@ do_toggle_enable() {
     fi
 }
 
+do_reboot() {
+    kairo_require_systemctl || return
+    echo ""
+    warn "即将重启服务器，所有连接将断开"
+    read -r -p "  确认重启? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    info "服务器将在几秒后重启..."
+    sudo reboot
+}
+
 menu() {
     local choice svc
     while true; do
@@ -135,6 +145,7 @@ menu() {
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择服务"
         _menu_actions 20 "${C_BOLD}[N]${C_RESET} 输入服务名"
+        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 重启服务器"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
@@ -142,6 +153,7 @@ menu() {
         case "$choice" in
             0) return ;;
             [Nn]) read -p "  输入服务名: " svc ;;
+            [Rr]) do_reboot; kairo_pause; continue ;;
             *)
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#SERVICE_ITEMS[@]} ]; then
                     svc="${SERVICE_ITEMS[$((choice - 1))]}"
