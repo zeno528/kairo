@@ -23,6 +23,16 @@ _pad_right() {
     printf '%s%s' "$1" "$pad"
 }
 
+# 格式化操作按钮行：每项对齐到指定列宽（CJK 感知）。用法: _menu_actions <列宽> "[1]项" "[2]项" ...
+_menu_actions() {
+    local width="$1"; shift
+    local item line=""
+    for item in "$@"; do
+        line+="$(_pad_right "$item" "$width")"
+    done
+    echo -e "  ${line}"
+}
+
 divider() {
     local width line
     width=$(tput cols 2>/dev/null || echo 80)

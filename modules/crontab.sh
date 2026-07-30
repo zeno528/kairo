@@ -106,8 +106,8 @@ menu() {
         title "⏰ 定时任务"
         do_list
         divider
-        echo -e "  ${C_BOLD}[编号]${C_RESET} 删除任务    ${C_BOLD}[A]${C_RESET} 添加任务    ${C_BOLD}[E]${C_RESET} 编辑全部任务"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除任务" "${C_BOLD}[A]${C_RESET} 添加任务" "${C_BOLD}[E]${C_RESET} 编辑全部任务"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择任务或操作: " choice

@@ -29,8 +29,8 @@ do_status() {
             ufw status numbered 2>/dev/null | tail -n +4
             ;;
         iptables)
-            echo -e "  ${C_BOLD}当前规则${C_RESET}"
-            iptables -L -n --line-numbers 2>/dev/null | head -30
+            echo -e "  ${C_BOLD}当前规则${C_RESET}（INPUT 链）"
+            sudo iptables -nL INPUT --line-numbers 2>/dev/null
             ;;
     esac
 }
@@ -142,9 +142,9 @@ menu() {
         title "🛡 防火墙管理"
         do_status
         divider
-        echo -e "  ${C_BOLD}[编号]${C_RESET} 删除规则    ${C_BOLD}[O]${C_RESET} 开放端口    ${C_BOLD}[C]${C_RESET} 按端口关闭"
-        echo -e "  ${C_BOLD}[E]${C_RESET} 开启防火墙（可能影响 SSH）    ${C_BOLD}[D]${C_RESET} 关闭防火墙"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 18 "${C_BOLD}[编号]${C_RESET} 删除规则" "${C_BOLD}[O]${C_RESET} 开放端口" "${C_BOLD}[C]${C_RESET} 按端口关闭"
+        _menu_actions 18 "${C_BOLD}[E]${C_RESET} 开启防火墙" "${C_BOLD}[D]${C_RESET} 关闭防火墙"
+        _menu_actions 18 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择规则或操作: " choice

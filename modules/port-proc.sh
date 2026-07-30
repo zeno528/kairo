@@ -117,9 +117,8 @@ menu() {
         title "📡 端口/进程管理"
         do_listen_ports "$port_filter" "$name_filter"
         divider
-        echo -e "  ${C_BOLD}[编号]${C_RESET} 选择进程    ${C_BOLD}[P]${C_RESET} 按端口筛选    ${C_BOLD}[N]${C_RESET} 按名称筛选"
-        echo -e "  ${C_BOLD}[R]${C_RESET} 清除筛选"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程" "${C_BOLD}[P]${C_RESET} 按端口筛选" "${C_BOLD}[N]${C_RESET} 按名称筛选"
+        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 清除筛选" "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择进程或操作: " choice
