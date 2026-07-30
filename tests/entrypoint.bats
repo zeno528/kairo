@@ -84,6 +84,16 @@ setup() {
     [ "$status" -ne 0 ]
 }
 
+@test "AI Agent 分组与工具分组独立注册" {
+    source "$PWD/modules/registry.sh"
+    [ "${KAIRO_GROUP_LAYOUTS[tools]}" = "stack" ]
+    [ "${KAIRO_GROUP_LAYOUTS[agents]}" = "right_column" ]
+    [ "${KAIRO_MODULE_GROUPS[claude]}" = "agents" ]
+    [ "${KAIRO_MODULE_GROUPS[codex]}" = "agents" ]
+    [ "${KAIRO_MODULE_GROUPS[kimi]}" = "agents" ]
+    [ "${KAIRO_MODULE_GROUPS[openclaw]}" = "agents" ]
+}
+
 # ─── install.sh 关键函数 ──────────────────────────────────────
 
 @test "install.sh 语法 + 不实际执行（-n）" {

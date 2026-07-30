@@ -223,27 +223,89 @@ if [ $# -gt 0 ]; then
 fi
 
 declare -A KAIRO_MENU_MODULES=()
+
+_menu_display_width() {
+    printf '%s\n' "$1" | wc -L | tr -d '[:space:]'
+}
+
+_format_menu_module() {
+    local number="$1" module="$2" description
+    description="${KAIRO_MODULE_DESCRIPTIONS[$module]}"
+    MENU_LINE_TEXT="   [${number}] ${KAIRO_MODULE_LABELS[$module]}"
+    if [ -n "$description" ]; then
+        MENU_LINE_TEXT+=" — ${description}"
+        MENU_LINE_STYLE="   ${C_BOLD}[${number}]${C_RESET} ${KAIRO_MODULE_LABELS[$module]} ${C_DIM}— ${description}${C_RESET}"
+    else
+        MENU_LINE_STYLE="   ${C_BOLD}[${number}]${C_RESET} ${KAIRO_MODULE_LABELS[$module]}"
+    fi
+    MENU_LINE_WIDTH=$(_menu_display_width "$MENU_LINE_TEXT")
+}
+
+_format_menu_group() {
+    local group="$1"
+    MENU_LINE_TEXT="   ── ${KAIRO_GROUP_LABELS[$group]} ──"
+    MENU_LINE_STYLE="${C_CYAN}${C_BOLD}${MENU_LINE_TEXT}${C_RESET}"
+    MENU_LINE_WIDTH=$(_menu_display_width "$MENU_LINE_TEXT")
+}
+
 show_main_menu() {
-    local group module number=1 description
+    local group module number=1 width column_width=52 gap=8
+    local i max left_padding side
+    local -a left_groups=() right_groups=() left_lines=() right_lines=() left_widths=()
     KAIRO_MENU_MODULES=()
     show_banner
-    divider
     echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
+    divider
 
     for group in "${KAIRO_GROUP_IDS[@]}"; do
-        title "${KAIRO_GROUP_LABELS[$group]}"
-        for module in "${KAIRO_MODULE_IDS[@]}"; do
-            [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] || continue
-            description="${KAIRO_MODULE_DESCRIPTIONS[$module]}"
-            if [ -n "$description" ]; then
-                printf '   %b[%d]%b %s %b— %s%b\n' "$C_BOLD" "$number" "$C_RESET" "${KAIRO_MODULE_LABELS[$module]}" "$C_DIM" "$description" "$C_RESET"
-            else
-                printf '   %b[%d]%b %s\n' "$C_BOLD" "$number" "$C_RESET" "${KAIRO_MODULE_LABELS[$module]}"
-            fi
-            KAIRO_MENU_MODULES["$number"]="$module"
-            ((number++))
-        done
+        if [ "${KAIRO_GROUP_LAYOUTS[$group]}" = "right_column" ]; then
+            right_groups+=("$group")
+        else
+            left_groups+=("$group")
+        fi
     done
+
+    width=$(tput cols 2>/dev/null || echo 80)
+    if [ "$width" -ge 112 ] && [ "${#right_groups[@]}" -gt 0 ]; then
+        for side in left right; do
+            local -n groups_ref="${side}_groups"
+            local -n lines_ref="${side}_lines"
+            for group in "${groups_ref[@]}"; do
+                _format_menu_group "$group"
+                lines_ref+=("$MENU_LINE_STYLE")
+                [ "$side" = "left" ] && left_widths+=("$MENU_LINE_WIDTH")
+                for module in "${KAIRO_MODULE_IDS[@]}"; do
+                    [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] || continue
+                    _format_menu_module "$number" "$module"
+                    lines_ref+=("$MENU_LINE_STYLE")
+                    [ "$side" = "left" ] && left_widths+=("$MENU_LINE_WIDTH")
+                    KAIRO_MENU_MODULES["$number"]="$module"
+                    ((number++))
+                done
+                lines_ref+=("")
+                [ "$side" = "left" ] && left_widths+=(0)
+            done
+        done
+
+        max=${#left_lines[@]}
+        [ "${#right_lines[@]}" -gt "$max" ] && max=${#right_lines[@]}
+        for ((i = 0; i < max; i++)); do
+            left_padding=$((column_width - ${left_widths[$i]:-0} + gap))
+            [ "$left_padding" -lt 1 ] && left_padding=1
+            printf '%b%*s%b\n' "${left_lines[$i]:-}" "$left_padding" "" "${right_lines[$i]:-}"
+        done
+    else
+        for group in "${KAIRO_GROUP_IDS[@]}"; do
+            title "${KAIRO_GROUP_LABELS[$group]}"
+            for module in "${KAIRO_MODULE_IDS[@]}"; do
+                [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] || continue
+                _format_menu_module "$number" "$module"
+                printf '%b\n' "$MENU_LINE_STYLE"
+                KAIRO_MENU_MODULES["$number"]="$module"
+                ((number++))
+            done
+        done
+    fi
     divider
 }
 

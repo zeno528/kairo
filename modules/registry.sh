@@ -6,6 +6,8 @@ declare -a KAIRO_MODULE_IDS=()
 # shellcheck disable=SC2034 # 由主入口读取。
 declare -A KAIRO_GROUP_LABELS=()
 # shellcheck disable=SC2034 # 由主入口读取。
+declare -A KAIRO_GROUP_LAYOUTS=()
+# shellcheck disable=SC2034 # 由主入口读取。
 declare -A KAIRO_MODULE_GROUPS=()
 # shellcheck disable=SC2034 # 由主入口读取。
 declare -A KAIRO_MODULE_LABELS=()
@@ -15,10 +17,12 @@ declare -A KAIRO_MODULE_DESCRIPTIONS=()
 declare -A KAIRO_MODULE_ACTIONS=()
 
 kairo_register_group() {
-    local id="$1" label="$2"
+    local id="$1" label="$2" layout="${3:-stack}"
     KAIRO_GROUP_IDS+=("$id")
     # shellcheck disable=SC2034 # 由主入口读取。
     KAIRO_GROUP_LABELS["$id"]="$label"
+    # shellcheck disable=SC2034 # 由主入口读取。
+    KAIRO_GROUP_LAYOUTS["$id"]="$layout"
 }
 
 kairo_register_module() {
@@ -57,6 +61,7 @@ kairo_register_group ssh "🔒 SSH"
 kairo_register_group system "💻  系统"
 kairo_register_group proxy "🌐  反代"
 kairo_register_group tools "🧰 工具"
+kairo_register_group agents "🤖 AI Agent" "right_column"
 
 kairo_register_module ssh-passwd ssh "密码登录管理" "on off status"
 kairo_register_module ssh-keys ssh "公钥管理" "list add remove view rename"
@@ -70,11 +75,11 @@ kairo_register_module security-update system "软件更新" "check security_upda
 kairo_register_module network-test system "网络测试" "speedtest backtrace ping_test"
 kairo_register_module docker system "Docker 管理" "list_containers start stop restart logs images"
 kairo_register_module nginx proxy "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs security_scan enable_site disable_site snapshot restore log_top"
-kairo_register_module claude tools "Claude Code" "status install upgrade" "Anthropic AI 编程助手"
-kairo_register_module kimi tools "Kimi Code" "status install upgrade" "Kimi AI 编程助手"
+kairo_register_module claude agents "Claude Code" "status install upgrade" "Anthropic AI 编程助手"
+kairo_register_module kimi agents "Kimi Code" "status install upgrade" "Kimi AI 编程助手"
 kairo_register_module github-cli tools "GitHub CLI" "status install upgrade" "GitHub 命令行工具"
-kairo_register_module openclaw tools "OpenClaw" "status install upgrade" "AI Agent 网关"
+kairo_register_module openclaw agents "OpenClaw" "status install upgrade" "AI Agent 网关"
 kairo_register_module go tools "Go" "status install upgrade" "Go 语言工具链"
 kairo_register_module jq tools "jq" "status install upgrade" "JSON 命令行处理器"
 kairo_register_module sqlite3 tools "SQLite3" "status install upgrade" "轻量数据库命令行工具"
-kairo_register_module codex tools "Codex CLI" "status install upgrade" "OpenAI AI 编程助手"
+kairo_register_module codex agents "Codex CLI" "status install upgrade" "OpenAI AI 编程助手"
