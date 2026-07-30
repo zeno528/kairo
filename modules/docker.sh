@@ -680,10 +680,11 @@ do_overview() {
                 [ -z "$img_tag" ] && { info "已取消"; sleep 1; continue; }
                 docker image inspect "$img_tag" &>/dev/null || { error "镜像不存在: $img_tag"; sleep 1; continue; }
                 echo ""
-                if docker run -d "$img_tag" 2>&1; then
-                    success "容器已启动"
+                local c_id
+                if c_id=$(docker run -d "$img_tag" 2>/dev/null); then
+                    success "容器已启动: ${c_id:0:12}"
                 else
-                    error "启动失败，请检查镜像是否可后台运行"
+                    error "启动失败"
                 fi
                 sleep 1
                 ;;
