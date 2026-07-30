@@ -143,7 +143,7 @@ do_logs() {
 }
 
 menu() {
-    local choice svc svc_name
+    local choice svc svc_name go_home=0
     while true; do
         clear
         title "🛰 哪吒监控 Agent"
@@ -166,6 +166,7 @@ menu() {
                 ;;
         esac
 
+        go_home=0
         while true; do
             clear
             title "🛰 Agent: $svc_name"
@@ -175,7 +176,8 @@ menu() {
             _menu_actions 20 "${C_BOLD}[2]${C_RESET} 停止"
             _menu_actions 20 "${C_BOLD}[3]${C_RESET} 查看日志"
             _menu_actions 20 "${C_BOLD}[4]${C_RESET} 卸载此 Agent"
-            _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回"
+            _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
+            _menu_actions 20 "${C_BOLD}[H]${C_RESET} 返回主菜单"
             divider
             echo ""
             read -r -p "  请选择: " choice
@@ -185,8 +187,10 @@ menu() {
                 3) do_logs "$svc"; echo ""; kairo_pause ;;
                 4) do_remove "$svc"; echo ""; kairo_pause; break ;;
                 0) break ;;
+                [Hh]) go_home=1; break ;;
                 *) error "无效选项"; sleep 1 ;;
             esac
         done
+        [ "$go_home" -eq 1 ] && return
     done
 }

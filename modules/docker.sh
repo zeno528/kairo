@@ -324,7 +324,7 @@ do_images() {
 
         imgs=()
         echo ""
-        echo -e "  ${C_BOLD}镜像列表${C_RESET} （${C_GREEN}●${C_RESET} = 有容器在用）"
+        echo -e "  ${C_BOLD}镜像列表${C_RESET} （${C_GREEN}●${C_RESET} = 当前使用容器）"
         i=1
         while IFS=$'\t' read -r repo_tag size created; do
             imgs+=("$repo_tag")
