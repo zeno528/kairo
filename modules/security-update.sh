@@ -124,11 +124,11 @@ menu() {
         title "🛡 软件更新"
         do_check
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 常规升级（不删除已安装软件包）"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 完整升级（可能安装或删除软件包）"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 预演完整升级（不修改系统）"
-        echo -e "  ${C_BOLD}[4]${C_RESET} 清理孤立包和安装缓存"
-        echo -e "  ${C_BOLD}[5]${C_RESET} 刷新列表"
+        _menu_actions 30 "${C_BOLD}[1]${C_RESET} 常规升级（不删除已安装软件包）"
+        _menu_actions 30 "${C_BOLD}[2]${C_RESET} 完整升级（可能安装或删除软件包）"
+        _menu_actions 30 "${C_BOLD}[3]${C_RESET} 预演完整升级（不修改系统）"
+        _menu_actions 30 "${C_BOLD}[4]${C_RESET} 清理孤立包和安装缓存"
+        _menu_actions 30 "${C_BOLD}[5]${C_RESET} 刷新列表"
         _menu_actions 26 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""

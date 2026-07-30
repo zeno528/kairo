@@ -71,9 +71,9 @@ do_local_check() {
         echo -e "  ${C_BOLD}已发现的本机证书${C_RESET}"
         local i
         for i in "${!certs[@]}"; do
-            printf "  [%d] %s\n" "$((i + 1))" "$(basename "$(dirname "${certs[$i]}")")"
+            printf "  %s %s\n" "$(_pad_right "[$((i + 1))]" 5)" "$(basename "$(dirname "${certs[$i]}")")"
         done
-        echo "  [0] 手动输入其他路径"
+        printf "  %s %s\n" "$(_pad_right "[0]" 5)" "手动输入其他路径"
         echo ""
         read -p "  选择证书编号（直接回车取消）: " choice
         [ -z "$choice" ] && info "已取消" && return
@@ -113,9 +113,9 @@ do_remote_check() {
         echo -e "  ${C_BOLD}已发现的本机域名${C_RESET}"
         local i
         for i in "${!certs[@]}"; do
-            printf "  [%d] %s\n" "$((i + 1))" "$(basename "$(dirname "${certs[$i]}")")"
+            printf "  %s %s\n" "$(_pad_right "[$((i + 1))]" 5)" "$(basename "$(dirname "${certs[$i]}")")"
         done
-        echo "  [0] 输入其他域名"
+        printf "  %s %s\n" "$(_pad_right "[0]" 5)" "输入其他域名"
         echo ""
         read -p "  选择域名编号（直接回车取消）: " choice
         [ -z "$choice" ] && info "已取消" && return
@@ -189,10 +189,8 @@ menu() {
         clear
         title "🔒 SSL 证书检查"
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 查看本机证书"
-        echo -e "  ${C_BOLD}[2]${C_RESET} 检查远程域名证书"
-        echo -e "  ${C_BOLD}[3]${C_RESET} 批量检查本机证书到期"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 查看本机证书" "${C_BOLD}[2]${C_RESET} 检查远程域名证书"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 批量检查本机证书到期" "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice

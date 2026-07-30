@@ -130,7 +130,7 @@ menu() {
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
                     pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
                     echo ""
-                    echo "  [1] 查看进程详情  [2] 终止进程  [0] 返回上级"
+                    _menu_actions 20 "[1] 查看进程详情" "[2] 终止进程" "[0] 返回上级"
                     read -r -p "  选择操作: " choice
                     case "$choice" in
                         1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;

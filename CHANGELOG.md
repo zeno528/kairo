@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.74 (2026-07-31)
+- 🌈 style(menu-output): 重构菜单输出格式，统一使用 _menu_actions 函数
+
 ## v1.1.73 (2026-07-31)
 - 🌈 style(security-update): 调整菜单项输出格式，统一使用 echo -e
 

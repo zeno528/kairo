@@ -146,10 +146,10 @@ menu() {
         title "⚙ 网络与BBR内核优化"
         do_status
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET} 一键应用优化    ${C_BOLD}[2]${C_RESET} 恢复默认"
-        echo -e "  ${C_BOLD}[3]${C_RESET} BBR 面板（tcpx.sh 综合切换）"
-        echo -e "  ${C_BOLD}[4]${C_RESET} BBRv3 内核管理（byJoey）"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 一键应用优化" "${C_BOLD}[2]${C_RESET} 恢复默认"
+        _menu_actions 30 "${C_BOLD}[3]${C_RESET} BBR 面板（tcpx.sh 综合切换）"
+        _menu_actions 30 "${C_BOLD}[4]${C_RESET} BBRv3 内核管理（byJoey）"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice

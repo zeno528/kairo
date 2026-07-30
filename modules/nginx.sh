@@ -480,7 +480,7 @@ _select_enabled_site() {
     local sel
     _list_manageable_sites
     [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
-    echo "  [0] 返回上级"
+    _menu_actions 20 "[0] 返回上级"
     read -p "  选择站点编号（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
@@ -751,7 +751,7 @@ _select_disabled_site() {
     local sel
     _list_disabled_sites
     [ ${#NGINX_SITE_ITEMS[@]} -gt 0 ] || return 1
-    echo "  [0] 返回上级"
+    _menu_actions 20 "[0] 返回上级"
     read -p "  选择要启用的站点编号（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return 1; }
     if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt ${#NGINX_SITE_ITEMS[@]} ]; then
@@ -905,10 +905,10 @@ do_cert_list() {
 do_logs() {
     _check_nginx || return
     echo ""
-    echo "  [1] 访问日志 (tail)"
-    echo "  [2] 错误日志 (tail)"
-    echo "  [3] 访问日志 Top 分析 (今天)"
-    echo "  [0] 返回上级"
+    _menu_actions 30 "[1] 访问日志 (tail)"
+    _menu_actions 30 "[2] 错误日志 (tail)"
+    _menu_actions 30 "[3] 访问日志 Top 分析 (今天)"
+    _menu_actions 30 "[0] 返回上级"
     read -p "  选择: " log_type
     case "$log_type" in
         1) sudo tail -f "${NGINX_LOG_DIR}/access.log" ;;
@@ -1087,7 +1087,7 @@ do_restore() {
     fi
     _list_snapshots
     [ ${#NGINX_SNAPSHOT_ITEMS[@]} -gt 0 ] || return 0
-    echo "  [0] 返回上级"
+    _menu_actions 20 "[0] 返回上级"
     local sel
     read -p "  选择要恢复的快照（0 返回）: " sel
     [ -n "$sel" ] && [ "$sel" != "0" ] || { info "已返回"; return; }
@@ -1131,14 +1131,14 @@ menu() {
         title "🌐 Nginx 管理"
         do_status 2>/dev/null
         divider
-        echo -e "  ${C_BOLD}[1]${C_RESET}  安装 / 升级 Nginx (官方源)"
-        echo -e "  ${C_BOLD}[2]${C_RESET}  服务管理"
-        echo -e "  ${C_BOLD}[3]${C_RESET}  反代站点管理"
-        echo -e "  ${C_BOLD}[4]${C_RESET}  日志 (tail / Top 分析)"
-        echo -e "  ${C_BOLD}[5]${C_RESET}  安全加固扫描"
-        echo -e "  ${C_BOLD}[6]${C_RESET}  配置快照 / 回滚"
-        echo -e "  ${C_BOLD}[7]${C_RESET}  卸载 Nginx"
-        echo -e "  ${C_BOLD}[0]${C_RESET}  返回主菜单"
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 安装 / 升级 Nginx (官方源)"
+        _menu_actions 24 "${C_BOLD}[2]${C_RESET} 服务管理"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 反代站点管理"
+        _menu_actions 24 "${C_BOLD}[4]${C_RESET} 日志 (tail / Top 分析)"
+        _menu_actions 24 "${C_BOLD}[5]${C_RESET} 安全加固扫描"
+        _menu_actions 24 "${C_BOLD}[6]${C_RESET} 配置快照 / 回滚"
+        _menu_actions 24 "${C_BOLD}[7]${C_RESET} 卸载 Nginx"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -p "  请输入选项: " choice
@@ -1146,10 +1146,10 @@ menu() {
             1) do_install; ;;
             2)
                 echo ""
-                echo "  [1] 启动                      [2] 停止"
-                echo "  [3] 重启                      [4] 重载配置"
-                echo "  [5] 开关开机自启              [6] 测试配置语法"
-                echo "  [0] 返回上级"
+                _menu_actions 20 "[1] 启动" "[2] 停止"
+                _menu_actions 20 "[3] 重启" "[4] 重载配置"
+                _menu_actions 20 "[5] 开关开机自启" "[6] 测试配置语法"
+                _menu_actions 20 "[0] 返回上级"
                 read -p "  选择服务操作: " sub
                 case "$sub" in
                     1) do_start ;;
@@ -1165,7 +1165,8 @@ menu() {
             3)
                 _list_manageable_sites
                 echo ""
-                echo "  [编号] 选择站点    [A] 添加    [D] 禁用站点    [E] 启用站点    [C] 证书概览    [0] 返回上级"
+                _menu_actions 18 "[编号] 选择站点" "[A] 添加" "[D] 禁用站点"
+                _menu_actions 18 "[E] 启用站点" "[C] 证书概览" "[0] 返回上级"
                 read -p "  选择站点或操作: " sub
                 case "$sub" in
                     [Aa]) do_add_proxy; echo ""; kairo_pause "按 Enter 返回站点列表..."; continue ;;
@@ -1178,7 +1179,7 @@ menu() {
                             local site="${NGINX_SITE_ITEMS[$((sub - 1))]}"
                             echo ""
                             echo "  ${C_BOLD}${site}${C_RESET}"
-                            echo "  [1] 查看配置  [2] 申请 / 续期证书  [3] 删除站点  [0] 返回上级"
+                            _menu_actions 22 "[1] 查看配置" "[2] 申请 / 续期证书" "[3] 删除站点" "[0] 返回上级"
                             read -p "  选择操作: " sub
                             case "$sub" in
                                 1) do_view_conf "$site" ;;
@@ -1197,7 +1198,7 @@ menu() {
             5) do_security_scan; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             6)
                 echo ""
-                echo "  [1] 创建快照    [2] 从快照恢复    [0] 返回上级"
+                _menu_actions 20 "[1] 创建快照" "[2] 从快照恢复" "[0] 返回上级"
                 read -p "  选择: " sub
                 case "$sub" in
                     1) do_snapshot ;;
