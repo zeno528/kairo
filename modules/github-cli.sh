@@ -80,7 +80,7 @@ do_auth() {
         1)
             echo ""
             info "前往 https://github.com/settings/tokens 创建 Token（勾选 repo、workflow 权限）"
-            read -r -s -p "  粘贴 Token: " token
+            read -r -p "  粘贴 Token: " token
             echo ""
             [ -z "$token" ] && { info "已取消"; return 0; }
             if echo "$token" | gh auth login --with-token 2>&1; then
