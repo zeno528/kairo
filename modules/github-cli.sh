@@ -67,6 +67,18 @@ do_status() {
 
 do_auth() {
     _github_cli_exists || { error "请先安装 gh"; return 1; }
+    local masked_token
+    _masked_read() {
+        local char t=""
+        stty -echo
+        while IFS= read -r -s -n1 char; do
+            [ -z "$char" ] && { echo ""; break; }
+            t+="$char"
+            printf '*'
+        done
+        stty echo
+        printf '%s' "$t"
+    }
     echo ""
     echo -e "  ${C_BOLD}选择认证方式${C_RESET}"
     echo ""
@@ -80,10 +92,11 @@ do_auth() {
         1)
             echo ""
             info "前往 https://github.com/settings/tokens 创建 Token（勾选 repo、workflow 权限）"
-            read -r -p "  粘贴 Token: " token
+            printf "  粘贴 Token: "
+            masked_token=$(_masked_read)
             echo ""
-            [ -z "$token" ] && { info "已取消"; return 0; }
-            if echo "$token" | gh auth login --with-token 2>&1; then
+            [ -z "$masked_token" ] && { info "已取消"; return 0; }
+            if echo "$masked_token" | gh auth login --with-token 2>&1; then
                 success "认证成功"
             else
                 error "认证失败，请检查 Token 是否正确"
