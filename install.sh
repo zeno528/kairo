@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # KAIRO 安装/卸载脚本
-# 安装: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | sudo bash
-# 卸载: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | sudo bash -s -- uninstall
+# 安装: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | bash
+# 卸载: curl -fsSL https://raw.githubusercontent.com/zeno528/kairo/main/install.sh | bash -s -- uninstall
 
 set -Eeuo pipefail
 
@@ -18,6 +18,7 @@ STAGE_DIR=""
 DOWNLOAD_JOBS=4
 DOWNLOAD_PIDS=()
 DOWNLOAD_PATHS=()
+KAIRO_NEEDS_SUDO=0
 
 cleanup_stage() {
     if [ -n "$STAGE_DIR" ] && [ -d "$STAGE_DIR" ]; then
@@ -47,13 +48,26 @@ validate_install_paths() {
 
 require_install_permissions() {
     local bin_parent lib_parent
+    [ "$(id -u)" -eq 0 ] && return 0
     bin_parent=$(dirname "$BIN_DIR")
     lib_parent=$(dirname "$LIB_DIR")
-    if { [ -e "$BIN_DIR" ] && [ ! -w "$BIN_DIR" ]; } ||
-       { [ ! -e "$BIN_DIR" ] && [ ! -w "$bin_parent" ]; } ||
+    if ! { [ -e "$BIN_DIR" ] && [ -w "$BIN_DIR" ]; } &&
+       ! { [ ! -e "$BIN_DIR" ] && [ -w "$bin_parent" ]; } ||
        [ ! -w "$lib_parent" ]; then
-        echo ">>> 安装需要写入 ${BIN_DIR} 和 ${LIB_DIR}，请使用 sudo 运行" >&2
+        KAIRO_NEEDS_SUDO=1
+    fi
+    [ "$KAIRO_NEEDS_SUDO" -eq 0 ] && return 0
+    sudo -v || {
+        echo ">>> 安装需要 sudo 权限" >&2
         exit 1
+    }
+}
+
+run_privileged() {
+    if [ "$KAIRO_NEEDS_SUDO" -eq 1 ]; then
+        sudo "$@"
+    else
+        "$@"
     fi
 }
 
@@ -170,53 +184,62 @@ validate_staged_release() {
 }
 
 deploy_staged_release() {
-    local runtime_dir="$1" bin_file="$2"
-    local backup_runtime="${STAGE_DIR}/previous-runtime"
-    local backup_bin="${STAGE_DIR}/previous-ka"
-    local new_bin had_runtime=0 had_bin=0
+    local runtime_dir="$1" bin_file="$2" lib_parent
+    local new_runtime backup_runtime new_bin backup_bin had_runtime=0 had_bin=0
 
-    mkdir -p "$BIN_DIR" "$(dirname "$LIB_DIR")"
-    new_bin=$(mktemp "${BIN_DIR}/.ka.new.XXXXXX")
-    cp -- "$bin_file" "$new_bin"
-    chmod 755 "$new_bin"
+    lib_parent=$(dirname "$LIB_DIR")
+    run_privileged mkdir -p "$BIN_DIR" "$lib_parent"
+    new_runtime=$(run_privileged mktemp -d "${lib_parent}/.kairo-runtime.XXXXXX") || return 1
+    new_bin=$(run_privileged mktemp "${BIN_DIR}/.ka.new.XXXXXX") || {
+        run_privileged rm -rf -- "$new_runtime"
+        return 1
+    }
+    run_privileged cp -a "${runtime_dir}/." "$new_runtime/" || return 1
+    run_privileged install -m 755 "$bin_file" "$new_bin" || return 1
 
     if [ -e "${BIN_DIR}/ka" ]; then
-        cp -p -- "${BIN_DIR}/ka" "$backup_bin"
+        backup_bin=$(run_privileged mktemp "${BIN_DIR}/.ka.backup.XXXXXX") || return 1
+        run_privileged cp -p -- "${BIN_DIR}/ka" "$backup_bin" || return 1
         had_bin=1
     fi
     if [ -e "$LIB_DIR" ]; then
-        mv -- "$LIB_DIR" "$backup_runtime"
+        backup_runtime=$(run_privileged mktemp -d "${lib_parent}/.kairo-backup.XXXXXX") || return 1
+        run_privileged rmdir "$backup_runtime" || return 1
+        run_privileged mv -- "$LIB_DIR" "$backup_runtime" || return 1
         had_runtime=1
     fi
 
-    if ! mv -- "$runtime_dir" "$LIB_DIR" || ! mv -- "$new_bin" "${BIN_DIR}/ka"; then
+    if ! run_privileged mv -- "$new_runtime" "$LIB_DIR" || ! run_privileged mv -- "$new_bin" "${BIN_DIR}/ka"; then
         echo ">>> 部署失败，正在恢复上一版本" >&2
-        rm -rf -- "$LIB_DIR"
-        [ "$had_runtime" -eq 1 ] && mv -- "$backup_runtime" "$LIB_DIR"
+        run_privileged rm -rf -- "$LIB_DIR"
+        [ "$had_runtime" -eq 1 ] && run_privileged mv -- "$backup_runtime" "$LIB_DIR"
         if [ "$had_bin" -eq 1 ]; then
-            cp -p -- "$backup_bin" "${BIN_DIR}/ka"
+            run_privileged cp -p -- "$backup_bin" "${BIN_DIR}/ka"
         else
-            rm -f -- "${BIN_DIR}/ka"
+            run_privileged rm -f -- "${BIN_DIR}/ka"
         fi
-        rm -f -- "$new_bin"
+        run_privileged rm -f -- "$new_bin"
         return 1
     fi
+    [ "$had_runtime" -eq 1 ] && run_privileged rm -rf -- "$backup_runtime"
+    [ "$had_bin" -eq 1 ] && run_privileged rm -f -- "$backup_bin"
+    return 0
 }
 
 if [ "${1:-}" = "uninstall" ]; then
     require_install_permissions
     local_ver=$(get_local_version)
     echo ">>> 卸载 Kairo v${local_ver}..."
-    rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || {
+    run_privileged rm -f -- "${BIN_DIR}/ka" "${BIN_DIR}/ot" || {
         echo ">>> 删除命令入口失败" >&2
         exit 1
     }
-    rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || {
+    run_privileged rm -rf -- "$LIB_DIR" "$LEGACY_LIB_DIR" || {
         echo ">>> 删除运行库失败" >&2
         exit 1
     }
     # 清理 Kairo 运行时缓存（发布日期等；丢失会自动重建）
-    rm -rf -- /var/cache/kairo 2>/dev/null || true
+    run_privileged rm -rf -- /var/cache/kairo 2>/dev/null || true
     for target in "${BIN_DIR}/ka" "${BIN_DIR}/ot" "$LIB_DIR" "$LEGACY_LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
             echo ">>> 卸载后仍有残留: $target" >&2
@@ -232,7 +255,7 @@ require_install_permissions
 release_sha=$(resolve_release_sha)
 local_ver=$(get_local_version)
 
-STAGE_DIR=$(mktemp -d "$(dirname "$LIB_DIR")/.kairo-stage.XXXXXX")
+STAGE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kairo-stage.XXXXXX")
 runtime_dir="${STAGE_DIR}/runtime"
 bin_file="${STAGE_DIR}/ka"
 mkdir -p "$runtime_dir"
@@ -285,8 +308,8 @@ chmod 644 "${runtime_dir}/VERSION"
 find "${runtime_dir}/lib" "${runtime_dir}/modules" -type f -name '*.sh' -exec chmod 755 {} +
 deploy_staged_release "$runtime_dir" "$bin_file"
 
-rm -f -- "${BIN_DIR}/ot"
-rm -rf -- "$LEGACY_LIB_DIR"
+run_privileged rm -f -- "${BIN_DIR}/ot"
+run_privileged rm -rf -- "$LEGACY_LIB_DIR"
 
 if [ "$local_ver" != "未安装" ] && [ "$local_ver" != "$remote_ver" ]; then
     transition="v${local_ver} → "

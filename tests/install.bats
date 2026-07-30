@@ -59,6 +59,26 @@ teardown() {
     [ ! -e "${KAIRO_LIB_DIR}/modules/removed-module.sh" ]
 }
 
+@test "可写的自定义安装目录不请求 sudo" {
+    export SUDO_LOG="${TEST_TMP}/sudo.log"
+    cat > "${TEST_TMP}/mock-bin/id" <<'MOCK'
+#!/usr/bin/env bash
+printf '1000\n'
+MOCK
+    cat > "${TEST_TMP}/mock-bin/sudo" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$SUDO_LOG"
+[ "${1:-}" = "-v" ] && exit 0
+exec "$@"
+MOCK
+    chmod +x "${TEST_TMP}/mock-bin/id" "${TEST_TMP}/mock-bin/sudo"
+
+    run bash "$PWD/install.sh"
+
+    [ "$status" -eq 0 ]
+    [ ! -s "$SUDO_LOG" ]
+}
+
 @test "升级完成提示显示旧版本到新版本" {
     mkdir -p "$KAIRO_LIB_DIR"
     printf '1.1.30\n' > "${KAIRO_LIB_DIR}/VERSION"
