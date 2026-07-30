@@ -665,6 +665,7 @@ do_overview() {
 
         divider
         _menu_actions 24 "${C_BOLD}[1-${#CONTAINER_LIST[@]}]${C_RESET} 管理容器"
+        _menu_actions 24 "${C_BOLD}[R]${C_RESET} 从镜像运行"
         _menu_actions 24 "${C_BOLD}[I]${C_RESET} 镜像管理"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
         divider
@@ -673,6 +674,26 @@ do_overview() {
 
         case "$choice" in
             0) return ;;
+            [Rr])
+                echo ""
+                read -r -p "  镜像名: " img_tag
+                [ -z "$img_tag" ] && { info "已取消"; sleep 1; continue; }
+                docker image inspect "$img_tag" &>/dev/null || { error "镜像不存在: $img_tag"; sleep 1; continue; }
+                read -r -p "  容器名 (可选): " c_name
+                read -r -p "  端口映射 (可选, 如 8080:80): " c_port
+                local run_args=(-d)
+                [ -n "$c_name" ] && run_args+=(--name "$c_name")
+                if [ -n "$c_port" ]; then
+                    run_args+=(-p "$c_port")
+                fi
+                run_args+=("$img_tag")
+                if docker run "${run_args[@]}" >/dev/null 2>&1; then
+                    success "容器已启动: ${c_name:-$img_tag}"
+                else
+                    error "启动失败"
+                fi
+                sleep 1
+                ;;
             [Ii]) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             *)
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#CONTAINER_LIST[@]}" ]; then
