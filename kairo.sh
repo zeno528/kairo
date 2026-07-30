@@ -36,64 +36,37 @@ trap kairo_cleanup EXIT
 trap 'kairo_cleanup; exit 130' INT TERM
 
 show_banner() {
-    local width i fill="" pad lw tw kw p idx key_padded
+    local kw idx
     # 2 行 K：▀▄█ 把每列拆成上下两像素，2 行字符 = 4 行像素，斜线才画得出来。
     local -a logo_lines=(
         '█▄▀'
         '█ ▚ '
     )
-    # 标题用纯文本，颜色在打印时加，宽度测量才不会被 ANSI 字节干扰。
-    local -a title_lines=(
-        "Kairo 运维工具箱"
-        "v${VERSION}"
-    )
-
-    width=$(tput cols 2>/dev/null || echo 80)
-    width=$((width - 4))
-    [ "$width" -lt 40 ] && width=40
-    [ "$width" -gt 60 ] && width=60
-
-    for ((i=0; i<width; i++)); do fill+="─"; done
-    echo -e "  ${C_CYAN}╭${fill}╮${C_RESET}"
 
     for idx in "${!logo_lines[@]}"; do
-        lw=$(_menu_display_width "${logo_lines[$idx]}")
-        tw=$(_menu_display_width "${title_lines[$idx]}")
-        pad=$((width - lw - tw - 3))
-        [ "$pad" -lt 1 ] && pad=1
-        # 颜色在打印时附加，避免污染宽度测量。
         local colored_title=""
         if [ "$idx" -eq 0 ]; then
             colored_title="${C_BOLD}${C_CYAN}Kairo${C_RESET} 运维工具箱"
         elif [ "$idx" -eq 1 ]; then
-            colored_title="${C_DIM}v${VERSION}${C_RESET}"
+            colored_title="${C_DIM}轻量级服务器运维工具箱${C_RESET}"
         fi
-        printf '  %b│%b %s %s%*s %b│%b\n' \
-            "$C_CYAN" "$C_RESET" \
+        printf '  %s %s\n' \
             "${C_CYAN}${C_BOLD}${logo_lines[$idx]}${C_RESET}" \
-            "$colored_title" "$pad" "" \
-            "$C_CYAN" "$C_RESET"
+            "$colored_title"
     done
 
-    pad=$width
-    echo -e "  ${C_CYAN}│$(printf '%*s' "$pad" '')│${C_RESET}"
+    echo ""
 
-    local -a field_keys=("Version:" "Repo:" "Launch:")
+    local -a field_keys=("当前版本:" "仓库主页:" "启动命令:")
     local -a field_values=("v${VERSION}" "https://github.com/zeno528/kairo" "ka")
     local kw_max=0
     for idx in "${!field_keys[@]}"; do
-        kw=$(_menu_display_width "${field_keys[$idx]}")
+        kw=$(_str_width "${field_keys[$idx]}")
         [ "$kw" -gt "$kw_max" ] && kw_max=$kw
     done
     for idx in "${!field_keys[@]}"; do
-        printf -v key_padded "%-${kw_max}s" "${field_keys[$idx]}"
-        vw=$(_menu_display_width "${field_values[$idx]}")
-        p=$((width - kw_max - 3 - vw))
-        [ "$p" -lt 1 ] && p=1
-        echo -e "  ${C_CYAN}│${C_RESET} ${C_BOLD}${C_CYAN}${key_padded}${C_RESET} ${field_values[$idx]}$(printf '%*s' "$p" '') ${C_CYAN}│${C_RESET}"
+        echo -e "  ${C_BOLD}${C_CYAN}$(_pad_right "${field_keys[$idx]}" "$kw_max")${C_RESET} ${field_values[$idx]}"
     done
-
-    echo -e "  ${C_CYAN}╰${fill}╯${C_RESET}"
 }
 
 kairo_run_installer() {
@@ -262,29 +235,25 @@ fi
 
 declare -A KAIRO_MENU_MODULES=()
 
-_menu_display_width() {
-    # 先去除 ANSI SGR 序列再用 wc -L 测显示宽度（避免把 \033[..m 的字节算进去）。
-    printf '%s' "$1" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' | wc -L | tr -d '[:space:]'
-}
-
 _format_menu_module() {
-    local number="$1" module="$2" description
+    local number="$1" module="$2" num_digits="$3" description num_str
     description="${KAIRO_MODULE_DESCRIPTIONS[$module]}"
-    MENU_LINE_TEXT="   [${number}] ${KAIRO_MODULE_LABELS[$module]}"
+    printf -v num_str "%${num_digits}s." "$number"
+    MENU_LINE_TEXT="   ${num_str} ${KAIRO_MODULE_LABELS[$module]}"
     if [ -n "$description" ]; then
         MENU_LINE_TEXT+=" — ${description}"
-        MENU_LINE_STYLE="   ${C_BOLD}[${number}]${C_RESET} ${KAIRO_MODULE_LABELS[$module]} ${C_DIM}— ${description}${C_RESET}"
+        MENU_LINE_STYLE="   ${C_BOLD}${num_str}${C_RESET} ${KAIRO_MODULE_LABELS[$module]} ${C_DIM}— ${description}${C_RESET}"
     else
-        MENU_LINE_STYLE="   ${C_BOLD}[${number}]${C_RESET} ${KAIRO_MODULE_LABELS[$module]}"
+        MENU_LINE_STYLE="   ${C_BOLD}${num_str}${C_RESET} ${KAIRO_MODULE_LABELS[$module]}"
     fi
-    MENU_LINE_WIDTH=$(_menu_display_width "$MENU_LINE_TEXT")
+    MENU_LINE_WIDTH=$(_str_width "$MENU_LINE_TEXT")
 }
 
 _format_menu_group() {
     local group="$1"
     MENU_LINE_TEXT="   ── ${KAIRO_GROUP_LABELS[$group]} ──"
     MENU_LINE_STYLE="${C_CYAN}${C_BOLD}${MENU_LINE_TEXT}${C_RESET}"
-    MENU_LINE_WIDTH=$(_menu_display_width "$MENU_LINE_TEXT")
+    MENU_LINE_WIDTH=$(_str_width "$MENU_LINE_TEXT")
 }
 
 _menu_box_border() {
@@ -303,11 +272,11 @@ _menu_box_line() {
 
 show_main_menu() {
     local group module number=1 width column_width=52 gap=8 wide_layout=0
-    local i max left_padding row_width right_width side
+    local i max left_padding row_width right_width side num_width module_count
+    local util_text util_style util_width
     local -a groups_ref=() left_groups=() right_groups=() left_lines=() right_lines=() left_widths=() right_widths=()
     KAIRO_MENU_MODULES=()
     show_banner
-    echo -e "  ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
 
     for group in "${KAIRO_GROUP_IDS[@]}"; do
         if [ "${KAIRO_GROUP_LAYOUTS[$group]}" = "right_column" ]; then
@@ -320,6 +289,8 @@ show_main_menu() {
     width=$(tput cols 2>/dev/null || echo 80)
     MENU_BOX_INNER_WIDTH=$((width - 4))
     [ "$MENU_BOX_INNER_WIDTH" -lt 40 ] && MENU_BOX_INNER_WIDTH=40
+    module_count=${#KAIRO_MODULE_IDS[@]}
+    num_width=${#module_count}
     if [ "$width" -ge 112 ] && [ "${#right_groups[@]}" -gt 0 ]; then
         wide_layout=1
     else
@@ -344,7 +315,7 @@ show_main_menu() {
             fi
             for module in "${KAIRO_MODULE_IDS[@]}"; do
                 [ "${KAIRO_MODULE_GROUPS[$module]}" = "$group" ] || continue
-                _format_menu_module "$number" "$module"
+                _format_menu_module "$number" "$module" "$num_width"
                 if [ "$side" = "left" ]; then
                     left_lines+=("$MENU_LINE_STYLE")
                     left_widths+=("$MENU_LINE_WIDTH")
@@ -379,6 +350,12 @@ show_main_menu() {
             _menu_box_line "${left_lines[$i]:-}" "${left_widths[$i]:-0}"
         fi
     done
+
+    _menu_box_border "├" "┤"
+    util_text="   [U] 检查更新    [X] 卸载 Kairo    [0] 退出"
+    util_style="   ${C_BOLD}[U]${C_RESET} 检查更新    ${C_BOLD}[X]${C_RESET} 卸载 Kairo    ${C_BOLD}[0]${C_RESET} 退出"
+    util_width=$(_str_width "$util_text")
+    _menu_box_line "$util_style" "$util_width"
     _menu_box_border "╰" "╯"
 }
 

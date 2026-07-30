@@ -11,6 +11,18 @@ C_YELLOW=$'\033[1;33m'
 C_RED=$'\033[1;31m'
 C_GRAY=$'\033[37m'
 
+# 计算字符串终端显示宽度（去除 ANSI 序列后按列计）。
+_str_width() {
+    printf '%s' "$1" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' | wc -L | tr -d '[:space:]'
+}
+
+# 按显示宽度右补空格，使结果对齐到指定列数。
+_pad_right() {
+    local pad
+    printf -v pad '%*s' $(($2 - $(_str_width "$1"))) ''
+    printf '%s%s' "$1" "$pad"
+}
+
 divider() {
     local width line
     width=$(tput cols 2>/dev/null || echo 80)
