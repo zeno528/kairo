@@ -57,6 +57,11 @@ do_status() {
     else
         printf '  方式    非 apt 安装\n'
     fi
+    if gh auth status &>/dev/null; then
+        printf '  认证    ${C_GREEN}已登录${C_RESET} (%s)\n' "$(gh auth status 2>&1 | head -1)"
+    else
+        printf '  认证    ${C_RED}未认证${C_RESET}，请运行 gh auth login\n'
+    fi
     printf '  来源    https://github.com/cli/cli/releases\n'
 }
 
