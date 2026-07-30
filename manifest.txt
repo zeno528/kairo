@@ -3,7 +3,6 @@ kairo.sh
 VERSION
 lib/core.sh
 modules/registry.sh
-modules/bbr.sh
 modules/crontab.sh
 modules/docker.sh
 modules/fail2ban.sh
@@ -11,7 +10,7 @@ modules/firewall.sh
 modules/github-cli.sh
 modules/go.sh
 modules/jq.sh
-modules/kernel-tune.sh
+modules/optimize.sh
 modules/network-test.sh
 modules/nginx.sh
 modules/openclaw.sh
