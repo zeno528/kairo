@@ -85,10 +85,31 @@ do_full_update_preview() {
 }
 
 do_cleanup() {
+    local preview packages cache_size confirm
+
+    preview=$(LC_ALL=C apt-get -s autoremove 2>&1) || {
+        error "无法预演孤立包清理"
+        printf '%s\n' "$preview" >&2
+        return 1
+    }
+    packages=$(printf '%s\n' "$preview" | awk '/^Remv / { print $2 }')
+    cache_size=$(du -sh /var/cache/apt/archives 2>/dev/null | awk 'NR == 1 { print $1 }')
+
     echo ""
-    echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
+    if [ -n "$packages" ]; then
+        warn "将移除以下孤立软件包:"
+        printf '%s\n' "$packages" | sed 's/^/    /'
+    else
+        info "没有需要移除的孤立软件包"
+    fi
+    printf '  安装缓存占用: %s\n' "${cache_size:-未知}"
+    echo ""
+    read -r -p "  确认清理以上孤立包并清空安装缓存? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+
+    sudo -v || { error "清理需要 sudo 权限"; return 1; }
     if sudo apt-get autoremove -y && sudo apt-get clean; then
-        success "清理完成"
+        success "孤立包和安装缓存已清理"
     else
         error "清理失败"
         return 1
@@ -103,7 +124,7 @@ menu() {
         echo -e "  ${C_BOLD}[U]${C_RESET} 常规升级（不删除已安装软件包）"
         echo -e "  ${C_BOLD}[F]${C_RESET} 完整升级（可能安装或删除软件包）"
         echo -e "  ${C_BOLD}[P]${C_RESET} 预演完整升级（不修改系统）"
-        echo -e "  ${C_BOLD}[C]${C_RESET} 清理缓存        ${C_BOLD}[R]${C_RESET} 刷新列表"
+        echo -e "  ${C_BOLD}[C]${C_RESET} 清理孤立包和安装缓存    ${C_BOLD}[R]${C_RESET} 刷新列表"
         echo -e "  ${C_BOLD}[0]${C_RESET} 返回上级"
         divider
         echo ""

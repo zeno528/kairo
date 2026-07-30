@@ -277,7 +277,10 @@ setup() {
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/firewall.sh"
         FW=iptables
-        sudo() { "$@"; }
+        sudo() {
+            [ "$1" = "-v" ] && return 0
+            "$@"
+        }
         iptables() { printf "iptables %s\\n" "$*"; }
         printf "%s\\n" 8080 tcp y | do_close_port
     '
@@ -339,6 +342,29 @@ setup() {
     [ "$status" -eq 1 ]
     run grep -q '_with_spinner' "$PWD/modules/network-test.sh"
     [ "$status" -eq 1 ]
+}
+
+@test "清理前展示孤立包和缓存占用，并要求确认" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/security-update.sh"
+        sudo() {
+            [ "$1" = "-v" ] && return 0
+            "$@"
+        }
+        apt-get() {
+            case "$1 $2" in
+                "-s autoremove") printf "Remv unused-lib [1.0]\n" ;;
+                "autoremove -y"|"clean ") printf "apt-get %s %s\n" "$1" "$2" ;;
+            esac
+        }
+        du() { printf "24M /var/cache/apt/archives\n"; }
+        printf "y\n" | do_cleanup
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"unused-lib"* ]]
+    [[ "$output" == *"安装缓存占用: 24M"* ]]
+    [[ "$output" == *"孤立包和安装缓存已清理"* ]]
 }
 
 @test "完整升级预演只执行 apt 模拟命令" {
