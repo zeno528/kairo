@@ -482,8 +482,8 @@ do_uninstall() {
 
     warn "此操作将删除所有 Docker 容器、镜像、卷和网络，并彻底卸载 Docker Engine"
     echo ""
-    read -r -p "  确认卸载? 输入 yes 继续: " confirm
-    [[ "$confirm" =~ ^[Yy][Ee][Ss]$ ]] || { info "已取消"; return 0; }
+    read -r -p "  确认卸载 Docker? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
     # 收集统计信息用于最终报告
     local running_containers total_containers total_images total_volumes
