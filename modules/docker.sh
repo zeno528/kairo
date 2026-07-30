@@ -195,29 +195,120 @@ do_stats() {
 do_compose() {
     _check_docker || return
     command -v docker compose &>/dev/null || { error "未安装 docker compose 插件"; return 1; }
-    local compose_dir
+    local compose_dir compose_file current_img
     echo ""
     read -r -p "  输入 compose 项目目录（默认当前目录）: " compose_dir
     compose_dir="${compose_dir:-.}"
     [ -d "$compose_dir" ] || { error "目录不存在: $compose_dir"; return 1; }
+
+    # 自动发现 compose 文件
+    if [ -f "$compose_dir/docker-compose.yml" ]; then
+        compose_file="$compose_dir/docker-compose.yml"
+    elif [ -f "$compose_dir/compose.yaml" ]; then
+        compose_file="$compose_dir/compose.yaml"
+    else
+        error "未找到 docker-compose.yml 或 compose.yaml"; return 1
+    fi
+
+    # 展示当前镜像信息
+    current_img=$(grep -oP '^\s+image:\s*\K\S+' "$compose_file" 2>/dev/null | head -1)
     echo ""
-    _menu_actions 24 "${C_BOLD}[1]${C_RESET} 构建并启动 (up -d)"
-    _menu_actions 24 "${C_BOLD}[2]${C_RESET} 停止并移除 (down)"
-    _menu_actions 24 "${C_BOLD}[3]${C_RESET} 重启 (restart)"
-    _menu_actions 24 "${C_BOLD}[4]${C_RESET} 查看日志 (logs --tail 50)"
-    _menu_actions 24 "${C_BOLD}[5]${C_RESET} 拉取镜像 (pull)"
-    _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
+    if [ -n "$current_img" ]; then
+        echo -e "  ${C_BOLD}当前镜像${C_RESET}: $current_img"
+    fi
+
+    while true; do
+        divider
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 启动/更新 (up -d)"
+        _menu_actions 24 "${C_BOLD}[2]${C_RESET} 停止并移除 (down)"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 重启 (restart)"
+        _menu_actions 24 "${C_BOLD}[4]${C_RESET} 查看日志 (logs --tail 50)"
+        _menu_actions 24 "${C_BOLD}[5]${C_RESET} 拉取新镜像 (pull)"
+        _menu_actions 24 "${C_BOLD}[6]${C_RESET} 切换镜像版本"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
+        divider
+        echo ""
+        read -r -p "  选择操作: " sub
+        case "$sub" in
+            1) (cd "$compose_dir" && docker compose up -d) 2>&1 ;;
+            2) read -r -p "  同时删除卷? [y/N]: " rmv; [[ "$rmv" =~ ^[Yy]$ ]] && (cd "$compose_dir" && docker compose down -v) 2>&1 || (cd "$compose_dir" && docker compose down) 2>&1 ;;
+            3) (cd "$compose_dir" && docker compose restart) 2>&1 ;;
+            4) (cd "$compose_dir" && docker compose logs --tail 50) 2>&1 ;;
+            5) (cd "$compose_dir" && docker compose pull) 2>&1 ;;
+            6)
+                if [ -z "$current_img" ]; then
+                    error "无法解析 compose 文件中的镜像配置"; kairo_pause; continue
+                fi
+                _compose_switch_version "$compose_file" "$compose_dir" "$current_img"
+                kairo_pause
+                ;;
+            0) break ;;
+            *) error "无效选项"; sleep 1 ;;
+        esac
+        [ "$sub" != "0" ] && [ "$sub" != "6" ] && { echo ""; kairo_pause; }
+    done
+}
+
+# 切换 compose 项目的镜像版本：列出本地可用 tag，改 compose 文件后 up -d
+_compose_switch_version() {
+    local compose_file="$1" compose_dir="$2" current_img="$3"
+    local repo tags=() choice new_img
+
+    repo="${current_img%%:*}"
+    mapfile -t tags < <(docker images --format '{{.Tag}}' "$repo" 2>/dev/null | sort -V)
+
+    if [ "${#tags[@]}" -le 1 ]; then
+        info "只有当前版本 $current_img，无法切换"; return
+    fi
+
     echo ""
-    read -r -p "  选择操作: " sub
-    case "$sub" in
-        1) docker compose -f "$compose_dir/docker-compose.yml" up -d 2>&1 || docker compose -f "$compose_dir/compose.yaml" up -d 2>&1 ;;
-        2) read -r -p "  同时删除卷? [y/N]: " rmv; [[ "$rmv" =~ ^[Yy]$ ]] && docker compose -f "$compose_dir"/docker-compose.y*ml down -v 2>&1 || docker compose -f "$compose_dir"/docker-compose.y*ml down 2>&1 ;;
-        3) docker compose -f "$compose_dir"/docker-compose.y*ml restart 2>&1 ;;
-        4) docker compose -f "$compose_dir"/docker-compose.y*ml logs --tail 50 2>&1 ;;
-        5) docker compose -f "$compose_dir"/docker-compose.y*ml pull 2>&1 ;;
-        0) return 0 ;;
-        *) error "无效选项"; return 1 ;;
-    esac
+    echo -e "  ${C_BOLD}当前：${C_RESET}$current_img"
+    echo ""
+    echo -e "  ${C_BOLD}本地可用版本${C_RESET}"
+    local i=1 tag
+    for tag in "${tags[@]}"; do
+        if [ "$repo:$tag" = "$current_img" ]; then
+            printf '  [%d] %-45s ${C_GREEN}当前${C_RESET}\n' "$i" "$repo:$tag"
+        else
+            printf '  [%d] %s\n' "$i" "$repo:$tag"
+        fi
+        ((i++))
+    done
+    echo ""
+    read -r -p "  选择版本（输入编号，0 取消）: " choice
+
+    [ "$choice" = "0" ] && { info "已取消"; return; }
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "${#tags[@]}" ]; then
+        error "无效选项"; return 1
+    fi
+
+    new_img="$repo:${tags[$((choice - 1))]}"
+    if [ "$new_img" = "$current_img" ]; then
+        info "$current_img 已是当前版本"; return
+    fi
+
+    echo ""
+    warn "将镜像从 $current_img 切换至 $new_img"
+    info "compose 文件将被修改，数据卷不会丢失"
+    read -r -p "  确认切换? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return; }
+
+    # 修改 compose 文件
+    sed -i "s|image: ${current_img}|image: ${new_img}|" "$compose_file" 2>/dev/null || {
+        error "修改 compose 文件失败"; return 1
+    }
+
+    # 重建容器
+    _start_spinner "正在更新容器"
+    if (cd "$compose_dir" && docker compose up -d) >/dev/null 2>&1; then
+        _stop_spinner
+        success "已切换至 $new_img"
+    else
+        _stop_spinner
+        error "切换失败，正在回滚 compose 文件"
+        sed -i "s|image: ${new_img}|image: ${current_img}|" "$compose_file"
+        return 1
+    fi
 }
 
 do_images() {
@@ -343,7 +434,7 @@ menu() {
         divider
         _menu_actions 20 "${C_BOLD}[1]${C_RESET} 容器列表"
         _menu_actions 20 "${C_BOLD}[2]${C_RESET} 资源监控"
-        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 管理"
+        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 项目"
         _menu_actions 20 "${C_BOLD}[4]${C_RESET} 镜像列表"
         _menu_actions 20 "${C_BOLD}[5]${C_RESET} 系统清理"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
@@ -359,7 +450,7 @@ menu() {
                 _compose_container_menu
                 ;;
             2) do_stats; echo ""; kairo_pause ;;
-            3) do_compose; echo ""; kairo_pause ;;
+            3) do_compose ;;
             4) do_images ;;
             5) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
