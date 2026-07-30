@@ -65,6 +65,49 @@ do_status() {
     printf '  来源    https://github.com/cli/cli/releases\n'
 }
 
+do_auth() {
+    _github_cli_exists || { error "请先安装 gh"; return 1; }
+    echo ""
+    echo -e "  ${C_BOLD}选择认证方式${C_RESET}"
+    echo ""
+    _menu_actions 32 "${C_BOLD}[1]${C_RESET} 粘贴 Token（推荐）"
+    _menu_actions 32 "${C_BOLD}[2]${C_RESET} 浏览器登录"
+    _menu_actions 32 "${C_BOLD}[3]${C_RESET} 设备码登录（无浏览器）"
+    _menu_actions 32 "${C_BOLD}[0]${C_RESET} 取消"
+    echo ""
+    read -r -p "  请选择: " choice
+    case "$choice" in
+        1)
+            echo ""
+            info "前往 https://github.com/settings/tokens 创建 Token（勾选 repo、workflow 权限）"
+            read -r -s -p "  粘贴 Token: " token
+            echo ""
+            [ -z "$token" ] && { info "已取消"; return 0; }
+            if echo "$token" | gh auth login --with-token 2>&1; then
+                success "认证成功"
+            else
+                error "认证失败，请检查 Token 是否正确"
+            fi
+            ;;
+        2)
+            if gh auth login --web 2>&1; then
+                success "认证成功"
+            else
+                error "浏览器登录失败，请尝试其他方式"
+            fi
+            ;;
+        3)
+            if gh auth login 2>&1; then
+                success "认证成功"
+            else
+                error "设备码登录失败"
+            fi
+            ;;
+        0) info "已取消" ;;
+        *) error "无效选项" ;;
+    esac
+}
+
 do_install() {
     command -v curl >/dev/null 2>&1 || { error "需要 curl"; return 1; }
     command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu 的 apt"; return 1; }
@@ -119,12 +162,14 @@ menu() {
         divider
         _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
         _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
+        _menu_actions 20 "${C_BOLD}[A]${C_RESET} 认证登录"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         read -r -p "  请选择: " choice
         case "$choice" in
             1) do_install ;;
             2) do_upgrade ;;
+            [Aa]) do_auth ;;
             0) return ;;
             *) error "无效选项" ;;
         esac
