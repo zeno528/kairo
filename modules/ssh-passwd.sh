@@ -132,6 +132,7 @@ do_status() {
 
 menu() {
     while true; do
+        clear
         title "🔑 SSH 密码登录管理"
         do_status
         divider

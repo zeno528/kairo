@@ -186,6 +186,7 @@ do_batch_check() {
 
 menu() {
     while true; do
+        clear
         title "🔒 SSL 证书检查"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 查看本机证书"

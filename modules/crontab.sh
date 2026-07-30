@@ -90,6 +90,7 @@ do_edit() {
 menu() {
     local choice
     while true; do
+        clear
         title "⏰ 定时任务"
         do_list
         divider

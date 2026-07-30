@@ -215,6 +215,7 @@ do_rename() {
 menu() {
     local choice line action
     while true; do
+        clear
         title "🗝 SSH 公钥管理"
         do_list
         divider

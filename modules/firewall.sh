@@ -138,6 +138,7 @@ do_disable() {
 menu() {
     local choice
     while true; do
+        clear
         title "🛡 防火墙管理"
         do_status
         divider

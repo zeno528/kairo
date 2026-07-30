@@ -99,6 +99,7 @@ do_images() {
 menu() {
     local choice name
     while true; do
+        clear
         title "🐳 Docker 管理"
         _check_docker || { kairo_pause "按 Enter 返回上级..."; return; }
         mapfile -t DOCKER_CONTAINERS < <(docker ps -a --format '{{.Names}}' 2>/dev/null)

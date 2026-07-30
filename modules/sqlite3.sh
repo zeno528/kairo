@@ -84,6 +84,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🗃️ SQLite3"
         do_status || true
         divider

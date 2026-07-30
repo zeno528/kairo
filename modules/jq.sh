@@ -149,6 +149,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🔧 jq"
         do_status || true
         divider

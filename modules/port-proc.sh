@@ -110,6 +110,7 @@ do_kill_process() {
 menu() {
     local choice port_filter="" name_filter="" pid
     while true; do
+        clear
         title "📡 端口/进程管理"
         do_listen_ports "$port_filter" "$name_filter"
         divider

@@ -166,6 +166,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🐹 Go"
         do_status || true
         divider

@@ -1127,6 +1127,7 @@ do_restore() {
 
 menu() {
     while true; do
+        clear
         title "🌐 Nginx 管理"
         do_status 2>/dev/null
         divider

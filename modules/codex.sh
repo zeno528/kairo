@@ -105,6 +105,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🤖 Codex CLI"
         do_status || true
         divider

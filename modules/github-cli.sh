@@ -108,6 +108,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🐙 GitHub CLI"
         do_status || true
         divider

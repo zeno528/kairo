@@ -95,6 +95,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🤖 Claude Code"
         do_status || true
         divider

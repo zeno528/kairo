@@ -118,6 +118,7 @@ do_cleanup() {
 
 menu() {
     while true; do
+        clear
         title "🛡 软件更新"
         do_check
         divider

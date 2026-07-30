@@ -155,6 +155,7 @@ do_ping_test() (
 
 menu() {
     while true; do
+        clear
         title "🌐 网络测试"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 网络测速"

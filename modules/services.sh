@@ -123,6 +123,7 @@ do_toggle_enable() {
 menu() {
     local choice svc
     while true; do
+        clear
         title "⚙ 系统服务管理"
         do_list || { kairo_pause "按 Enter 返回上级..."; return; }
         divider

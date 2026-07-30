@@ -340,6 +340,7 @@ show_main_menu() {
 }
 
 while true; do
+    clear
     show_main_menu
     echo ""
     read -r -p "  请输入选项: " choice

@@ -97,6 +97,7 @@ do_upgrade() {
 menu() {
     local choice
     while true; do
+        clear
         title "🦞 OpenClaw"
         do_status || true
         divider

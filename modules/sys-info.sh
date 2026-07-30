@@ -80,6 +80,7 @@ do_network() {
 
 menu() {
     while true; do
+        clear
         title "📊 系统信息"
         divider
         echo -e "  ${C_BOLD}[1]${C_RESET} 系统概览"
