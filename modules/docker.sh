@@ -16,7 +16,8 @@ _check_docker() {
 }
 
 _docker_installed() {
-    command -v docker &>/dev/null
+    local p
+    p=$(command -v docker 2>/dev/null) && [ -x "$p" ]
 }
 
 # 添加当前用户到 docker 组，免 sudo
@@ -555,6 +556,7 @@ do_uninstall() {
     echo ""
     success "Docker 已完全卸载"
     info "已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+    hash -r
 }
 
 menu() {
