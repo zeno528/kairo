@@ -1,5 +1,11 @@
 # 更新日志
 
+## v1.1.93 (2026-07-31)
+- ✨ feat(docker): 新增 Docker 完整卸载功能
+- 🐛 fix(docker): 修复 _docker_installed 因 bash 命令哈希缓存误判为已安装
+- 🐛 fix(docker): 修复容器列表重复显示两次的问题
+- 🎨 refactor(docker): 卸载确认改为 y/N 风格，与项目其他提示一致
+
 ## v1.1.92 (2026-07-31)
 - ✨ feat(docker): 改进 Docker 升级时的版本比较逻辑
 
