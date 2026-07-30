@@ -3,11 +3,15 @@
 
 # 检查失效源并提示，不阻断更新
 _apt_update_smart() {
-    local update_output update_status
-    _start_spinner "正在更新软件源列表"
-    update_output=$(sudo apt update 2>&1)
-    update_status=$?
-    _stop_spinner
+    local update_log update_output update_status
+    update_log=$(mktemp) || {
+        error "无法创建软件源更新日志"
+        return 1
+    }
+    sudo apt update 2>&1 | tee "$update_log"
+    update_status=${PIPESTATUS[0]}
+    update_output=$(<"$update_log")
+    rm -f -- "$update_log"
 
     # 提取失效源地址
     local broken
@@ -51,7 +55,12 @@ do_security_update() {
     read -p "  确认执行常规升级? [Y/n]: " confirm
     [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
     _apt_update_smart || return
-    _with_spinner "正在升级软件包" sudo apt upgrade -y && success "常规升级完成"
+    if sudo apt upgrade -y; then
+        success "常规升级完成"
+    else
+        error "常规升级失败"
+        return 1
+    fi
 }
 
 do_full_update() {
@@ -61,7 +70,12 @@ do_full_update() {
     read -p "  确认执行完整升级? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
     _apt_update_smart || return
-    _with_spinner "正在升级软件包" sudo apt full-upgrade -y && success "完整更新完成"
+    if sudo apt full-upgrade -y; then
+        success "完整更新完成"
+    else
+        error "完整更新失败"
+        return 1
+    fi
 }
 
 do_full_update_preview() {
@@ -73,7 +87,12 @@ do_full_update_preview() {
 do_cleanup() {
     echo ""
     echo -e "  ${C_BOLD}清理缓存和不需要的包...${C_RESET}"
-    _with_spinner "正在清理缓存和不需要的包" bash -c 'sudo apt autoremove -y && sudo apt clean' && success "清理完成"
+    if sudo apt autoremove -y && sudo apt clean; then
+        success "清理完成"
+    else
+        error "清理失败"
+        return 1
+    fi
 }
 
 menu() {

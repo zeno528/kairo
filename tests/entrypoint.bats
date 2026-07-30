@@ -324,6 +324,15 @@ setup() {
     [[ "$output" == *"共 1 个包可更新"* ]]
 }
 
+@test "软件更新的 apt 流程直接输出，不套 spinner" {
+    run bash -c '
+        source "'"$PWD"'/modules/security-update.sh"
+        ! grep -q "_with_spinner" "'"$PWD"'/modules/security-update.sh"
+        ! grep -q "_start_spinner.*更新软件源" "'"$PWD"'/modules/security-update.sh"
+    '
+    [ "$status" -eq 0 ]
+}
+
 @test "完整升级预演只执行 apt 模拟命令" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
