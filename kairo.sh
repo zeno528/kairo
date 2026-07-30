@@ -57,7 +57,10 @@ kairo_run_installer() {
     if [ "$(id -u)" -eq 0 ]; then
         fetch_remote_file install.sh | bash
     else
-        fetch_remote_file install.sh | sudo bash
+        fetch_remote_file install.sh | sudo env \
+            http_proxy="${http_proxy:-}" https_proxy="${https_proxy:-}" \
+            HTTP_PROXY="${HTTP_PROXY:-}" HTTPS_PROXY="${HTTPS_PROXY:-}" \
+            bash
     fi
 }
 

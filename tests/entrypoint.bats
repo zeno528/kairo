@@ -94,6 +94,23 @@ setup() {
     [ "${KAIRO_MODULE_GROUPS[openclaw]}" = "agents" ]
 }
 
+@test "更新安装器向 sudo 透传已有代理环境" {
+    run bash -c '
+        source <(sed -n "55,65p" "'"$PWD"'/kairo.sh")
+        id() { printf "1000\n"; }
+        fetch_remote_file() { printf "installer"; }
+        sudo() {
+            [[ "$*" == *"http_proxy=$http_proxy"* ]] || return 1
+            [[ "$*" == *"https_proxy=$https_proxy"* ]] || return 1
+            cat >/dev/null
+        }
+        http_proxy="http://proxy.example.test:4567"
+        https_proxy="http://proxy.example.test:4567"
+        kairo_run_installer
+    '
+    [ "$status" -eq 0 ]
+}
+
 # ─── install.sh 关键函数 ──────────────────────────────────────
 
 @test "install.sh 语法 + 不实际执行（-n）" {
