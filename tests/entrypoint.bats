@@ -282,32 +282,54 @@ setup() {
     [[ ! "$output" =~ "RESTARTED" ]]
 }
 
-@test "iptables 关闭端口删除对应 ACCEPT 规则" {
+@test "ufw 关闭端口调用 delete allow" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/firewall.sh"
-        FW=iptables
-        sudo() {
-            [ "$1" = "-v" ] && return 0
-            "$@"
-        }
-        iptables() { printf "iptables %s\\n" "$*"; }
-        printf "%s\\n" 8080 tcp y | do_close_port
+        sudo() { "$@"; }
+        ufw() { printf "ufw %s\n" "$*"; }
+        printf "%s\n" 8080 tcp y | do_close_port
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"iptables -D INPUT -p tcp --dport 8080 -j ACCEPT"* ]]
-    [[ "$output" == *"已移除 8080/tcp 的放行规则"* ]]
+    [[ "$output" == *"ufw delete allow 8080/tcp"* ]]
 }
 
-@test "iptables 全局启停返回失败而非伪成功" {
+@test "ufw 开启防火墙自动放行 SSH" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/firewall.sh"
-        FW=iptables
-        do_enable
+        sudo() { "$@"; }
+        ufw() { printf "ufw %s\n" "$*"; }
+        printf "%s\n" y | do_enable
     '
-    [ "$status" -ne 0 ]
-    [[ "$output" == *"不支持全局开启"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ufw allow ssh"* ]]
+    [[ "$output" == *"ufw --force enable"* ]]
+}
+
+@test "IP 黑名单拒绝非法格式" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        sudo() { "$@"; }
+        ufw() { printf "ufw %s\n" "$*"; }
+        printf "%s\n" 999.999.999.999 y | do_block_ip
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"格式无效"* ]]
+    [[ ! "$output" == *"ufw deny from"* ]]
+}
+
+@test "无 ufw 时操作引导安装并可取消" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 1; builtin command "$@"; }
+        printf "%s\n" n | do_open_port
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"未检测到 ufw"* ]]
+    [[ "$output" == *"已取消"* ]]
 }
 
 @test "软件源刷新失败时常规升级中止" {

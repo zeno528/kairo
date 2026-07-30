@@ -1,42 +1,56 @@
 #!/bin/bash
-# firewall 模块 - 防火墙管理（Debian/Ubuntu）
+# firewall 模块 - 防火墙管理（ufw，Debian/Ubuntu）
+# ufw 自带持久化（/etc/ufw/user.rules + systemd 单元），规则重启后保留，
+# 因此不再维护裸 iptables fallback——那套需要手写 save/restore 且旧实现不持久化。
 
-# 检测防火墙工具: ufw 优先，备选 iptables
-FW=""
-if command -v ufw &>/dev/null; then
-    FW="ufw"
-elif command -v iptables &>/dev/null; then
-    FW="iptables"
-fi
+# 校验 IPv4 或 IPv4/CIDR（ufw allow/deny from 的入参格式）
+_fw_is_ip() {
+    local input="$1" addr prefix o
+    local -a oct
+    addr=${input%%/*}
+    IFS=. read -ra oct <<< "$addr"
+    [ "${#oct[@]}" -eq 4 ] || return 1
+    for o in "${oct[@]}"; do
+        [[ "$o" =~ ^[0-9]+$ ]] || return 1
+        (( 10#$o >= 0 && 10#$o <= 255 )) || return 1
+    done
+    [[ "$input" == */* ]] || return 0
+    prefix=${input#*/}
+    [[ "$prefix" =~ ^[0-9]+$ ]] && (( 10#$prefix >= 0 && 10#$prefix <= 32 ))
+}
+
+# 确保 ufw 可用；未安装时引导安装（不每次进菜单都弹，仅在执行操作时触发）
+_ensure_ufw() {
+    command -v ufw &>/dev/null && return 0
+    echo ""
+    warn "未检测到 ufw"
+    read -r -p "  是否安装 ufw? [Y/n]: " confirm
+    [[ "$confirm" =~ ^[Nn]$ ]] && { info "已取消"; return 1; }
+    sudo apt-get update -qq && sudo apt-get install -y ufw && return 0
+    error "ufw 安装失败"
+    return 1
+}
 
 do_status() {
     echo ""
-    if [ -z "$FW" ]; then
-        error "未检测到防火墙工具 (ufw/iptables)"
+    if ! command -v ufw &>/dev/null; then
+        error "未检测到 ufw"
+        info "选择下方任意操作将自动引导安装 ufw"
         return
     fi
-    echo -e "  ${C_BOLD}防火墙${C_RESET}  $FW"
-    case "$FW" in
-        ufw)
-            local status
-            status=$(ufw status | head -1 | sed 's/Status: //')
-            echo -e "  ${C_BOLD}状态${C_RESET}  $status"
-            if [ "$status" = "inactive" ]; then
-                warn "防火墙未启用；放行规则会保存，但暂不会影响流量"
-                info "启用前请先确认 SSH 端口已放行，再选择 [E] 开启防火墙"
-            fi
-            echo ""
-            ufw status numbered 2>/dev/null | tail -n +4
-            ;;
-        iptables)
-            echo -e "  ${C_BOLD}当前规则${C_RESET}（INPUT 链）"
-            sudo iptables -nL INPUT --line-numbers 2>/dev/null
-            ;;
-    esac
+    local status
+    status=$(ufw status | head -1 | sed 's/Status: //')
+    echo -e "  ${C_BOLD}防火墙状态${C_RESET}  $status"
+    if [ "$status" = "inactive" ]; then
+        warn "防火墙未启用；放行规则会保存，但暂不会拦截流量"
+        info "启用前请确认 SSH 端口已放行，再选择 [E] 开启防火墙"
+    fi
+    echo ""
+    ufw status numbered 2>/dev/null | tail -n +4
 }
 
 do_open_port() {
-    [ -z "$FW" ] && error "未检测到防火墙工具" && return
+    _ensure_ufw || return 1
     echo ""
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
@@ -47,20 +61,11 @@ do_open_port() {
     warn "即将放行入站端口 $port/$proto"
     read -r -p "  确认放行? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-
-    case "$FW" in
-        ufw)
-            sudo ufw allow "$port/$proto" && success "已开放 $port/$proto"
-            ;;
-        iptables)
-            sudo iptables -A INPUT -p "$proto" --dport "$port" -j ACCEPT \
-                && success "已开放 $port/$proto (当前会话，重启后失效)"
-            ;;
-    esac
+    sudo ufw allow "$port/$proto" && success "已开放 $port/$proto"
 }
 
 do_close_port() {
-    [ -z "$FW" ] && error "未检测到防火墙工具" && return
+    _ensure_ufw || return 1
     echo ""
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
@@ -71,68 +76,60 @@ do_close_port() {
     warn "即将关闭 $port/$proto，可能中断现有服务"
     read -r -p "  确认关闭? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-
-    case "$FW" in
-        ufw)
-            sudo ufw delete allow "$port/$proto" && success "已关闭 $port/$proto"
-            ;;
-        iptables)
-            if sudo iptables -D INPUT -p "$proto" --dport "$port" -j ACCEPT; then
-                success "已移除 $port/$proto 的放行规则（当前会话，重启后失效）"
-            else
-                error "未找到 $port/$proto 的 INPUT ACCEPT 规则"
-                return 1
-            fi
-            ;;
-    esac
+    sudo ufw delete allow "$port/$proto" && success "已关闭 $port/$proto"
 }
 
 do_delete_rule() {
     local rule="$1"
     [[ "$rule" =~ ^[1-9][0-9]*$ ]] || { error "规则编号无效"; return 1; }
-    warn "即将删除 ${FW} 规则 #$rule"
+    warn "即将删除 ufw 规则 #$rule"
     read -r -p "  确认删除? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    case "$FW" in
-        ufw) sudo ufw --force delete "$rule" ;;
-        iptables) sudo iptables -D INPUT "$rule" ;;
-        *) error "未检测到防火墙工具"; return 1 ;;
-    esac || { error "删除规则失败"; return 1; }
-    success "已删除规则 #$rule"
+    sudo ufw --force delete "$rule" && success "已删除规则 #$rule"
+}
+
+do_allow_ip() {
+    _ensure_ufw || return 1
+    echo ""
+    read -r -p "  输入要放行的 IP 或 IP 段 (如 1.2.3.4 或 10.0.0.0/24): " ip
+    [ -z "$ip" ] && info "已取消" && return
+    _fw_is_ip "$ip" || { error "格式无效（需 IPv4 或 CIDR，如 1.2.3.4 或 10.0.0.0/24）"; return 1; }
+    warn "即将放行来自 $ip 的所有入站连接"
+    read -r -p "  确认放行? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    sudo ufw allow from "$ip" && success "已放行 IP $ip"
+}
+
+do_block_ip() {
+    _ensure_ufw || return 1
+    echo ""
+    read -r -p "  输入要封锁的 IP 或 IP 段: " ip
+    [ -z "$ip" ] && info "已取消" && return
+    _fw_is_ip "$ip" || { error "格式无效（需 IPv4 或 CIDR，如 1.2.3.4 或 10.0.0.0/24）"; return 1; }
+    warn "即将封锁来自 $ip 的所有入站连接"
+    read -r -p "  确认封锁? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    sudo ufw deny from "$ip" && success "已封锁 IP $ip"
 }
 
 do_enable() {
-    [ -z "$FW" ] && error "未检测到防火墙工具" && return
+    _ensure_ufw || return 1
     echo ""
-    case "$FW" in
-        ufw)
-            warn "确保已放行 SSH 端口 (22)，否则可能无法远程连接"
-            warn "开启后，未明确放行的入站连接可能被阻止"
-            read -r -p "  确认开启? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo ufw enable && success "防火墙已开启"
-            ;;
-        iptables)
-            error "iptables 不支持全局开启；请手动管理规则"
-            return 1
-            ;;
-    esac
+    warn "开启后，未明确放行的入站连接将被阻止"
+    warn "将自动放行 SSH (22)；若 SSH 为非标准端口，请先手动放行"
+    read -r -p "  确认开启? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    sudo ufw allow ssh 2>/dev/null
+    sudo ufw --force enable && success "防火墙已开启，已放行 SSH"
 }
 
 do_disable() {
-    [ -z "$FW" ] && error "未检测到防火墙工具" && return
+    _ensure_ufw || return 1
     echo ""
-    case "$FW" in
-        ufw)
-            read -r -p "  确认关闭防火墙? [y/N]: " confirm
-            [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-            sudo ufw disable && success "防火墙已关闭"
-            ;;
-        iptables)
-            error "iptables 不支持全局关闭；请手动管理规则"
-            return 1
-            ;;
-    esac
+    warn "关闭防火墙后所有入站限制将失效"
+    read -r -p "  确认关闭? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    sudo ufw disable && success "防火墙已关闭"
 }
 
 menu() {
@@ -142,15 +139,17 @@ menu() {
         title "🛡 防火墙管理"
         do_status
         divider
-        _menu_actions 18 "${C_BOLD}[编号]${C_RESET} 删除规则" "${C_BOLD}[O]${C_RESET} 开放端口" "${C_BOLD}[C]${C_RESET} 按端口关闭"
-        _menu_actions 18 "${C_BOLD}[E]${C_RESET} 开启防火墙" "${C_BOLD}[D]${C_RESET} 关闭防火墙"
-        _menu_actions 18 "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除规则" "${C_BOLD}[O]${C_RESET} 开放端口" "${C_BOLD}[C]${C_RESET} 按端口关闭"
+        _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单" "${C_BOLD}[B]${C_RESET} IP 黑名单"
+        _menu_actions 20 "${C_BOLD}[E]${C_RESET} 开启防火墙" "${C_BOLD}[D]${C_RESET} 关闭防火墙" "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择规则或操作: " choice
         case "$choice" in
             [Oo]) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Cc]) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Aa]) do_allow_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Bb]) do_block_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Ee]) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Dd]) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             0) return ;;
