@@ -1,5 +1,9 @@
 # 更新日志
 
+## v1.2.6 (2026-07-31)
+- 🐛 fix(core): 消除旧版 shellcheck 对 kairo_pause 的 SC2120 误报
+  CI 镜像的 shellcheck 版本较旧，单文件分析无法感知 kairo_pause 由主入口和各模块菜单跨文件调用，误报从未传参；按 nezha-agent do_mgmt 的既有惯例加 disable 注释
+
 ## v1.2.5 (2026-07-31)
 - 🎨 style(kairo): 重构启动横幅 K logo 与信息布局
   - K 字形重绘为标准 V 形双笔，竖线亮青、斜线暗青渐变层次

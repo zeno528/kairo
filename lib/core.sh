@@ -268,6 +268,8 @@ _tool_run_remote_installer() {
     return "$rc"
 }
 
+# 由 kairo.sh 与各模块菜单调用，部分调用传入提示文案；单文件分析无法感知跨文件传参。
+# shellcheck disable=SC2120
 kairo_pause() {
     local prompt="${1:-按回车键继续...}"
     read -r -p "  ${prompt}" _
