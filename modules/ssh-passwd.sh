@@ -112,21 +112,21 @@ do_status() {
         error "未找到 sshd 命令"
         return 1
     fi
-    local current root_login
+    local current root_login label_w=12
     current=$(get_effective_sshd_option passwordauthentication)
     root_login=$(get_effective_sshd_option permitrootlogin)
 
     case "$current" in
-        no) echo -e "  密码登录:   ${C_RED}关闭${C_RESET}" ;;
-        yes) echo -e "  密码登录:   ${C_GREEN}开启${C_RESET}" ;;
-        *) echo -e "  密码登录:   ${C_YELLOW}未知${C_RESET}" ;;
+        no) echo -e "  $(_pad_right "密码登录:" $label_w) ${C_RED}关闭${C_RESET}" ;;
+        yes) echo -e "  $(_pad_right "密码登录:" $label_w) ${C_GREEN}开启${C_RESET}" ;;
+        *) echo -e "  $(_pad_right "密码登录:" $label_w) ${C_YELLOW}未知${C_RESET}" ;;
     esac
     case "$root_login" in
-        yes) echo -e "  Root 登录:   ${C_GREEN}允许${C_RESET}" ;;
+        yes) echo -e "  $(_pad_right "Root 登录:" $label_w) ${C_GREEN}允许${C_RESET}" ;;
         no|prohibit-password|without-password)
-            echo -e "  Root 登录:   ${C_RED}禁止密码登录${C_RESET}（${root_login}）"
+            echo -e "  $(_pad_right "Root 登录:" $label_w) ${C_RED}禁止密码登录${C_RESET}（${root_login}）"
             ;;
-        *) echo -e "  Root 登录:   ${C_YELLOW}未知${C_RESET}" ;;
+        *) echo -e "  $(_pad_right "Root 登录:" $label_w) ${C_YELLOW}未知${C_RESET}" ;;
     esac
 }
 
@@ -134,6 +134,7 @@ menu() {
     while true; do
         clear
         title "🔑 SSH 密码登录管理"
+        echo ""
         do_status
         divider
         _menu_actions 20 "${C_BOLD}[1]${C_RESET} 开启密码登录"
