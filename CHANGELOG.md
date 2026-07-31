@@ -1,5 +1,10 @@
 # 更新日志
 
+## v1.2.7 (2026-07-31)
+- 🔧 chore(ci): 固定 shellcheck 0.11.0 并统一本地验证命令
+  - CI 镜像自带 shellcheck 版本漂移，曾致 SC2120 误报（本地 0.11 不报、CI 旧版报）
+  - 固定 v0.11.0 使 CI 行为可复现；本地 AGENTS.md 验证门槛同步为同一命令与版本
+
 ## v1.2.6 (2026-07-31)
 - 🐛 fix(core): 消除旧版 shellcheck 对 kairo_pause 的 SC2120 误报
   CI 镜像的 shellcheck 版本较旧，单文件分析无法感知 kairo_pause 由主入口和各模块菜单跨文件调用，误报从未传参；按 nezha-agent do_mgmt 的既有惯例加 disable 注释
