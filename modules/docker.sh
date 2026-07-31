@@ -256,13 +256,55 @@ do_stats() {
     docker stats --no-stream --format "table  {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}" 2>/dev/null | sed 's/^/  /'
 }
 
+# 扫描常见目录，发现含 compose 文件的项目
+_compose_find_projects() {
+    local base
+    for base in /opt "$HOME" .; do
+        [ -d "$base" ] || continue
+        find "$base" -maxdepth 2 \
+            \( -name "docker-compose.yml" -o -name "compose.yaml" \) \
+            2>/dev/null | while IFS= read -r f; do dirname "$f"; done
+    done | sort -u | head -20
+}
+
 do_compose() {
     _check_docker || return
     command -v docker compose &>/dev/null || { error "未安装 docker compose 插件"; return 1; }
-    local compose_dir compose_file current_img
+    local compose_dir compose_file current_img choice
+    local -a projects=()
     echo ""
-    read -r -p "  输入 compose 项目目录（默认当前目录）: " compose_dir
-    compose_dir="${compose_dir:-.}"
+
+    mapfile -t projects < <(_compose_find_projects)
+    if [ "${#projects[@]}" -gt 0 ]; then
+        echo -e "  ${C_BOLD}发现的 Compose 项目${C_RESET}"
+        local i=1
+        for compose_dir in "${projects[@]}"; do
+            printf '  [%d] %s\n' "$i" "$compose_dir"
+            ((i++))
+        done
+        echo ""
+        _menu_actions 24 "${C_BOLD}[编号]${C_RESET} 选择项目"
+        _menu_actions 24 "${C_BOLD}[M]${C_RESET} 手动输入目录"
+        _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回上级"
+        echo ""
+        read -r -p "  请选择: " choice
+        case "$choice" in
+            0) return 0 ;;
+            [Mm]) read -r -p "  输入 compose 项目目录: " compose_dir ;;
+            *)
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#projects[@]}" ]; then
+                    compose_dir="${projects[$((choice - 1))]}"
+                else
+                    error "无效选项"; return 1
+                fi
+                ;;
+        esac
+    else
+        read -r -p "  输入 compose 项目目录（默认当前目录）: " compose_dir
+        compose_dir="${compose_dir:-.}"
+    fi
+
+    [ -n "$compose_dir" ] || { info "已取消"; return 0; }
     [ -d "$compose_dir" ] || { error "目录不存在: $compose_dir"; return 1; }
 
     # 自动发现 compose 文件
@@ -474,6 +516,46 @@ do_cleanup() {
     success "清理完成"
 }
 
+# 删除所有容器、镜像、卷和网络（reset 和 uninstall 共用）
+# 结果写入 DOCKER_WIPE_SUMMARY 供调用方输出
+_docker_wipe_all() {
+    local running_containers total_containers total_images total_volumes
+    running_containers=$(docker ps -q 2>/dev/null | wc -l)
+    total_containers=$(docker ps -aq 2>/dev/null | wc -l)
+    total_images=$(docker images -q 2>/dev/null | wc -l)
+    total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
+
+    if [ "$running_containers" -gt 0 ]; then
+        _start_spinner "正在停止 $running_containers 个运行中的容器"
+        docker ps -q | xargs -r docker stop 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_containers" -gt 0 ]; then
+        _start_spinner "正在删除 $total_containers 个容器"
+        docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_images" -gt 0 ]; then
+        _start_spinner "正在删除 $total_images 个镜像"
+        docker images -q | xargs -r docker rmi -f 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    if [ "$total_volumes" -gt 0 ]; then
+        _start_spinner "正在删除 $total_volumes 个卷"
+        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
+        _stop_spinner
+    fi
+
+    _start_spinner "正在清理网络和构建缓存"
+    docker system prune -a -f --volumes 2>/dev/null || true
+    _stop_spinner
+
+    DOCKER_WIPE_SUMMARY="已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+}
+
 do_uninstall() {
     echo ""
     if ! _docker_installed; then
@@ -486,45 +568,7 @@ do_uninstall() {
     read -r -p "  确认卸载 Docker? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
-    # 收集统计信息用于最终报告
-    local running_containers total_containers total_images total_volumes
-    running_containers=$(docker ps -q 2>/dev/null | wc -l)
-    total_containers=$(docker ps -aq 2>/dev/null | wc -l)
-    total_images=$(docker images -q 2>/dev/null | wc -l)
-    total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
-
-    # 停止所有运行中的容器
-    if [ "$running_containers" -gt 0 ]; then
-        _start_spinner "正在停止 $running_containers 个运行中的容器"
-        docker ps -q | xargs -r docker stop 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    # 删除所有容器
-    if [ "$total_containers" -gt 0 ]; then
-        _start_spinner "正在删除 $total_containers 个容器"
-        docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    # 删除所有镜像
-    if [ "$total_images" -gt 0 ]; then
-        _start_spinner "正在删除 $total_images 个镜像"
-        docker images -q | xargs -r docker rmi -f 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    # 删除所有卷
-    if [ "$total_volumes" -gt 0 ]; then
-        _start_spinner "正在删除 $total_volumes 个卷"
-        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    # 清理剩余网络和构建缓存
-    _start_spinner "正在清理网络和构建缓存"
-    docker system prune -a -f --volumes 2>/dev/null || true
-    _stop_spinner
+    _docker_wipe_all
 
     # 停止并禁用 Docker 服务
     _start_spinner "正在停止 Docker 服务"
@@ -555,7 +599,7 @@ do_uninstall() {
 
     echo ""
     success "Docker 已完全卸载"
-    info "已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+    info "$DOCKER_WIPE_SUMMARY"
     hash -r
 }
 
@@ -566,43 +610,11 @@ do_reset() {
     read -r -p "  确认重置? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
 
-    local running_containers total_containers total_images total_volumes
-    running_containers=$(docker ps -q 2>/dev/null | wc -l)
-    total_containers=$(docker ps -aq 2>/dev/null | wc -l)
-    total_images=$(docker images -q 2>/dev/null | wc -l)
-    total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
-
-    if [ "$running_containers" -gt 0 ]; then
-        _start_spinner "正在停止 $running_containers 个运行中的容器"
-        docker ps -q | xargs -r docker stop 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    if [ "$total_containers" -gt 0 ]; then
-        _start_spinner "正在删除 $total_containers 个容器"
-        docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    if [ "$total_images" -gt 0 ]; then
-        _start_spinner "正在删除 $total_images 个镜像"
-        docker images -q | xargs -r docker rmi -f 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    if [ "$total_volumes" -gt 0 ]; then
-        _start_spinner "正在删除 $total_volumes 个卷"
-        docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
-        _stop_spinner
-    fi
-
-    _start_spinner "正在清理网络和构建缓存"
-    docker system prune -a -f --volumes 2>/dev/null || true
-    _stop_spinner
+    _docker_wipe_all
 
     echo ""
     success "Docker 环境已重置"
-    info "已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
+    info "$DOCKER_WIPE_SUMMARY"
 }
 
 do_overview() {
@@ -823,43 +835,6 @@ _render_status_cache() {
     images=$(docker images -q 2>/dev/null | wc -l)
     printf '  容器数    %s\n' "$containers"
     printf '  镜像数    %s\n' "$images"
-}
-
-# 带编号的容器列表（供菜单选择用）
-_show_container_list() {
-    echo ""
-    mapfile -t DOCKER_CONTAINERS < <(docker ps -a --format '{{.Names}}' 2>/dev/null)
-    echo -e "  ${C_BOLD}容器列表${C_RESET}"
-    docker ps -a --format '{{.Names}}\t{{.Status}}\t{{.Image}}' 2>/dev/null |
-        awk -F '\t' '{printf "  [%2d] %-20s  %-14s  %s\n", NR, $1, $2, $3}'
-    [ ${#DOCKER_CONTAINERS[@]} -eq 0 ] && info "当前没有容器"
-}
-
-# 容器列表后的选择+操作子菜单
-_compose_container_menu() {
-    local choice name
-    while true; do
-        _show_container_list
-        divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择容器"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
-        divider
-        echo ""
-        read -r -p "  选择容器或操作: " choice
-        case "$choice" in
-            0) return ;;
-            *)
-                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#DOCKER_CONTAINERS[@]} ]; then
-                    name="${DOCKER_CONTAINERS[$((choice - 1))]}"
-                else
-                    error "无效选项"; sleep 1; continue
-                fi
-                ;;
-        esac
-        _container_ops_menu "$name"
-        [ "$DOCKER_GO_HOME" -eq 1 ] && return
-        echo ""; kairo_pause "按 Enter 返回容器列表..."
-    done
 }
 
 # 容器操作子菜单（可被总览视图复用）

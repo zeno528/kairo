@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.97 (2026-07-31)
+- ✨ feat(docker): 新增 Compose 项目自动发现并重构清理逻辑
+
 ## v1.1.96 (2026-07-31)
 - ✨ feat(github-cli): do_status 增加 gh 认证状态显示
 - ✨ feat(github-cli): 新增 [A] 认证登录，支持 Token/浏览器/设备码三种方式
