@@ -1,5 +1,17 @@
 # 更新日志
 
+## v1.2.0 (2026-07-31)
+- ✨ feat(crontab): 全面重构定时任务模块，UX 完全重做
+- ✨ feat(crontab): 新增引导式任务创建，无需记忆 cron 语法
+- ✨ feat(crontab): 新增语义解释，每条任务显示人类可读含义
+- ✨ feat(crontab): 新增任务启用/禁用功能（#KAIRO_OFF# 标记）
+- ✨ feat(crontab): 新增批量操作（批量删除/启用/禁用）
+- ✨ feat(crontab): 新增任务编辑子菜单（编辑调度/命令）
+- ✨ feat(crontab): 调度编辑支持逗号多值语义解释
+- 🔥 chore(crontab): 移除 [E] 编辑全部（vi 依赖，UX 差）
+- 🎨 refactor(services): 服务列表 active/inactive/failed 添加彩色圆点
+- 🎨 refactor(ssh-passwd): 状态显示用 _pad_right 对齐文案
+
 ## v1.1.99 (2026-07-31)
 - 🐛 fix(docker): 镜像清理缺 -a 导致只清悬空镜像
 - 🎨 refactor(docker): 重构 Docker 菜单布局，双列+底栏，UX 更清晰
