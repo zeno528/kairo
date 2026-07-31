@@ -28,3 +28,4 @@ modules/sys-info.sh
 modules/claude.sh
 modules/codex.sh
 modules/kimi.sh
+modules/swap.sh

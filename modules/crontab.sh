@@ -125,12 +125,33 @@ _cron_pick_schedule() {
 _cron_explain() {
     local min="$1" hour="$2" day="$3" mon="$4" week="$5"
 
+    # @ 特殊调度关键字
+    case "$min" in
+        @reboot) echo "系统启动时执行"; return 0 ;;
+        @yearly|@annually) echo "每年执行一次"; return 0 ;;
+        @monthly) echo "每月执行一次"; return 0 ;;
+        @weekly) echo "每周执行一次"; return 0 ;;
+        @daily) echo "每天执行一次"; return 0 ;;
+        @hourly) echo "每小时执行一次"; return 0 ;;
+    esac
+
     # 每分钟
     [ "$min" = "*" ] && [ "$hour" = "*" ] && [ "$day" = "*" ] && [ "$mon" = "*" ] && [ "$week" = "*" ] && \
         { echo "每分钟执行一次"; return 0; }
 
     # 每隔 N 分钟
     [[ "$min" =~ ^\*/[0-9]+$ ]] && { echo "每隔 ${min#\*/} 分钟执行一次"; return 0; }
+
+    # 每隔 N 小时
+    if [[ "$hour" =~ ^\*/[0-9]+$ ]] && [ "$day" = "*" ] && [ "$mon" = "*" ] && [ "$week" = "*" ]; then
+        local h_interval="${hour#\*/}" h_desc=""
+        if [ "$min" = "*" ]; then
+            h_desc="每隔 ${h_interval} 小时执行一次"
+        else
+            h_desc="每隔 ${h_interval} 小时的第 ${min} 分执行一次"
+        fi
+        echo "$h_desc"; return 0
+    fi
 
     # 判断是否为多值字段（含逗号）
     local multi=0
@@ -186,30 +207,56 @@ do_list() {
         return
     fi
     echo -e "  ${C_BOLD}当前定时任务${C_RESET}"
+
+    # 第一遍：收集所有任务数据，计算各列最大宽度
+    local -a tasks_num=() tasks_schedule=() tasks_cmd=() tasks_explain=() tasks_disabled=()
     local num=0 line min hour day mon week cmd schedule explain
+    local max_num_w=4 max_sched_w=14
+
     while IFS= read -r line; do
         num=$((num + 1))
+        local is_disabled=0
         if [[ "$line" =~ ^#KAIRO_OFF# ]]; then
+            is_disabled=1
             line="${line#\#KAIRO_OFF# }"
-            read -r min hour day mon week cmd <<< "$line"
-            schedule="${min} ${hour} ${day} ${mon} ${week}"
-            explain=$(_cron_explain "$min" "$hour" "$day" "$mon" "$week")
-            printf "  %s ○ %s %s  ${C_DIM}— %s${C_RESET}\n" \
-                "$(_pad_right "[$num]" 6)" \
-                "$(_pad_right "${C_DIM}${schedule}${C_RESET}" 24)" \
-                "${C_DIM}${cmd}${C_RESET}" \
-                "$explain"
+        fi
+        if [[ "$line" =~ ^@ ]]; then
+            # @ 特殊调度关键字
+            schedule="${line%% *}"
+            cmd="${line#* }"
+            explain=$(_cron_explain "$schedule" "" "" "" "")
         else
             read -r min hour day mon week cmd <<< "$line"
             schedule="${min} ${hour} ${day} ${mon} ${week}"
             explain=$(_cron_explain "$min" "$hour" "$day" "$mon" "$week")
-            printf "  %s ${C_GREEN}●${C_RESET} %s %s  ${C_DIM}— %s${C_RESET}\n" \
-                "$(_pad_right "[$num]" 6)" \
-                "$(_pad_right "$schedule" 24)" \
-                "$cmd" \
-                "$explain"
         fi
+        tasks_num+=("$num")
+        tasks_schedule+=("$schedule")
+        tasks_cmd+=("$cmd")
+        tasks_explain+=("$explain")
+        tasks_disabled+=("$is_disabled")
+        [ "${#schedule}" -gt "$max_sched_w" ] && max_sched_w="${#schedule}"
+        local num_str="[$num]"
+        [ "${#num_str}" -gt "$max_num_w" ] && max_num_w="${#num_str}"
     done < <(_crontab_task_lines)
+
+    # 第二遍：用计算好的列宽统一渲染
+    local i
+    for ((i = 0; i < ${#tasks_num[@]}; i++)); do
+        if [ "${tasks_disabled[$i]}" -eq 1 ]; then
+            printf "  %s ○ %s %s  ${C_DIM}—⏱  %s${C_RESET}\n" \
+                "$(_pad_right "[${tasks_num[$i]}]" "$max_num_w")" \
+                "$(_pad_right "${C_DIM}${tasks_schedule[$i]}${C_RESET}" "$max_sched_w")" \
+                "${C_DIM}${tasks_cmd[$i]}${C_RESET}" \
+                "${tasks_explain[$i]}"
+        else
+            printf "  %s ${C_GREEN}●${C_RESET} %s %s  ${C_DIM}—⏱  %s${C_RESET}\n" \
+                "$(_pad_right "[${tasks_num[$i]}]" "$max_num_w")" \
+                "$(_pad_right "${tasks_schedule[$i]}" "$max_sched_w")" \
+                "${tasks_cmd[$i]}" \
+                "${tasks_explain[$i]}"
+        fi
+    done
     echo ""
 }
 

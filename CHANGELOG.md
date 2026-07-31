@@ -1,5 +1,16 @@
 # 更新日志
 
+## v1.2.2 (2026-07-31)
+- 🐛 fix(crontab): 修复 */N 小时和 @reboot 特殊调度报错，恢复自适应列宽
+  - 补充 */N 小时字段的语义解释，修复 printf 无效数字报错
+  - 支持 @reboot/@daily/@hourly 等 cron 特殊关键字，不再按五字段误解析
+  - 恢复两遍遍历自适应列宽和 ⏱ 图标样式
+  ✨ feat(swap): 新增虚拟内存管理模块（zram + disk swap）
+  - 支持 zram 内存压缩（推荐）和传统磁盘交换文件
+  - 交互式大小选择，支持自定义输入（如 768M、3G）
+  - 状态显示中文格式化输出，含开机自启检测
+  - 开机自启支持 @reboot cron 持久化
+
 ## v1.2.1 (2026-07-31)
 - 🐛 fix(registry): 移除 crontab 不存在的 remove action
 
