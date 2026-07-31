@@ -1,5 +1,13 @@
 # 更新日志
 
+## v1.2.4 (2026-07-31)
+- 🔧 refactor(modules): 抽取工具菜单与 apt 升级共享逻辑
+  - lib/core.sh 新增 _tool_menu / _tool_apt_upgrade / _tool_run_remote_installer 三个共享辅助
+  - claude / codex / github-cli / go / jq / kimi / openclaw / sqlite3 共 8 个工具模块的 menu 与 apt 升级改为调用共享辅助
+  - registry 同步开放 firewall.delete_rule、docker.uninstall/reset/overview、github-cli.auth 五个新 action
+  - install.sh 校验流程去掉对 kairo.sh 的重复 bash -n
+  - 新增 tests/modules-extra.bats，覆盖此前无专项测试的 fail2ban / crontab / nezha-agent / swap / optimize / proxy-setup 模块
+
 ## v1.2.3 (2026-07-31)
 - 🔧 refactor(registry): 合并代理分组到网络，精简主菜单
   - 移除仅 2 个模块的 🚀 代理分组

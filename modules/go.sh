@@ -104,7 +104,7 @@ do_install() {
 }
 
 do_upgrade() {
-    local current latest architecture confirm installed candidate
+    local current latest architecture confirm
     _go_detect_channel || { do_install; return $?; }
     case "$GO_CHANNEL" in
         official_archive)
@@ -129,27 +129,9 @@ do_upgrade() {
             fi
             ;;
         apt)
-            sudo -v || { error "升级需要 sudo 权限"; return 1; }
-            if ! kairo_apt_update; then
-                error "刷新软件源失败"
-                return 1
-            fi
-            installed=$(dpkg-query -W -f='${Version}' "$GO_PACKAGE")
-            candidate=$(apt-cache policy "$GO_PACKAGE" | awk '/Candidate:/ { print $2; exit }')
-            [ -n "$candidate" ] && [ "$candidate" != "(none)" ] || { error "无法获取候选版本"; return 1; }
-            if [ "$installed" = "$candidate" ]; then
-                success "系统包已是最新版本 ($(_go_version))"
-                return 0
-            fi
-            info "$installed → $candidate"
-            read -r -p "  通过 apt 升级 Go? [Y/n]: " confirm
-            [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-            if kairo_apt_upgrade "$GO_PACKAGE"; then
+            if _tool_apt_upgrade "$GO_PACKAGE" "Go"; then
                 _go_detect_channel
                 success "Go 已升级至 $(_go_version)"
-            else
-                error "Go 升级失败"
-                return 1
             fi
             ;;
         *)
@@ -160,23 +142,5 @@ do_upgrade() {
 }
 
 menu() {
-    local choice
-    while true; do
-        clear
-        title "🐹 Go"
-        do_status || true
-        divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
-        divider
-        read -r -p "  请选择: " choice
-        case "$choice" in
-            1) do_install ;;
-            2) do_upgrade ;;
-            0) return ;;
-            *) error "无效选项" ;;
-        esac
-        kairo_pause
-    done
+    _tool_menu "🐹 Go"
 }

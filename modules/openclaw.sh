@@ -16,17 +16,7 @@ _openclaw_update_status() {
 }
 
 _openclaw_run_installer() {
-    local installer rc
-    installer=$(mktemp) || return 1
-    if ! curl --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 -fsSL \
-        "https://openclaw.ai/install.sh" -o "$installer"; then
-        rm -f -- "$installer"
-        return 1
-    fi
-    bash "$installer"
-    rc=$?
-    rm -f -- "$installer"
-    return "$rc"
+    _tool_run_remote_installer "https://openclaw.ai/install.sh"
 }
 
 do_status() {
@@ -95,23 +85,5 @@ do_upgrade() {
 }
 
 menu() {
-    local choice
-    while true; do
-        clear
-        title "🦞 OpenClaw"
-        do_status || true
-        divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
-        divider
-        read -r -p "  请选择: " choice
-        case "$choice" in
-            1) do_install ;;
-            2) do_upgrade ;;
-            0) return ;;
-            *) error "无效选项" ;;
-        esac
-        kairo_pause
-    done
+    _tool_menu "🦞 OpenClaw"
 }

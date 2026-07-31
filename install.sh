@@ -171,13 +171,8 @@ validate_staged_release() {
     bash -n "$bin_file" || return 1
     while IFS= read -r path; do
         case "$path" in
-            *.sh)
-                if [ "$path" = "kairo.sh" ]; then
-                    bash -n "$bin_file" || return 1
-                else
-                    bash -n "${runtime_dir}/${path}" || return 1
-                fi
-                ;;
+            kairo.sh) ;; # 已在上方校验
+            *.sh) bash -n "${runtime_dir}/${path}" || return 1 ;;
         esac
     done < "${STAGE_DIR}/manifest.normalized"
 }

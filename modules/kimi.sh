@@ -93,23 +93,5 @@ do_upgrade() {
 }
 
 menu() {
-    local choice
-    while true; do
-        clear
-        title "🤖 Kimi Code"
-        do_status || true
-        divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
-        divider
-        read -r -p "  请选择: " choice
-        case "$choice" in
-            1) do_install ;;
-            2) do_upgrade ;;
-            0) return ;;
-            *) error "无效选项" ;;
-        esac
-        kairo_pause
-    done
+    _tool_menu "🤖 Kimi Code"
 }

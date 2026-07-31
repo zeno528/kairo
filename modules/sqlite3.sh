@@ -50,51 +50,15 @@ do_install() {
 }
 
 do_upgrade() {
-    local package installed candidate confirm
+    local package
     _sqlite3_exists || { do_install; return $?; }
     package=$(_sqlite3_package)
     [ -n "$package" ] || { error "未识别 SQLite3 的安装渠道，未自动升级"; return 1; }
-    sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if ! kairo_apt_update; then
-        error "刷新软件源失败"
-        return 1
-    fi
-    installed=$(dpkg-query -W -f='${Version}' "$package")
-    candidate=$(apt-cache policy "$package" | awk '/Candidate:/ { print $2; exit }')
-    [ -n "$candidate" ] && [ "$candidate" != "(none)" ] || { error "无法获取候选版本"; return 1; }
-    if [ "$installed" = "$candidate" ]; then
-        success "系统包已是最新版本 ($(_sqlite3_version))"
-        return 0
-    fi
-    info "$installed → $candidate"
-    read -r -p "  通过 apt 升级 SQLite3? [Y/n]: " confirm
-    [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if kairo_apt_upgrade "$package"; then
+    if _tool_apt_upgrade "$package" "SQLite3"; then
         success "SQLite3 已升级至 $(_sqlite3_version)"
-    else
-        error "SQLite3 升级失败"
-        return 1
     fi
 }
 
 menu() {
-    local choice
-    while true; do
-        clear
-        title "🗃️ SQLite3"
-        do_status || true
-        divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
-        divider
-        read -r -p "  请选择: " choice
-        case "$choice" in
-            1) do_install ;;
-            2) do_upgrade ;;
-            0) return ;;
-            *) error "无效选项" ;;
-        esac
-        kairo_pause
-    done
+    _tool_menu "🗃️ SQLite3"
 }

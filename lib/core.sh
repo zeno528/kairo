@@ -59,6 +59,30 @@ divider() {
     echo -e "  ${C_GRAY}${line}${C_RESET}"
 }
 
+# 单工具标准菜单：状态 + 安装/检查升级/返回。
+# 用法: _tool_menu <标题>，工具模块需提供 do_status/do_install/do_upgrade。
+_tool_menu() {
+    local title_text="$1" choice
+    while true; do
+        clear
+        title "$title_text"
+        do_status || true
+        divider
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 安装"
+        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 检查并升级"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        divider
+        read -r -p "  请选择: " choice
+        case "$choice" in
+            1) do_install ;;
+            2) do_upgrade ;;
+            0) return ;;
+            *) error "无效选项" ;;
+        esac
+        kairo_pause
+    done
+}
+
 title() { echo -e "\n  ${C_CYAN}${C_BOLD}── $1 ──${C_RESET}"; }
 info() { echo -e "  ${C_CYAN}ℹ $1${C_RESET}"; }
 success() { echo -e "  ${C_GREEN}✔ $1${C_RESET}"; }
@@ -115,6 +139,33 @@ kairo_apt_upgrade() {
     [ $# -gt 0 ] || return 0
     kairo_apt_update || return $?
     sudo apt-get install -y --only-upgrade "$@"
+}
+
+# apt 渠道单包升级流程：刷新源 → 比对候选版本 → 确认 → 升级。
+# 用法: _tool_apt_upgrade <包名> <显示名>，成功返回 0 并打印提示。
+_tool_apt_upgrade() {
+    local package="$1" display="$2" installed candidate confirm
+    sudo -v || { error "升级需要 sudo 权限"; return 1; }
+    if ! kairo_apt_update; then
+        error "刷新软件源失败"
+        return 1
+    fi
+    installed=$(dpkg-query -W -f='${Version}' "$package" 2>/dev/null)
+    candidate=$(apt-cache policy "$package" | awk '/Candidate:/ { print $2; exit }')
+    [ -n "$candidate" ] && [ "$candidate" != "(none)" ] || { error "无法获取候选版本"; return 1; }
+    if [ "$installed" = "$candidate" ]; then
+        success "系统包已是最新版本 ($installed)"
+        return 0
+    fi
+    info "$installed → $candidate"
+    read -r -p "  通过 apt 升级 ${display}? [Y/n]: " confirm
+    [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
+    if kairo_apt_upgrade "$package"; then
+        return 0
+    else
+        error "${display} 升级失败"
+        return 1
+    fi
 }
 
 _with_spinner() {
@@ -199,6 +250,22 @@ fetch_remote_file() {
     curl --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 1 \
         -fsSL -H "Accept: application/vnd.github.raw+json" \
         "${CONTENTS_URL}/${path}?ref=${KAIRO_BRANCH}&t=$(date +%s)"
+}
+
+# 下载远端安装脚本到临时文件并执行，结束后清理。
+# 用法: _tool_run_remote_installer <URL> [解释器 bash|sh]
+_tool_run_remote_installer() {
+    local url="$1" interpreter="${2:-bash}" installer rc
+    installer=$(mktemp) || return 1
+    if ! curl --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 -fsSL \
+        "$url" -o "$installer"; then
+        rm -f -- "$installer"
+        return 1
+    fi
+    "$interpreter" "$installer"
+    rc=$?
+    rm -f -- "$installer"
+    return "$rc"
 }
 
 kairo_pause() {

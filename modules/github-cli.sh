@@ -121,35 +121,13 @@ do_install() {
 }
 
 do_upgrade() {
-    local installed candidate confirm
     _github_cli_exists || { do_install; return $?; }
     if ! _github_cli_via_apt; then
         error "当前 gh 并非由 apt 管理，未自动替换: $(command -v gh)"
         return 1
     fi
-    sudo -v || { error "升级需要 sudo 权限"; return 1; }
-    if ! kairo_apt_update; then
-        error "刷新软件源失败"
-        return 1
-    fi
-    installed=$(dpkg-query -W -f='${Version}' gh 2>/dev/null)
-    candidate=$(apt-cache policy gh | awk '/Candidate:/ { print $2; exit }')
-    if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
-        error "无法获取候选版本"
-        return 1
-    fi
-    if [ "$installed" = "$candidate" ]; then
-        success "已是最新版本 ($(_github_cli_version))"
-        return 0
-    fi
-    info "$installed → $candidate"
-    read -r -p "  升级 GitHub CLI? [Y/n]: " confirm
-    [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    if sudo apt-get install --only-upgrade -y gh; then
+    if _tool_apt_upgrade gh "GitHub CLI"; then
         success "GitHub CLI 已升级至 $(_github_cli_version)"
-    else
-        error "GitHub CLI 升级失败"
-        return 1
     fi
 }
 
