@@ -1,5 +1,13 @@
 # 更新日志
 
+## v1.1.99 (2026-07-31)
+- 🐛 fix(docker): 镜像清理缺 -a 导致只清悬空镜像
+- 🎨 refactor(docker): 重构 Docker 菜单布局，双列+底栏，UX 更清晰
+- 🎨 refactor(docker): 重构状态缓存渲染，版本信息精简紧凑
+- 🎨 refactor(docker): 资源总览列头 名称→镜像/容器，大小内联到镜像名
+- 🔥 chore(docker): 移除 [R] 从镜像运行功能（无实用价值）
+- 🎨 refactor(docker): 镜像列表增加列标题，图例独立行，列宽收紧
+
 ## v1.1.98 (2026-07-31)
 - 👷 ci(lint): 更新 GitHub Actions 与 Bats 版本
 
