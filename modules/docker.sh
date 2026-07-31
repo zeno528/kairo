@@ -840,26 +840,28 @@ _render_status_cache() {
 # 容器操作子菜单（可被总览视图复用）
 _container_ops_menu() {
     local name="$1" choice
-    echo ""
-    echo "  ${C_BOLD}${name}${C_RESET}"
-    _menu_actions 18 "[1] 启动"
-    _menu_actions 18 "[2] 停止"
-    _menu_actions 18 "[3] 重启"
-    _menu_actions 18 "[4] 查看日志"
-    _menu_actions 18 "[5] 进入终端"
-    _menu_actions 18 "[6] 删除容器"
-    _menu_actions 18 "[0] 返回"
-    _menu_actions 18 "[H] 返回主菜单"
-    read -r -p "  选择操作: " choice
-    case "$choice" in
-        1) do_start "$name" ;;
-        2) do_stop "$name" ;;
-        3) do_restart "$name" ;;
-        4) do_logs "$name" ;;
-        5) do_exec "$name" ;;
-        6) do_remove "$name" ;;
-        [Hh]) DOCKER_GO_HOME=1; return ;;
-        0) return ;;
-        *) error "无效选项"; sleep 1 ;;
-    esac
+    while true; do
+        echo ""
+        echo "  ${C_BOLD}${name}${C_RESET}"
+        _menu_actions 18 "[1] 启动"
+        _menu_actions 18 "[2] 停止"
+        _menu_actions 18 "[3] 重启"
+        _menu_actions 18 "[4] 查看日志"
+        _menu_actions 18 "[5] 进入终端"
+        _menu_actions 18 "[6] 删除容器"
+        _menu_actions 18 "[0] 返回"
+        _menu_actions 18 "[H] 返回主菜单"
+        read -r -p "  选择操作: " choice
+        case "$choice" in
+            1) do_start "$name"; kairo_pause ;;
+            2) do_stop "$name"; kairo_pause ;;
+            3) do_restart "$name"; kairo_pause ;;
+            4) do_logs "$name"; kairo_pause ;;
+            5) do_exec "$name" ;;
+            6) do_remove "$name"; return ;;
+            [Hh]) DOCKER_GO_HOME=1; return ;;
+            0) return ;;
+            *) error "无效选项"; sleep 1 ;;
+        esac
+    done
 }
