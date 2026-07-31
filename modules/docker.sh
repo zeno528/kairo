@@ -432,15 +432,27 @@ do_images() {
 
         imgs=()
         echo ""
-        echo -e "  ${C_BOLD}镜像列表${C_RESET} （${C_GREEN}●${C_RESET} = 当前使用容器）"
+        echo -e "  ${C_BOLD}镜像列表${C_RESET}"
+        printf '          %s  %s  %s\n' \
+            "$(_pad_right "${C_BOLD}镜像名称${C_RESET}" 24)" \
+            "$(_pad_right "${C_BOLD}大小${C_RESET}" 8)" \
+            "${C_BOLD}创建时间${C_RESET}"
         i=1
         while IFS=$'\t' read -r repo_tag size created; do
             imgs+=("$repo_tag")
             created="${created#"${created%%[![:space:]]*}"}"
             if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
-                printf "  ${C_GREEN}●${C_RESET} [%2d] %-40s  %-8s  %s\n" "$i" "$repo_tag" "$size" "$created"
+                printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
+                    "$i" \
+                    "$(_pad_right "$repo_tag" 24)" \
+                    "$(_pad_right "$size" 8)" \
+                    "$created"
             else
-                printf '    [%2d] %-40s  %-8s  %s\n' "$i" "$repo_tag" "$size" "$created"
+                printf '    [%2d] %s  %s  %s\n' \
+                    "$i" \
+                    "$(_pad_right "$repo_tag" 24)" \
+                    "$(_pad_right "$size" 8)" \
+                    "$created"
             fi
             ((i++))
         done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}' 2>/dev/null)
@@ -450,6 +462,8 @@ do_images() {
             kairo_pause
             return
         fi
+        echo ""
+        echo -e "  ${C_GREEN}●${C_RESET} = 运行中"
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除镜像"
         _menu_actions 20 "${C_BOLD}[p]${C_RESET} 清理未使用的镜像"
@@ -462,7 +476,7 @@ do_images() {
             [Hh]) DOCKER_GO_HOME=1; return ;;
             0) return ;;
             [Pp])
-                if docker image prune -f 2>&1; then
+                if docker image prune -a -f 2>&1; then
                     success "清理完成"
                 else
                     error "清理失败"
@@ -676,7 +690,7 @@ do_overview() {
 
         # 列标题
         if [ "${#IMAGE_LIST[@]}" -gt 0 ]; then
-            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}名称${C_RESET}" 32)" "$(_pad_right "${C_BOLD}状态${C_RESET}" 16)" "${C_BOLD}端口${C_RESET}"
+            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}镜像/容器${C_RESET}" 32)" "$(_pad_right "${C_BOLD}状态${C_RESET}" 16)" "${C_BOLD}端口${C_RESET}"
             echo ""
         fi
 
@@ -687,7 +701,7 @@ do_overview() {
             else
                 i_mark=" "
             fi
-            printf "  %s  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_tag}${C_RESET}" 38)" "${img_size}"
+            printf "  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_tag}${C_RESET} ${C_DIM}(${img_size})${C_RESET}" 44)"
 
             # 显示该镜像下的容器
             local has_ct=0 total_ct=0
@@ -723,7 +737,6 @@ do_overview() {
 
         divider
         _menu_actions 24 "${C_BOLD}[1-${#CONTAINER_LIST[@]}]${C_RESET} 管理容器"
-        _menu_actions 24 "${C_BOLD}[R]${C_RESET} 从镜像运行"
         _menu_actions 24 "${C_BOLD}[I]${C_RESET} 镜像管理"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
         divider
@@ -732,24 +745,6 @@ do_overview() {
 
         case "$choice" in
             0) return ;;
-            [Rr])
-                echo ""
-                read -r -p "  镜像名: " img_tag
-                [ -z "$img_tag" ] && { info "已取消"; sleep 1; continue; }
-                docker image inspect "$img_tag" &>/dev/null || { error "镜像不存在: $img_tag"; sleep 1; continue; }
-                read -r -p "  容器名 (回车随机): " c_name
-                echo ""
-                local run_args=(-d)
-                [ -n "$c_name" ] && run_args+=(--name "$c_name")
-                run_args+=("$img_tag")
-                local c_id
-                if c_id=$(docker run "${run_args[@]}" 2>/dev/null); then
-                    success "容器已启动: ${c_name:-${c_id:0:12}}"
-                else
-                    error "启动失败"
-                fi
-                sleep 1
-                ;;
             [Ii]) do_images; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
             *)
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#CONTAINER_LIST[@]}" ]; then
@@ -790,27 +785,22 @@ menu() {
         fi
         echo "$status_cache"
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 资源总览"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 资源监控"
-        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Compose 项目"
-        _menu_actions 20 "${C_BOLD}[4]${C_RESET} 系统清理"
-        _menu_actions 20 "${C_BOLD}[X]${C_RESET} 重置环境"
-        _menu_actions 20 "${C_BOLD}[U]${C_RESET} 检查升级"
-        _menu_actions 20 "${C_BOLD}[D]${C_RESET} 卸载 Docker"
-        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新状态"
-        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 资源总览" "${C_BOLD}[4]${C_RESET} 资源监控"
+        _menu_actions 24 "${C_BOLD}[2]${C_RESET} Compose 项目" "${C_BOLD}[R]${C_RESET} 刷新状态"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} 系统清理" "${C_BOLD}[X]${C_RESET} 重置环境"
         divider
+        _menu_actions 19 "${C_BOLD}[U]${C_RESET} 检查升级" "${C_BOLD}[D]${C_RESET} 卸载 Docker" "${C_BOLD}[0]${C_RESET} 返回主菜单"
         echo ""
         read -r -p "  请选择: " choice
         case "$choice" in
             0) return ;;
-            [Rr]) status_cache=""; continue ;;
             1) do_overview; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
-            2) do_stats; echo ""; kairo_pause ;;
-            3) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
-            4) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
-            [Xx]) do_reset; status_cache=""; kairo_pause ;;
+            2) do_compose; [ "$DOCKER_GO_HOME" -eq 1 ] && return ;;
+            3) do_cleanup; status_cache=""; echo ""; kairo_pause ;;
+            4) do_stats; echo ""; kairo_pause ;;
             [Uu]) do_upgrade; status_cache=""; kairo_pause ;;
+            [Rr]) status_cache=""; continue ;;
+            [Xx]) do_reset; status_cache=""; kairo_pause ;;
             [Dd]) do_uninstall; status_cache=""; kairo_pause ;;
             *) error "无效选项"; sleep 1 ;;
         esac
@@ -820,12 +810,13 @@ menu() {
 # 缓存版状态渲染：收集输出为字符串，避免每次循环都查 docker info
 _render_status_cache() {
     echo ""
-    docker --version 2>/dev/null
+    local docker_ver compose_ver compose_line=""
+    docker_ver=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
     if docker compose version &>/dev/null; then
-        docker compose version 2>/dev/null | head -1
+        compose_ver=$(docker compose version 2>/dev/null | sed 's/.*version v\?//; s/[ ,].*//')
+        compose_line="${C_DIM}Compose ${compose_ver}${C_RESET}"
     fi
-    echo ""
-    # 用 docker ps 做轻量 daemon 探活，比 docker info 快得多
+
     if ! docker ps &>/dev/null; then
         echo -e "  ${C_YELLOW}⚠ Docker 服务未运行或当前用户无权限${C_RESET}"
         return
@@ -833,8 +824,14 @@ _render_status_cache() {
     local containers images
     containers=$(docker ps -aq 2>/dev/null | wc -l)
     images=$(docker images -q 2>/dev/null | wc -l)
-    printf '  容器数    %s\n' "$containers"
-    printf '  镜像数    %s\n' "$images"
+
+    printf '  %s %s\n' \
+        "$(_pad_right "容器 ${C_CYAN}${containers}${C_RESET}" 18)" \
+        "镜像 ${C_CYAN}${images}${C_RESET}"
+    printf '  %s %s\n' \
+        "$(_pad_right "${C_DIM}Docker ${docker_ver}${C_RESET}" 18)" \
+        "${compose_line}"
+    echo ""
 }
 
 # 容器操作子菜单（可被总览视图复用）
