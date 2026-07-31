@@ -111,7 +111,7 @@ wait_download_batch() {
     for index in "${!DOWNLOAD_PIDS[@]}"; do
         if wait "${DOWNLOAD_PIDS[$index]}"; then
             COUNT=$((COUNT + 1))
-            printf "\r  下载: %-25s [%d/%d]" "${DOWNLOAD_PATHS[$index]}" "$COUNT" "$TOTAL"
+            printf "\r\033[K>>> 下载 [%d/%d] %s" "$COUNT" "$TOTAL" "${DOWNLOAD_PATHS[$index]}"
         else
             echo ""
             echo ">>> 下载失败: ${DOWNLOAD_PATHS[$index]}，未修改现有安装" >&2
@@ -311,4 +311,4 @@ else
 fi
 echo -e ">>> 🎉 \033[1mKairo\033[0m ${done_msg}！\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
-echo -e "  \033[1m💡 输入 \033[1;36mka\033[0m\033[1m 进入主菜单\033[0m"
+echo -e ">>> \033[1m💡 输入 \033[1;36mka\033[0m\033[1m 进入主菜单\033[0m"

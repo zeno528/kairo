@@ -78,15 +78,15 @@ do_update() {
         return 1
     fi
     if [ "$VERSION" = "$remote_ver" ]; then
-        success "已是最新版本 v${VERSION}"
+        echo -e "  ${C_GREEN}>>> 已是最新版本 v${VERSION}${C_RESET}"
         return 0
     fi
-    warn "发现新版本 v${VERSION} → v${remote_ver}"
+    echo -e "  ${C_YELLOW}>>> 发现新版本 v${VERSION} → v${remote_ver}${C_RESET}"
     if [ "$(id -u)" -ne 0 ] && ! sudo -v; then
         error "更新需要 sudo 权限"
         return 1
     fi
-    echo -e "  ${C_CYAN}🚀 正在更新，请稍候...${C_RESET}"
+    echo -e "  ${C_CYAN}>>> 正在更新 Kairo，请稍候...${C_RESET}"
     kairo_run_installer
 }
 
