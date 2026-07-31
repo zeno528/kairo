@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.1.98 (2026-07-31)
+- 👷 ci(lint): 更新 GitHub Actions 与 Bats 版本
+
 ## v1.1.97 (2026-07-31)
 - ✨ feat(docker): 新增 Compose 项目自动发现并重构清理逻辑
 
