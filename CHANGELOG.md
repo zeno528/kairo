@@ -1,5 +1,11 @@
 # 更新日志
 
+## v1.2.5 (2026-07-31)
+- 🎨 style(kairo): 重构启动横幅 K logo 与信息布局
+  - K 字形重绘为标准 V 形双笔，竖线亮青、斜线暗青渐变层次
+  - 右侧信息与 logo 等高排布：标题+版本号 / 副标题 / 启动命令与仓库链接
+  - 版本号亮色强调，ka 命令加粗标注，仓库链接完整 URL 悬停可点击
+
 ## v1.2.4 (2026-07-31)
 - 🔧 refactor(modules): 抽取工具菜单与 apt 升级共享逻辑
   - lib/core.sh 新增 _tool_menu / _tool_apt_upgrade / _tool_run_remote_installer 三个共享辅助

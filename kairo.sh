@@ -36,37 +36,30 @@ trap kairo_cleanup EXIT
 trap 'kairo_cleanup; exit 130' INT TERM
 
 show_banner() {
-    local kw idx
-    # 2 行 K：▀▄█ 把每列拆成上下两像素，2 行字符 = 4 行像素，斜线才画得出来。
+    local idx
+    # 3 行 K：竖线 █ + V 形双斜线（顶点偏上、右下笔略长，接近字体比例），4 列宽。
     local -a logo_lines=(
-        '█▄▀'
-        '█ ▚ '
+        '█ ▄▀'
+        '█▀▄ '
+        '█ ▀▄'
+    )
+    # 仓库链接：完整 URL（带 https://）且不带颜色包裹，终端 URL 自动检测才能识别为可点击链接。
+    # 右侧 3 行与 logo 等高：标题+版本 / 副标题 / 启动命令与仓库。
+    local -a banner_text=(
+        "${C_BOLD}${C_CYAN}Kairo${C_RESET} ${C_BOLD}v${VERSION}${C_RESET}"
+        "${C_DIM}轻量级服务器运维工具箱${C_RESET}"
+        "${C_BOLD}ka${C_RESET} 启动菜单 · https://github.com/zeno528/kairo"
     )
 
     for idx in "${!logo_lines[@]}"; do
-        local colored_title=""
-        if [ "$idx" -eq 0 ]; then
-            colored_title="${C_BOLD}${C_CYAN}Kairo${C_RESET} 运维工具箱"
-        elif [ "$idx" -eq 1 ]; then
-            colored_title="${C_DIM}轻量级服务器运维工具箱${C_RESET}"
-        fi
-        printf '  %s %s\n' \
-            "${C_CYAN}${C_BOLD}${logo_lines[$idx]}${C_RESET}" \
-            "$colored_title"
+        # 竖线亮青、斜线暗青，K 的立体层次。
+        printf '  %s%s %s\n' \
+            "${C_CYAN}${C_BOLD}${logo_lines[$idx]:0:1}${C_RESET}" \
+            "${C_DIM}${C_CYAN}${logo_lines[$idx]:1}${C_RESET}" \
+            "${banner_text[$idx]}"
     done
 
     echo ""
-
-    local -a field_keys=("当前版本:" "仓库主页:" "启动命令:")
-    local -a field_values=("v${VERSION}" "https://github.com/zeno528/kairo" "ka")
-    local kw_max=0
-    for idx in "${!field_keys[@]}"; do
-        kw=$(_str_width "${field_keys[$idx]}")
-        [ "$kw" -gt "$kw_max" ] && kw_max=$kw
-    done
-    for idx in "${!field_keys[@]}"; do
-        echo -e "  ${C_BOLD}${C_CYAN}$(_pad_right "${field_keys[$idx]}" "$kw_max")${C_RESET} ${field_values[$idx]}"
-    done
 }
 
 kairo_run_installer() {
