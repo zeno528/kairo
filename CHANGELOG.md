@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.2.1 (2026-07-31)
+- 🐛 fix(registry): 移除 crontab 不存在的 remove action
+
 ## v1.2.0 (2026-07-31)
 - ✨ feat(crontab): 全面重构定时任务模块，UX 完全重做
 - ✨ feat(crontab): 新增引导式任务创建，无需记忆 cron 语法
