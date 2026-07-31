@@ -31,7 +31,13 @@ do_list() {
         [ "$i" -lt 20 ] || break
         IFS=$'\t' read -r svc state <<< "${service_rows[$i]}"
         SERVICE_ITEMS+=("$svc")
-        printf "  %s %s %s\n" "$(_pad_right "[$((i + 1))]" 5)" "$(_pad_right "$svc" "$svc_width")" "$state"
+        local dot=""
+        case "$state" in
+            active) dot="${C_GREEN}●${C_RESET} " ;;
+            inactive) dot="${C_GRAY}○${C_RESET} " ;;
+            failed) dot="${C_RED}✘${C_RESET} " ;;
+        esac
+        printf "  %s %s %s\n" "$(_pad_right "[$((i + 1))]" 5)" "$(_pad_right "$svc" "$svc_width")" "${dot}${state}"
     done
     echo ""
     info "共 $total 个已加载服务（显示前 20 个）"
