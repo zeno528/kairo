@@ -540,6 +540,27 @@ setup() {
     [[ ! "$output" =~ "api" ]]
 }
 
+@test "内存排行可在页面内刷新" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/port-proc.sh"
+        count_file=$(mktemp)
+        clear() { :; }
+        title() { :; }
+        divider() { :; }
+        _menu_actions() { printf "%s\\n" "$2"; }
+        ss() { :; }
+        ps() {
+            printf x >> "$count_file"
+            printf "%s\\n" "101 root 4096 0.1 init"
+        }
+        printf "m\\nr\\n0\\n0\\n" | menu
+        [ "$(wc -c < "$count_file")" -eq 2 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "刷新排行" ]]
+}
+
 @test "CPU 信息只调用一次 lscpu" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

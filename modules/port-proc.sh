@@ -176,22 +176,27 @@ menu() {
             [Pp]) read -r -p "  输入端口号: " port_filter; kairo_is_port "$port_filter" || { error "端口必须是 1-65535"; port_filter=""; sleep 1; }; name_filter="" ;;
             [Nn]) read -r -p "  输入进程名称: " name_filter; port_filter="" ;;
             [Mm])
-                clear
-                title "📊 内存占用排行"
-                do_list_memory
-                divider
-                _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
-                _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回端口/任务管理"
-                divider
-                echo ""
-                read -r -p "  选择进程或操作: " choice
-                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
-                    pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
-                    do_kill_process "$pid"
-                    echo ""; kairo_pause "按 Enter 返回内存排行..."
-                elif [ "$choice" != "0" ]; then
-                    error "无效选项"; sleep 1
-                fi
+                while true; do
+                    clear
+                    title "📊 内存占用排行"
+                    do_list_memory
+                    divider
+                    _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
+                    _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新排行"
+                    _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回端口/任务管理"
+                    divider
+                    echo ""
+                    read -r -p "  选择进程或操作: " choice
+                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
+                        pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
+                        do_kill_process "$pid"
+                        echo ""; kairo_pause "按 Enter 返回内存排行..."
+                    elif [ "$choice" = "0" ]; then
+                        break
+                    elif [[ ! "$choice" =~ ^[Rr]$ ]]; then
+                        error "无效选项"; sleep 1
+                    fi
+                done
                 ;;
             [Rr]) port_filter=""; name_filter="" ;;
             *)
