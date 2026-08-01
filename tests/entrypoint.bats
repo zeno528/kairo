@@ -497,6 +497,27 @@ setup() {
     [[ "$output" =~ "强制终止失败" ]]
 }
 
+@test "内存排行终止进程默认回车确认" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/port-proc.sh"
+        check_count=0
+        ps() { printf "123 demo process\\n"; }
+        sleep() { :; }
+        kill() {
+            if [ "$1" = -0 ]; then
+                check_count=$((check_count + 1))
+                [ "$check_count" -eq 1 ]
+            else
+                return 0
+            fi
+        }
+        printf "\\n" | do_kill_process 123 yes
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已发送 SIGTERM" ]]
+}
+
 @test "端口列表缓存同一 PID 的进程名" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

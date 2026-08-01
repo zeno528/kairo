@@ -118,7 +118,7 @@ do_list_memory() {
 }
 
 do_kill_process() {
-    local pid="${1:-}"
+    local pid="${1:-}" default_yes="${2:-no}"
     echo ""
     [ -n "$pid" ] || read -r -p "  输入 PID: " pid
     [ -z "$pid" ] && info "已取消" && return
@@ -133,26 +133,28 @@ do_kill_process() {
     echo ""
     info "进程信息: $proc_info"
     echo ""
-    read -r -p "  确认终止? [y/N]: " confirm
-    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        if kill "$pid" 2>/dev/null; then
-            success "已发送 SIGTERM 到进程 $pid"
-            sleep 3
-            if kill -0 "$pid" 2>/dev/null; then
-                warn "进程未退出，发送 SIGKILL..."
-                if kill -9 "$pid" 2>/dev/null; then
-                    success "已强制终止"
-                else
-                    error "强制终止失败"
-                    return 1
-                fi
+    if [ "$default_yes" = "yes" ]; then
+        read -r -p "  确认终止? [Y/n]: " confirm
+        [[ "$confirm" =~ ^[Nn]$ ]] && { info "已取消"; return; }
+    else
+        read -r -p "  确认终止? [y/N]: " confirm
+        [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return; }
+    fi
+    if kill "$pid" 2>/dev/null; then
+        success "已发送 SIGTERM 到进程 $pid"
+        sleep 3
+        if kill -0 "$pid" 2>/dev/null; then
+            warn "进程未退出，发送 SIGKILL..."
+            if kill -9 "$pid" 2>/dev/null; then
+                success "已强制终止"
+            else
+                error "强制终止失败"
+                return 1
             fi
-        else
-            error "无法终止进程 $pid（权限不足？）"
-            return 1
         fi
     else
-        info "已取消"
+        error "无法终止进程 $pid（权限不足？）"
+        return 1
     fi
 }
 
@@ -189,7 +191,7 @@ menu() {
                     read -r -p "  选择进程或操作: " choice
                     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
                         pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
-                        do_kill_process "$pid"
+                        do_kill_process "$pid" yes
                         echo ""; kairo_pause "按 Enter 返回内存排行..."
                     elif [ "$choice" = "0" ]; then
                         break
