@@ -73,9 +73,25 @@ do_find_by_name() {
 
 do_list_memory() {
     local limit="${1:-15}" output line pid user rss pmem name memory_mib i=0
+    local mem_total mem_available mem_used mem_percent
     PORT_PROCESS_PIDS=()
     kairo_is_positive_integer "$limit" || { error "显示数量必须是正整数"; return 1; }
     command -v ps &>/dev/null || { error "未找到 ps 命令"; return 1; }
+
+    if [ -r /proc/meminfo ]; then
+        read -r mem_total mem_available < <(awk '
+            /^MemTotal:/ { total = $2 }
+            /^MemAvailable:/ { available = $2 }
+            END { print total, available }
+        ' /proc/meminfo)
+        if [[ "$mem_total" =~ ^[0-9]+$ && "$mem_available" =~ ^[0-9]+$ ]] && [ "$mem_total" -gt 0 ]; then
+            mem_used=$((mem_total - mem_available))
+            mem_percent=$((mem_used * 100 / mem_total))
+            echo ""
+            printf "  ${C_BOLD}系统内存总览${C_RESET}  总计: %s MiB  已用: %s MiB (%s%%)  可用: %s MiB\n" \
+                "$((mem_total / 1024))" "$((mem_used / 1024))" "$mem_percent" "$((mem_available / 1024))"
+        fi
+    fi
 
     if ! output=$(ps -eo pid=,user=,rss=,pmem=,comm= --sort=-rss 2>/dev/null); then
         error "无法读取进程内存占用"

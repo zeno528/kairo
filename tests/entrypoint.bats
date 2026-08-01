@@ -534,6 +534,7 @@ setup() {
         [ "${PORT_PROCESS_PIDS[0]}" = 101 ]
     '
     [ "$status" -eq 0 ]
+    [[ "$output" =~ "系统内存总览" ]]
     [[ "$output" =~ "内存占用 Top 1" ]]
     [[ "$output" =~ "4 MiB" ]]
     [[ ! "$output" =~ "api" ]]
