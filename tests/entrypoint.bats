@@ -520,6 +520,25 @@ setup() {
     [[ "$output" =~ "9000" ]]
 }
 
+@test "内存排行按条目缓存 PID 并限制显示数量" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/port-proc.sh"
+        ps() {
+            printf "%s\\n" \
+                "101 root 4096 0.1 init" \
+                "202 app 2097152 25.0 api"
+        }
+        do_list_memory 1
+        [ "${#PORT_PROCESS_PIDS[@]}" -eq 1 ]
+        [ "${PORT_PROCESS_PIDS[0]}" = 101 ]
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "内存占用 Top 1" ]]
+    [[ "$output" =~ "4 MiB" ]]
+    [[ ! "$output" =~ "api" ]]
+}
+
 @test "CPU 信息只调用一次 lscpu" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

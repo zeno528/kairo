@@ -71,6 +71,36 @@ do_find_by_name() {
     ps aux | grep -i "$name" | grep -v grep || warn "未找到进程: $name"
 }
 
+do_list_memory() {
+    local limit="${1:-15}" output line pid user rss pmem name memory_mib i=0
+    PORT_PROCESS_PIDS=()
+    kairo_is_positive_integer "$limit" || { error "显示数量必须是正整数"; return 1; }
+    command -v ps &>/dev/null || { error "未找到 ps 命令"; return 1; }
+
+    if ! output=$(ps -eo pid=,user=,rss=,pmem=,comm= --sort=-rss 2>/dev/null); then
+        error "无法读取进程内存占用"
+        return 1
+    fi
+
+    echo ""
+    echo -e "  ${C_BOLD}内存占用 Top ${limit}${C_RESET}"
+    printf "  ${C_DIM}%s %s %s %s %s %s${C_RESET}\n" \
+        "$(_pad_right "编号" 6)" "$(_pad_right "PID" 8)" "$(_pad_right "内存" 10)" \
+        "$(_pad_right "占比" 8)" "$(_pad_right "用户" 12)" "进程"
+    while IFS= read -r line; do
+        read -r pid user rss pmem name <<< "$line"
+        [[ "$pid" =~ ^[0-9]+$ && "$rss" =~ ^[0-9]+$ ]] || continue
+        memory_mib=$((rss / 1024))
+        i=$((i + 1))
+        PORT_PROCESS_PIDS+=("$pid")
+        printf "  %s %s %s %s %s %s\n" \
+            "$(_pad_right "[$i]" 6)" "$(_pad_right "$pid" 8)" "$(_pad_right "${memory_mib} MiB" 10)" \
+            "$(_pad_right "${pmem}%" 8)" "$(_pad_right "$user" 12)" "$name"
+        [ "$i" -ge "$limit" ] && break
+    done <<< "$output"
+    [ "$i" -eq 0 ] && warn "未找到可读取内存的进程"
+}
+
 do_kill_process() {
     local pid="${1:-}"
     echo ""
@@ -114,12 +144,13 @@ menu() {
     local choice port_filter="" name_filter="" pid
     while true; do
         clear
-        title "📡 端口/进程管理"
+        title "📡 端口/任务管理"
         do_listen_ports "$port_filter" "$name_filter"
         divider
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
         _menu_actions 20 "${C_BOLD}[P]${C_RESET} 按端口筛选"
         _menu_actions 20 "${C_BOLD}[N]${C_RESET} 按名称筛选"
+        _menu_actions 20 "${C_BOLD}[M]${C_RESET} 内存占用排行"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 清除筛选"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
@@ -128,6 +159,24 @@ menu() {
         case "$choice" in
             [Pp]) read -r -p "  输入端口号: " port_filter; kairo_is_port "$port_filter" || { error "端口必须是 1-65535"; port_filter=""; sleep 1; }; name_filter="" ;;
             [Nn]) read -r -p "  输入进程名称: " name_filter; port_filter="" ;;
+            [Mm])
+                clear
+                title "📊 内存占用排行"
+                do_list_memory
+                divider
+                _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
+                _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回端口/任务管理"
+                divider
+                echo ""
+                read -r -p "  选择进程或操作: " choice
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
+                    pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
+                    do_kill_process "$pid"
+                    echo ""; kairo_pause "按 Enter 返回内存排行..."
+                elif [ "$choice" != "0" ]; then
+                    error "无效选项"; sleep 1
+                fi
+                ;;
             [Rr]) port_filter=""; name_filter="" ;;
             *)
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
