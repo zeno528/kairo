@@ -129,6 +129,8 @@
         docker() {
             case "$1" in
                 info) return 0 ;;
+                ps) printf "running-container\\n" ;;
+                inspect) printf "sha256:one\\n" ;;
                 images) printf "example/image:very-long-tag\\tsha256:one\\t122MB\\t22 hours ago\\nexample/image:short\\tsha256:two\\t127MB\\t6 weeks ago\\n" ;;
             esac
         }
@@ -136,11 +138,16 @@
     '
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *"状态  编号  镜像名称"* ]]
+    [[ "$output" == *"   ●"*"[1]"* ]]
+    [[ "$output" != *"[ 1]"* ]]
     long_line=$(printf '%s\n' "$output" | grep 'example/image:very-long-tag')
     short_line=$(printf '%s\n' "$output" | grep 'example/image:short')
     long_prefix=${long_line%%122MB*}
     short_prefix=${short_line%%127MB*}
-    [ "${#long_prefix}" -eq "${#short_prefix}" ]
+    long_width=$(printf '%s' "$long_prefix" | wc -L | tr -d '[:space:]')
+    short_width=$(printf '%s' "$short_prefix" | wc -L | tr -d '[:space:]')
+    [ "$long_width" -eq "$short_width" ]
 }
 
 @test "已停止的哪吒 Agent 菜单只显示启动" {

@@ -537,7 +537,7 @@ _compose_switch_version() {
 
 do_images() {
     _check_docker || return
-    local choice imgs=() img_ids=() img_displays=() img_sizes=() img_created=() img_id repo_tag repo_tag_display size created i container image_id name_width display_width
+    local choice imgs=() img_ids=() img_displays=() img_sizes=() img_created=() img_id repo_tag repo_tag_display size created i container image_id name_width index_width display_width status_cell
     local -A USED_IMAGES IMAGE_CONTAINER
     while true; do
         # 收集正在被容器使用的镜像
@@ -575,9 +575,13 @@ do_images() {
         fi
 
         name_width=$((name_width + 2))
+        index_width=$(_str_width "[${#imgs[@]}]")
+        [ "$index_width" -lt 4 ] && index_width=4
         echo ""
         echo -e "  ${C_BOLD}镜像列表${C_RESET}"
-        printf '          %s  %s  %s\n' \
+        printf '  %s  %s  %s  %s  %s\n' \
+            "$(_pad_right "${C_BOLD}状态${C_RESET}" 4)" \
+            "$(_pad_right "${C_BOLD}编号${C_RESET}" "$index_width")" \
             "$(_pad_right "${C_BOLD}镜像名称${C_RESET}" "$name_width")" \
             "$(_pad_right "${C_BOLD}大小${C_RESET}" 8)" \
             "${C_BOLD}创建时间${C_RESET}"
@@ -587,18 +591,16 @@ do_images() {
             size="${img_sizes[$i]}"
             created="${img_created[$i]}"
             if [ -n "${USED_IMAGES[${img_ids[$i]}]:-}" ]; then
-                printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
-                    "$((i + 1))" \
-                    "$(_pad_right "$repo_tag_display" "$name_width")" \
-                    "$(_pad_right "$size" 8)" \
-                    "$created"
+                status_cell=$(_pad_right " ${C_GREEN}●${C_RESET}" 4)
             else
-                printf '    [%2d] %s  %s  %s\n' \
-                    "$((i + 1))" \
-                    "$(_pad_right "$repo_tag_display" "$name_width")" \
-                    "$(_pad_right "$size" 8)" \
-                    "$created"
+                status_cell="    "
             fi
+            printf '  %s  %s  %s  %s  %s\n' \
+                "$status_cell" \
+                "$(_pad_right "[$((i + 1))]" "$index_width")" \
+                "$(_pad_right "$repo_tag_display" "$name_width")" \
+                "$(_pad_right "$size" 8)" \
+                "$created"
         done
         echo ""
         echo -e "  ${C_GREEN}●${C_RESET} = 运行中"
