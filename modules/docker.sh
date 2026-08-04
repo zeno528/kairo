@@ -368,7 +368,7 @@ do_compose() {
             ((i++))
         done
         echo ""
-        _menu_actions 24 "${C_BOLD}[编号]${C_RESET} 选择项目"
+        _menu_actions 24 "${C_BOLD}$(kairo_menu_range "${#projects[@]}" "选择项目")${C_RESET}"
         _menu_actions 24 "${C_BOLD}[M]${C_RESET} 手动输入目录"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回上级"
         echo ""
@@ -572,7 +572,7 @@ do_images() {
         echo ""
         echo -e "  ${C_GREEN}●${C_RESET} = 运行中"
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除镜像"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#imgs[@]}" "删除镜像")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[p]${C_RESET} 清理未使用的镜像"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
         _menu_actions 20 "${C_BOLD}[00]${C_RESET} 返回主菜单"
@@ -864,7 +864,7 @@ do_overview() {
         fi
 
         divider
-        _menu_actions 24 "${C_BOLD}[1-${#CONTAINER_LIST[@]}]${C_RESET} 管理容器"
+        _menu_actions 24 "${C_BOLD}$(kairo_menu_range "${#CONTAINER_LIST[@]}" "管理容器")${C_RESET}"
         _menu_actions 24 "${C_BOLD}[I]${C_RESET} 镜像管理"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回"
         divider

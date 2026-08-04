@@ -144,7 +144,7 @@ menu() {
         title "🛡 防火墙管理"
         do_status
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除规则"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$(ufw status numbered 2>/dev/null | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')" "删除规则")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[O]${C_RESET} 开放端口"
         _menu_actions 20 "${C_BOLD}[C]${C_RESET} 按端口关闭"
         _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单"

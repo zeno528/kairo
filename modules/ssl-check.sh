@@ -269,13 +269,15 @@ do_verify_chain() {
 }
 
 menu() {
-    local choice certs cert_path
+    local choice cert_path
+    local -a certs=()
     while true; do
         clear
         title "🔒 SSL 证书管理"
+        mapfile -t certs < <(_local_cert_files)
         _do_cert_overview
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 查看证书详情"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#certs[@]}" "查看证书详情")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[C]${C_RESET} 检查远程域名证书"
         _menu_actions 20 "${C_BOLD}[V]${C_RESET} 验证证书链完整性"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
@@ -287,7 +289,6 @@ menu() {
             [Cc]) do_remote_check; echo ""; kairo_pause "按 Enter 返回..." ;;
             [Vv]) do_verify_chain; echo ""; kairo_pause "按 Enter 返回..." ;;
             *)
-                mapfile -t certs < <(_local_cert_files)
                 if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#certs[@]}" ]; then
                     cert_path="${certs[$((choice - 1))]}"
                     _show_cert_detail "$cert_path"

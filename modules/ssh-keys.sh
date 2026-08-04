@@ -213,13 +213,14 @@ do_rename() {
 }
 
 menu() {
-    local choice line action
+    local choice line action key_count
     while true; do
         clear
         title "🗝 SSH 公钥管理"
         do_list
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择公钥"
+        key_count=$(awk '!/^[[:space:]]*($|#)/ { count++ } END { print count + 0 }' "$AUTHORIZED_KEYS" 2>/dev/null)
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$key_count" "选择公钥")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[A]${C_RESET} 添加公钥"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider

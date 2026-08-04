@@ -48,6 +48,16 @@ _menu_actions() {
     echo -e "  ${line}"
 }
 
+# 统一渲染动态编号范围；空列表不显示无效的 [1-0]。
+kairo_menu_range() {
+    local count="$1" label="$2"
+    if [[ "$count" =~ ^[1-9][0-9]*$ ]]; then
+        printf '[1-%s] %s' "$count" "$label"
+    else
+        printf '[--] %s' "$label"
+    fi
+}
+
 divider() {
     local width line
     width=$(tput cols 2>/dev/null || echo 80)

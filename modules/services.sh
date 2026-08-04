@@ -149,7 +149,7 @@ menu() {
         title "⚙ 系统服务管理"
         do_list || { kairo_pause "按 Enter 返回上级..."; return; }
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择服务"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#SERVICE_ITEMS[@]}" "选择服务")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[N]${C_RESET} 输入服务名"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 重启服务器"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"

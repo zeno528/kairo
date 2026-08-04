@@ -1168,7 +1168,7 @@ menu() {
             3)
                 _list_manageable_sites
                 echo ""
-                _menu_actions 18 "[编号] 选择站点"
+                _menu_actions 18 "$(kairo_menu_range "${#NGINX_SITE_ITEMS[@]}" "选择站点")"
                 _menu_actions 18 "[A] 添加"
                 _menu_actions 18 "[D] 禁用站点"
                 _menu_actions 18 "[E] 启用站点"

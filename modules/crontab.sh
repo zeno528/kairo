@@ -561,14 +561,15 @@ _batch_menu() {
 # ── 主菜单 ──────────────────────────────────────────────────
 
 menu() {
-    local choice
+    local choice task_count
     while true; do
         clear
         title "⏰ 定时任务"
         echo ""
         do_list
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 管理任务"
+        task_count=$(_crontab_task_lines | wc -l)
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$task_count" "管理任务")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[D]${C_RESET} 批量操作"
         _menu_actions 20 "${C_BOLD}[A]${C_RESET} 添加任务"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"

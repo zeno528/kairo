@@ -165,7 +165,7 @@ menu() {
         title "📡 端口/任务管理"
         do_listen_ports "$port_filter" "$name_filter"
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[P]${C_RESET} 按端口筛选"
         _menu_actions 20 "${C_BOLD}[N]${C_RESET} 按名称筛选"
         _menu_actions 20 "${C_BOLD}[M]${C_RESET} 内存占用排行"
@@ -183,7 +183,7 @@ menu() {
                     title "📊 内存占用排行"
                     do_list_memory
                     divider
-                    _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择进程"
+                    _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
                     _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新排行"
                     _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回端口/任务管理"
                     divider

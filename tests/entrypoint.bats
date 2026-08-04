@@ -699,6 +699,16 @@ setup() {
     grep -q '^_with_spinner()' "$PWD/lib/core.sh"
 }
 
+@test "编号菜单范围按可选项数量显示" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        [ "$(kairo_menu_range 3 "管理容器")" = "[1-3] 管理容器" ]
+        [ "$(kairo_menu_range 0 "管理容器")" = "[--] 管理容器" ]
+    '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "_with_spinner 非终端模式透传命令输出" {
     run bash -c '
         C_CYAN=""; C_RESET=""

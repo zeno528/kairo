@@ -184,7 +184,7 @@ menu() {
         title "🛰 哪吒监控 Agent"
         _render_agent_list
         divider
-        _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 选择 Agent"
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#NEZHA_AGENTS[@]}" "选择 Agent")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[M]${C_RESET} Nezha 管理面板"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider

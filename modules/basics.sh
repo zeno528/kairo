@@ -94,7 +94,7 @@ menu() {
         title "🧰 基础工具"
         _basics_render
         divider
-        _menu_actions 26 "${C_BOLD}[编号]${C_RESET} 安装对应工具"
+        _menu_actions 26 "${C_BOLD}$(kairo_menu_range "$max" "安装对应工具")${C_RESET}"
         _menu_actions 26 "${C_BOLD}[a]${C_RESET} 一键装齐缺失工具"
         _menu_actions 26 "${C_BOLD}[u]${C_RESET} 升级已装工具"
         _menu_actions 26 "${C_BOLD}[0]${C_RESET} 返回主菜单"
