@@ -506,33 +506,36 @@ _compose_switch_version() {
 
 do_images() {
     _check_docker || return
-    local choice imgs=() img_displays=() img_sizes=() img_created=() img_id repo_tag repo_tag_display size created i img container name_width display_width
+    local choice imgs=() img_ids=() img_displays=() img_sizes=() img_created=() img_id repo_tag repo_tag_display size created i container image_id name_width display_width
     local -A USED_IMAGES IMAGE_CONTAINER
     while true; do
         # 收集正在被容器使用的镜像
         USED_IMAGES=()
         IMAGE_CONTAINER=()
-        while IFS=$'\t' read -r img container; do
-            [ -n "$img" ] || continue
-            USED_IMAGES["$img"]=1
-            IMAGE_CONTAINER["$img"]="$container"
-        done < <(docker ps --format '{{.Image}}\t{{.Names}}' 2>/dev/null)
+        while IFS= read -r container; do
+            [ -n "$container" ] || continue
+            image_id=$(docker inspect --format '{{.Image}}' "$container" 2>/dev/null) || continue
+            USED_IMAGES["$image_id"]=1
+            IMAGE_CONTAINER["$image_id"]="$container"
+        done < <(docker ps --format '{{.Names}}' 2>/dev/null)
 
         imgs=()
+        img_ids=()
         img_displays=()
         img_sizes=()
         img_created=()
         name_width=24
-        while IFS=$'\t' read -r repo_tag size created; do
+        while IFS=$'\t' read -r repo_tag image_id size created; do
             imgs+=("$repo_tag")
+            img_ids+=("$image_id")
             created="${created#"${created%%[![:space:]]*}"}"
-            repo_tag_display=$(_docker_image_display "$repo_tag" "${IMAGE_CONTAINER[$repo_tag]:-}")
+            repo_tag_display=$(_docker_image_display "$repo_tag" "${IMAGE_CONTAINER[$image_id]:-}")
             img_displays+=("$repo_tag_display")
             img_sizes+=("$size")
             img_created+=("$created")
             display_width=$(_str_width "$repo_tag_display")
             [ "$display_width" -gt "$name_width" ] && name_width="$display_width"
-        done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}' 2>/dev/null)
+        done < <(docker images --no-trunc --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedSince}}' 2>/dev/null)
 
         if [ "${#imgs[@]}" -eq 0 ]; then
             info "当前没有镜像"
@@ -552,7 +555,7 @@ do_images() {
             repo_tag_display="${img_displays[$i]}"
             size="${img_sizes[$i]}"
             created="${img_created[$i]}"
-            if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
+            if [ -n "${USED_IMAGES[${img_ids[$i]}]:-}" ]; then
                 printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
                     "$((i + 1))" \
                     "$(_pad_right "$repo_tag_display" "$name_width")" \
@@ -739,10 +742,8 @@ do_overview() {
     _check_docker || return
     local choice i
     local -A CT_META      # container_name → "status|image|idx"
-    local -A IMG_SIZE     # image → size
-    local -A IMG_USED     # image → 1 if has running container
-    local CONTAINER_LIST=() IMAGE_LIST=()
-    local -A IMG_HAS_CT   # image → 1 if has containers
+    local -A IMG_SIZE IMG_ID IMG_USED IMG_HAS_CT
+    local CONTAINER_LIST=() IMAGE_LIST=() ORPHAN_CONTAINERS=()
     local -A img_seen
 
     while true; do
@@ -752,28 +753,40 @@ do_overview() {
         # 刷新数据
         CT_META=()
         IMG_SIZE=()
+        IMG_ID=()
         IMG_USED=()
         IMG_HAS_CT=()
         img_seen=()
         CONTAINER_LIST=()
         IMAGE_LIST=()
+        ORPHAN_CONTAINERS=()
         i=1
 
-        while IFS=$'\t' read -r c_name c_img c_status c_ports; do
+        while IFS=$'\t' read -r c_name c_status c_ports; do
             [ -z "$c_name" ] && continue
+            c_img=$(docker inspect --format '{{.Image}}' "$c_name" 2>/dev/null) || continue
             CONTAINER_LIST+=("$c_name")
             CT_META["$c_name"]="${c_status}|${c_img}|${i}|${c_ports}"
-            IMG_HAS_CT["$c_img"]=1
-            if [[ "$c_status" =~ ^Up ]]; then
-                IMG_USED["$c_img"]=1
-            fi
             ((i++))
-        done < <(docker ps -a --format '{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null)
+        done < <(docker ps -a --format '{{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null)
 
-        # 收集所有镜像，有容器的排前面
-        while IFS=$'\t' read -r img_tag img_size; do
+        # 镜像 ID 是容器和标签之间唯一可靠的关联键。
+        while IFS=$'\t' read -r img_tag img_id img_size; do
             IMG_SIZE["$img_tag"]="$img_size"
-        done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' 2>/dev/null)
+            IMG_ID["$img_tag"]="$img_id"
+        done < <(docker images --no-trunc --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}' 2>/dev/null)
+
+        for c_name in "${CONTAINER_LIST[@]}"; do
+            IFS='|' read -r c_status c_img _ _ <<< "${CT_META[$c_name]}"
+            local matched=0
+            for img_tag in "${!IMG_ID[@]}"; do
+                [ "${IMG_ID[$img_tag]}" = "$c_img" ] || continue
+                IMG_HAS_CT["$img_tag"]=1
+                [[ "$c_status" =~ ^Up ]] && IMG_USED["$img_tag"]=1
+                matched=1
+            done
+            [ "$matched" -eq 1 ] || ORPHAN_CONTAINERS+=("$c_name")
+        done
 
         for img_tag in "${!IMG_SIZE[@]}"; do
             if [ -n "${IMG_HAS_CT[$img_tag]:-}" ]; then
@@ -796,7 +809,7 @@ do_overview() {
             img_container=""
             for c_name in "${CONTAINER_LIST[@]}"; do
                 IFS='|' read -r _ c_img _ _ <<< "${CT_META[$c_name]}"
-                [ "$c_img" = "$img_tag" ] && { img_container="$c_name"; break; }
+                [ "$c_img" = "${IMG_ID[$img_tag]}" ] && { img_container="$c_name"; break; }
             done
             img_display=$(_docker_image_display "$img_tag" "$img_container")
             if [ -n "${IMG_USED[$img_tag]:-}" ]; then
@@ -811,14 +824,14 @@ do_overview() {
             for c_name in "${CONTAINER_LIST[@]}"; do
                 [ "${CT_META[$c_name]}" = "" ] && continue
                 IFS='|' read -r c_status c_img c_idx _ <<< "${CT_META[$c_name]}"
-                [ "$c_img" != "$img_tag" ] && continue
+                [ "$c_img" != "${IMG_ID[$img_tag]}" ] && continue
                 ((total_ct++))
             done
 
             for c_name in "${CONTAINER_LIST[@]}"; do
                 [ "${CT_META[$c_name]}" = "" ] && continue
                 IFS='|' read -r c_status c_img c_idx c_ports <<< "${CT_META[$c_name]}"
-                [ "$c_img" != "$img_tag" ] && continue
+                [ "$c_img" != "${IMG_ID[$img_tag]}" ] && continue
                 has_ct=1
                 if [[ "$c_status" =~ ^Up ]]; then
                     c_mark="${C_GREEN}●${C_RESET}"
@@ -837,6 +850,18 @@ do_overview() {
             [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}└─ 容器  无${C_RESET}"
             echo ""
         done
+
+        if [ "${#ORPHAN_CONTAINERS[@]}" -gt 0 ]; then
+            echo -e "  ${C_YELLOW}⚠ 未关联镜像（原镜像标签已删除或已更新）${C_RESET}"
+            for c_name in "${ORPHAN_CONTAINERS[@]}"; do
+                IFS='|' read -r c_status _ c_idx c_ports <<< "${CT_META[$c_name]}"
+                if [[ "$c_status" =~ ^Up ]]; then c_mark="${C_GREEN}●${C_RESET}"; else c_mark="${C_GRAY}○${C_RESET}"; fi
+                printf "  ${C_DIM}└─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
+                printf '     状态         %s\n' "$(_docker_status_display "$c_status")"
+                [ -n "$c_ports" ] && _docker_print_ports "$c_ports"
+            done
+            echo ""
+        fi
 
         divider
         _menu_actions 24 "${C_BOLD}[1-${#CONTAINER_LIST[@]}]${C_RESET} 管理容器"

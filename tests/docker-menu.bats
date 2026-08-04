@@ -51,8 +51,9 @@
         docker() {
             case "$1" in
                 info) return 0 ;;
-                ps) printf "nezha-dashboard\\tghcr.io/nezhahq/nezha:latest\\tUp About an hour\\t0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp\\n" ;;
-                images) printf "ghcr.io/nezhahq/nezha:latest\\t122MB\\n" ;;
+                ps) printf "nezha-dashboard\\tUp About an hour\\t0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp\\n" ;;
+                inspect) printf "sha256:nezha\\n" ;;
+                images) printf "ghcr.io/nezhahq/nezha:latest\\tsha256:nezha\\t122MB\\n" ;;
                 image) printf "<no value>\\n" ;;
                 exec) printf "2.3.2\\n" ;;
             esac
@@ -67,6 +68,39 @@
     [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
 }
 
+@test "Docker 总览以完整 Image ID 关联运行、停止和无容器镜像" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        clear() { :; }
+        tput() { printf "200\\n"; }
+        _menu_actions() { :; }
+        C_BOLD="" C_RESET="" C_DIM="" C_GREEN="" C_GRAY="" C_YELLOW=""
+        docker() {
+            case "$1" in
+                info) return 0 ;;
+                ps) printf "compose-running\\tUp 34 minutes (healthy)\\t8080/tcp\\nstopped-app\\tExited (0) 2 minutes ago\\t\\norphan-app\\tUp 1 minute\\t9000/tcp\\n" ;;
+                inspect)
+                    case "$4" in
+                        compose-running) printf "sha256:compose\\n" ;;
+                        stopped-app) printf "sha256:stopped\\n" ;;
+                        orphan-app) printf "sha256:deleted\\n" ;;
+                    esac
+                    ;;
+                images) printf "compose-build:latest\\tsha256:compose\\t120MB\\nstopped-build:latest\\tsha256:stopped\\t110MB\\nempty-build:latest\\tsha256:empty\\t100MB\\n" ;;
+                image) printf "<no value>\\n" ;;
+            esac
+        }
+        printf "0\\n" | do_overview
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"● [1] 容器  compose-running"* ]]
+    [[ "$output" == *"○ [2] 容器  stopped-app"* ]]
+    [[ "$output" == *"empty-build:latest (100MB)"*$'\n  └─ 容器  无'* ]]
+    [[ "$output" == *"未关联镜像（原镜像标签已删除或已更新）"*"● [3] 容器  orphan-app"* ]]
+}
+
 @test "Docker 镜像列表按最长名称对齐列" {
     run bash -c '
         source "'$PWD'/lib/core.sh"
@@ -77,7 +111,7 @@
         docker() {
             case "$1" in
                 info) return 0 ;;
-                images) printf "example/image:very-long-tag\\t122MB\\t22 hours ago\\nexample/image:short\\t127MB\\t6 weeks ago\\n" ;;
+                images) printf "example/image:very-long-tag\\tsha256:one\\t122MB\\t22 hours ago\\nexample/image:short\\tsha256:two\\t127MB\\t6 weeks ago\\n" ;;
             esac
         }
         printf "0\\n" | do_images
