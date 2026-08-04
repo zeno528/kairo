@@ -57,6 +57,22 @@
     [[ "$output" == *$'ubuntu\tnoble'* ]]
 }
 
+@test "Docker sudo 网络命令保留本机代理变量" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        export http_proxy=http://127.0.0.1:20080 https_proxy=http://127.0.0.1:20080 HTTP_PROXY=http://127.0.0.1:20080 HTTPS_PROXY=http://127.0.0.1:20080
+        sudo() { printf "sudo: %s\n" "$*"; }
+        _docker_sudo_net apt-get update -qq
+        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+        _docker_sudo_net apt-get update -qq
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"sudo: env http_proxy=http://127.0.0.1:20080 https_proxy=http://127.0.0.1:20080 HTTP_PROXY=http://127.0.0.1:20080 HTTPS_PROXY=http://127.0.0.1:20080 apt-get update -qq"* ]]
+    [[ "$output" == *"sudo: env apt-get update -qq"* ]]
+}
+
 @test "Docker 总览按镜像归属显示容器详情" {
     run bash -c '
         source "'$PWD'/lib/core.sh"

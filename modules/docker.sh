@@ -4,6 +4,16 @@
 # 子菜单退出时置 1 表示需要一路返回主菜单（跨三级菜单的信号）
 DOCKER_GO_HOME=0
 
+# sudo 默认丢弃 http_proxy 等环境变量；WSL2 需保留本机代理才能访问 Docker 官方源
+_docker_sudo_net() {
+    local -a proxy=()
+    [ -n "${http_proxy:-}" ] && proxy+=(http_proxy="$http_proxy")
+    [ -n "${https_proxy:-}" ] && proxy+=(https_proxy="$https_proxy")
+    [ -n "${HTTP_PROXY:-}" ] && proxy+=(HTTP_PROXY="$HTTP_PROXY")
+    [ -n "${HTTPS_PROXY:-}" ] && proxy+=(HTTPS_PROXY="$HTTPS_PROXY")
+    sudo env "${proxy[@]}" "$@"
+}
+
 _check_docker() {
     if ! command -v docker &>/dev/null; then
         error "未安装 Docker"
@@ -153,10 +163,10 @@ do_install() {
     sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources 2>/dev/null
 
     if ! (
-        sudo apt-get update -qq &&
-        sudo apt-get install -y -qq ca-certificates curl &&
+        _docker_sudo_net apt-get update -qq &&
+        _docker_sudo_net apt-get install -y -qq ca-certificates curl &&
         sudo install -m 0755 -d /etc/apt/keyrings &&
-        sudo curl -fsSL "https://download.docker.com/linux/${source_distro}/gpg" -o /etc/apt/keyrings/docker.asc &&
+        _docker_sudo_net curl -fsSL "https://download.docker.com/linux/${source_distro}/gpg" -o /etc/apt/keyrings/docker.asc &&
         sudo chmod a+r /etc/apt/keyrings/docker.asc &&
         sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF &&
 Types: deb
@@ -166,7 +176,7 @@ Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
-        sudo apt-get update -qq
+        _docker_sudo_net apt-get update -qq
     ); then
         _stop_spinner
         error "Docker 官方 apt 源配置失败"
@@ -175,7 +185,7 @@ EOF
     _stop_spinner
 
     _start_spinner "正在安装 Docker Engine + Compose"
-    if sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+    if _docker_sudo_net apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         _stop_spinner
         if [ -d /run/systemd/system ]; then
             if ! sudo systemctl enable --now docker; then
@@ -213,7 +223,7 @@ do_upgrade() {
     current=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
 
     _start_spinner "正在检查更新"
-    sudo apt-get update -qq
+    _docker_sudo_net apt-get update -qq
     candidate=$(apt-cache policy docker-ce 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
     _stop_spinner
 
