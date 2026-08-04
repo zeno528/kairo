@@ -157,7 +157,6 @@ do_install() {
     fi
 
     info "使用 Docker 官方 apt 源安装"
-    _start_spinner "正在添加 Docker GPG key 和 apt 源"
 
     # 移除旧版源文件（防止冲突）
     sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources 2>/dev/null
@@ -178,11 +177,9 @@ Signed-By: /etc/apt/keyrings/docker.asc
 EOF
         _docker_sudo_net apt-get update -qq
     ); then
-        _stop_spinner
         error "Docker 官方 apt 源配置失败"
         return 1
     fi
-    _stop_spinner
 
     info "正在安装 Docker Engine + Compose"
     if _docker_sudo_net apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
@@ -222,10 +219,8 @@ do_upgrade() {
     local current candidate candidate_ver
     current=$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
 
-    _start_spinner "正在检查更新"
     _docker_sudo_net apt-get update -qq
     candidate=$(apt-cache policy docker-ce 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
-    _stop_spinner
 
     if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
         error "无法获取 Docker 最新版本信息，请确认已添加 Docker 官方源"; return 1
@@ -292,7 +287,7 @@ do_start() {
     local name="${1:-}"
     [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
-    if _with_spinner "正在启动容器 $name" docker start "$name"; then
+    if docker start "$name"; then
         success "容器 $name 已启动"
     else
         error "启动失败"
@@ -308,7 +303,7 @@ do_stop() {
     echo ""
     read -p "  确认停止容器 $name? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    if _with_spinner "正在停止容器 $name" docker stop "$name"; then
+    if docker stop "$name"; then
         success "容器 $name 已停止"
     else
         error "停止失败"
@@ -321,7 +316,7 @@ do_restart() {
     local name="${1:-}"
     [ -n "$name" ] || { echo ""; read -p "  输入容器名或 ID: " name; }
     [ -z "$name" ] && info "已取消" && return
-    if _with_spinner "正在重启容器 $name" docker restart "$name"; then
+    if docker restart "$name"; then
         success "容器 $name 已重启"
     else
         error "重启失败"
@@ -531,12 +526,9 @@ _compose_switch_version() {
     }
 
     # 重建容器
-    _start_spinner "正在更新容器"
     if (cd "$compose_dir" && docker compose up -d) >/dev/null 2>&1; then
-        _stop_spinner
         success "已切换至 $new_img"
     else
-        _stop_spinner
         error "切换失败，正在回滚 compose 文件"
         sed -i "s|image: ${new_img}|image: ${current_img}|" "$compose_file"
         return 1
@@ -688,32 +680,22 @@ _docker_wipe_all() {
     total_volumes=$(docker volume ls -q 2>/dev/null | wc -l)
 
     if [ "$running_containers" -gt 0 ]; then
-        _start_spinner "正在停止 $running_containers 个运行中的容器"
         docker ps -q | xargs -r docker stop 2>/dev/null || true
-        _stop_spinner
     fi
 
     if [ "$total_containers" -gt 0 ]; then
-        _start_spinner "正在删除 $total_containers 个容器"
         docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
-        _stop_spinner
     fi
 
     if [ "$total_images" -gt 0 ]; then
-        _start_spinner "正在删除 $total_images 个镜像"
         docker images -q | xargs -r docker rmi -f 2>/dev/null || true
-        _stop_spinner
     fi
 
     if [ "$total_volumes" -gt 0 ]; then
-        _start_spinner "正在删除 $total_volumes 个卷"
         docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
-        _stop_spinner
     fi
 
-    _start_spinner "正在清理网络和构建缓存"
     docker system prune -a -f --volumes 2>/dev/null || true
-    _stop_spinner
 
     DOCKER_WIPE_SUMMARY="已清理: $total_containers 个容器, $total_images 个镜像, $total_volumes 个卷"
 }
@@ -733,10 +715,8 @@ do_uninstall() {
     _docker_wipe_all
 
     # 停止并禁用 Docker 服务
-    _start_spinner "正在停止 Docker 服务"
     sudo systemctl stop docker docker.socket 2>/dev/null || true
     sudo systemctl disable docker docker.socket 2>/dev/null || true
-    _stop_spinner
 
     # apt purge 卸载所有 Docker 包
     info "正在卸载 Docker 软件包"
@@ -746,17 +726,13 @@ do_uninstall() {
     _docker_sudo_net apt-get autoremove -y --purge || true
 
     # 清理 Docker 数据目录
-    _start_spinner "正在清理 Docker 数据目录"
     sudo rm -rf /var/lib/docker /var/lib/containerd 2>/dev/null || true
-    _stop_spinner
 
     # 清理 Docker apt 源和 GPG key
-    _start_spinner "正在清理 Docker apt 源"
     sudo rm -f /etc/apt/sources.list.d/docker.list \
         /etc/apt/sources.list.d/docker.sources 2>/dev/null || true
     sudo rm -f /etc/apt/keyrings/docker.asc 2>/dev/null || true
     _docker_sudo_net apt-get update -qq 2>/dev/null || true
-    _stop_spinner
 
     echo ""
     success "Docker 已完全卸载"

@@ -39,9 +39,7 @@ do_check() {
     local packages total
     echo ""
     echo -e "  ${C_BOLD}可更新的包${C_RESET}"
-    _start_spinner "正在扫描可更新的软件包"
     packages=$(LC_ALL=C apt-get -s upgrade 2>/dev/null | awk '/^Inst / { print $2 }')
-    _stop_spinner
     [ -n "$packages" ] && printf '%s\n' "$packages" | head -20 | sed 's/^/  /'
     total=$(printf '%s\n' "$packages" | sed '/^$/d' | wc -l)
     echo ""

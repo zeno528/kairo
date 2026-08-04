@@ -170,10 +170,8 @@ do_remote_check() {
     port=${port:-443}
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
 
-    _start_spinner "正在获取 $domain 的证书"
     cert_data=$(_get_remote_cert "$domain" "$port")
     local fetch_status=$?
-    _stop_spinner
     if [ "$fetch_status" -ne 0 ] || [ -z "$cert_data" ]; then
         error "无法在 15 秒内获取证书信息"
         return 1
@@ -253,10 +251,8 @@ do_verify_chain() {
     local domain
     domain=$(basename "$(dirname "$cert_path")")
     echo ""
-    _start_spinner "正在验证证书链: $domain"
     local result
     result=$(openssl verify -CAfile "$cert_path" "$cert_path" 2>&1)
-    _stop_spinner
     echo "$result" | sed 's/^/  /'
     if echo "$result" | grep -q ': OK$'; then
         echo ""

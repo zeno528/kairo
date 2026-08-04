@@ -6,8 +6,8 @@ SSHD_CONFIG_D="/etc/ssh/sshd_config.d"
 KAIRO_SSH_DROPIN="${SSHD_CONFIG_D}/00-kairo-auth.conf"
 
 restart_ssh() {
-    if _with_spinner "正在重启 SSH 服务" sudo systemctl restart ssh 2>/dev/null ||
-       _with_spinner "正在重启 SSH 服务" sudo systemctl restart sshd 2>/dev/null; then
+    if sudo systemctl restart ssh 2>/dev/null ||
+       sudo systemctl restart sshd 2>/dev/null; then
         success "SSH 服务已重启"
         return 0
     fi

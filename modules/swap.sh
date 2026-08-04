@@ -120,19 +120,14 @@ do_zram() {
 
     # 加载模块
     if ! _zram_loaded; then
-        _start_spinner "正在加载 zram 模块"
         if ! sudo modprobe zram 2>/dev/null; then
-            _stop_spinner
             error "zram 模块加载失败（内核不支持？）"
             return 1
         fi
-        _stop_spinner
     fi
 
     # 配置设备
-    _start_spinner "正在配置 zram ($size)"
     if ! sudo zramctl -f -s "$size" 2>/dev/null; then
-        _stop_spinner
         error "zram 设备创建失败"
         return 1
     fi
@@ -140,20 +135,17 @@ do_zram() {
     # 获取设备名
     local zram_dev
     zram_dev=$(zramctl -n 2>/dev/null | tail -1 | awk '{print $1}')
-    [ -z "$zram_dev" ] && { _stop_spinner; error "无法获取 zram 设备名"; return 1; }
+    [ -z "$zram_dev" ] && { error "无法获取 zram 设备名"; return 1; }
 
     if ! sudo mkswap "$zram_dev" >/dev/null 2>&1; then
-        _stop_spinner
         error "mkswap $zram_dev 失败"
         return 1
     fi
 
     if ! sudo swapon "$zram_dev" 2>/dev/null; then
-        _stop_spinner
         error "swapon $zram_dev 失败"
         return 1
     fi
-    _stop_spinner
 
     echo ""
     success "zram 已启用 ($size)，立即生效"
@@ -203,7 +195,6 @@ do_swap() {
         *) error "无效选项"; return 1 ;;
     esac
 
-    _start_spinner "正在创建 swap 文件 ($size)"
     if [ -f "$swapfile" ]; then
         sudo swapoff "$swapfile" 2>/dev/null || true
         sudo rm -f "$swapfile"
@@ -214,16 +205,14 @@ do_swap() {
         local blocks=$(( ${size%[MG]} * 1024 ))
         [ "${size: -1}" = "M" ] && blocks=$(( ${size%M} ))
         sudo dd if=/dev/zero of="$swapfile" bs=1M count="$blocks" status=none 2>/dev/null || {
-            _stop_spinner
             error "创建 swap 文件失败"
             return 1
         }
     fi
 
     sudo chmod 600 "$swapfile"
-    sudo mkswap "$swapfile" >/dev/null 2>&1 || { _stop_spinner; error "mkswap 失败"; return 1; }
-    sudo swapon "$swapfile" 2>/dev/null || { _stop_spinner; error "swapon 失败"; return 1; }
-    _stop_spinner
+    sudo mkswap "$swapfile" >/dev/null 2>&1 || { error "mkswap 失败"; return 1; }
+    sudo swapon "$swapfile" 2>/dev/null || { error "swapon 失败"; return 1; }
 
     # 持久化到 fstab
     if ! grep -q "^$swapfile " /etc/fstab 2>/dev/null; then
@@ -248,9 +237,7 @@ do_disable() {
     # 关闭所有 swap
     if swapon --show 2>/dev/null | grep -q .; then
         has_any=1
-        _start_spinner "正在关闭所有 swap"
         sudo swapoff -a 2>/dev/null || true
-        _stop_spinner
     fi
 
     # 移除 zram 设备

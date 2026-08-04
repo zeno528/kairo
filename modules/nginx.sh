@@ -100,15 +100,12 @@ _configure_nginx_official_repo() {
     fi
 
     if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
-        _start_spinner "正在下载 nginx 官方签名 key"
         if ! curl -fsSL "https://nginx.org/keys/nginx_signing.key?t=$(date +%s)" | \
             gpg --dearmor | \
             sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null; then
-            _stop_spinner
             error "导入 nginx 官方签名 key 失败"
             return 1
         fi
-        _stop_spinner
         success "已导入 nginx 官方签名 key"
     fi
 
@@ -234,10 +231,8 @@ do_install() {
         local new_ver
         new_ver=$(nginx -v 2>&1 | sed 's|.*nginx/||')
         # 缓存新版本发布日期，供状态总览离线显示
-        _start_spinner "正在记录版本发布日期"
         local new_date
         new_date=$(_get_nginx_release_date "$new_ver")
-        _stop_spinner
         [ -n "$new_date" ] && _nginx_store_release_date "$new_ver" "$new_date"
         success "Nginx 安装/升级完成，当前版本 v${new_ver}"
         info "服务已启用并启动，监听 80 端口"
@@ -332,7 +327,7 @@ do_status() {
 do_start() {
     _check_nginx || return
     kairo_require_systemctl || return
-    if _with_spinner "正在启动 Nginx" sudo systemctl start nginx; then
+    if sudo systemctl start nginx; then
         success "已启动"
     else
         error "启动失败"
@@ -343,7 +338,7 @@ do_start() {
 do_stop() {
     _check_nginx || return
     kairo_require_systemctl || return
-    if _with_spinner "正在停止 Nginx" sudo systemctl stop nginx; then
+    if sudo systemctl stop nginx; then
         success "已停止"
     else
         error "停止失败"
@@ -354,7 +349,7 @@ do_stop() {
 do_restart() {
     _check_nginx || return
     kairo_require_systemctl || return
-    if _with_spinner "正在重启 Nginx" sudo systemctl restart nginx; then
+    if sudo systemctl restart nginx; then
         success "已重启"
     else
         error "重启失败"
@@ -1046,7 +1041,7 @@ do_snapshot() {
     local stamp snap
     stamp=$(date '+%Y%m%d-%H%M%S')
     snap="${NGINX_SNAPSHOT_DIR}/nginx-${stamp}"
-    if _with_spinner "正在创建快照 nginx-${stamp}" sudo cp -a "$NGINX_ETC_DIR" "$snap"; then
+    if sudo cp -a "$NGINX_ETC_DIR" "$snap"; then
         success "已创建快照: $snap"
     else
         error "创建快照失败"

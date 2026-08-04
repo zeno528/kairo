@@ -183,7 +183,6 @@ teardown() {
     nginx() { :; }
     systemctl() { return 42; }
     sudo() { "$@"; }
-    _with_spinner() { shift; "$@"; }
 
     run do_start
 
@@ -440,7 +439,6 @@ teardown() {
     touch -d '2020-01-01' "$NGINX_SNAPSHOT_DIR/nginx-old1" "$NGINX_SNAPSHOT_DIR/nginx-old2"
     sudo() { [ "$1" = "-n" ] && return 0; "$@"; }
     nginx() { :; }
-    _with_spinner() { shift; "$@"; }
     NGINX_SNAPSHOT_KEEP=1
     run do_snapshot
     [ "$status" -eq 0 ]

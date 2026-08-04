@@ -189,7 +189,6 @@ setup() {
         claude() { [ "$1" = "--version" ] && echo 1.0.0 || echo upgraded; }
         _claude_detect_channel() { CLAUDE_CHANNEL=official_installer; CLAUDE_BINARY=claude; }
         _claude_latest_version() { echo 1.1.0; }
-        _with_spinner() { shift; "$@"; }
         printf "\n" | do_upgrade
     '
     [ "$status" -eq 0 ]
@@ -361,19 +360,16 @@ setup() {
     [[ "$output" == *"刷新软件源列表失败，已取消升级"* ]]
 }
 
-@test "可更新包扫描显示 spinner 且只查询一次" {
+@test "可更新包扫描只查询一次" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/security-update.sh"
         count_file=$(mktemp)
-        _start_spinner() { printf "spinner: %s\\n" "$1"; }
-        _stop_spinner() { :; }
         apt-get() { printf x >> "$count_file"; printf "Inst foo [0] (1 stable [amd64])\\n"; }
         do_check
         [ "$(wc -c < "$count_file")" -eq 1 ]
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"spinner: 正在扫描可更新的软件包"* ]]
     [[ "$output" == *"共 1 个包可更新"* ]]
 }
 
@@ -472,7 +468,6 @@ setup() {
         source "'"$PWD"'/modules/services.sh"
         systemctl() { return 42; }
         sudo() { "$@"; }
-        _with_spinner() { shift; "$@"; }
         do_start demo.service
     '
     [ "$status" -ne 0 ]
@@ -487,7 +482,6 @@ setup() {
             [ "$1" = "info" ] && return 0
             return 42
         }
-        _with_spinner() { shift; "$@"; }
         do_start demo
     '
     [ "$status" -ne 0 ]
@@ -709,12 +703,6 @@ setup() {
     [[ "$output" =~ "eth0             UP" ]]
 }
 
-# ─── _with_spinner ──────────────────────────────────────────
-
-@test "公共库定义了 _with_spinner 函数" {
-    grep -q '^_with_spinner()' "$PWD/lib/core.sh"
-}
-
 @test "编号菜单范围按可选项数量显示" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
@@ -723,41 +711,4 @@ setup() {
     '
 
     [ "$status" -eq 0 ]
-}
-
-@test "_with_spinner 非终端模式透传命令输出" {
-    run bash -c '
-        C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/lib/core.sh)"
-        _with_spinner "test" echo "hello world"
-    '
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "hello world" ]]
-}
-
-@test "_with_spinner 非终端模式透传退出码" {
-    run bash -c '
-        C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/lib/core.sh)"
-        _with_spinner "test" false
-    '
-    [ "$status" -eq 1 ]
-}
-
-@test "_with_spinner 非终端模式透传多行输出" {
-    run bash -c '
-        C_CYAN=""; C_RESET=""
-        eval "$(sed -n "/^_with_spinner()/,/^}/p" "'"$PWD"'"/lib/core.sh)"
-        _with_spinner "test" printf "a\nb\nc\n"
-    '
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "a" ]]
-    [[ "$output" =~ "b" ]]
-    [[ "$output" =~ "c" ]]
-}
-
-@test "_with_spinner 终端模式在子进程结束后退出" {
-    run timeout 5 script -qfec "bash -c 'source \"$PWD/lib/core.sh\"; _with_spinner test printf \"done\\n\"'" /dev/null
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "done" ]]
 }

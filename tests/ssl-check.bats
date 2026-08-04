@@ -46,8 +46,6 @@ teardown() {
                     ;;
             esac
         }
-        _start_spinner() { :; }
-        _stop_spinner() { :; }
         printf "%s\n" example.com 443 | do_remote_check
         [ "$(grep -c "^s_client$" "$calls")" -eq 1 ]
         grep -qx "timeout:15" "$calls"

@@ -178,60 +178,6 @@ _tool_apt_upgrade() {
     fi
 }
 
-_with_spinner() {
-    local msg="${1:-处理中}"
-    shift
-
-    [ -t 1 ] || { "$@"; return $?; }
-
-    (
-        local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-        local i=0 line partial="" temp_dir fifo cmd_pid="" fifo_fd rc
-        temp_dir=$(mktemp -d)
-        fifo="${temp_dir}/output.fifo"
-        mkfifo "$fifo"
-
-        spinner_command_cleanup() {
-            if [ -n "$cmd_pid" ] && kill -0 "$cmd_pid" 2>/dev/null; then
-                kill "$cmd_pid" 2>/dev/null || true
-                wait "$cmd_pid" 2>/dev/null || true
-            fi
-            if [ -n "${fifo_fd:-}" ]; then
-                exec {fifo_fd}<&- 2>/dev/null || true
-            fi
-            rm -rf -- "$temp_dir"
-            printf "\r\033[K"
-        }
-        trap spinner_command_cleanup EXIT
-        trap 'exit 130' INT TERM
-
-        "$@" >"$fifo" 2>&1 &
-        cmd_pid=$!
-        exec {fifo_fd}<"$fifo"
-
-        while jobs -pr | grep -qx "$cmd_pid"; do
-            if IFS= read -r -t 0.1 -u "$fifo_fd" line 2>/dev/null; then
-                printf "\r\033[K%s%s\n" "$partial" "$line"
-                partial=""
-            else
-                partial="${partial}${line}"
-            fi
-            printf "\r\033[K  ${C_CYAN}%s${C_RESET} %s..." "${spin:i++%10:1}" "$msg"
-        done
-
-        while IFS= read -r -t 0.1 -u "$fifo_fd" line 2>/dev/null; do
-            printf "\r\033[K%s%s\n" "$partial" "$line"
-            partial=""
-        done
-        [ -n "$partial" ] && printf "\r\033[K%s\n" "$partial"
-
-        wait "$cmd_pid" 2>/dev/null
-        rc=$?
-        cmd_pid=""
-        exit "$rc"
-    )
-}
-
 _SPINNER_PID=""
 _start_spinner() {
     [ -t 1 ] || return

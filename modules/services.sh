@@ -50,7 +50,7 @@ do_status() {
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
     echo ""
-    _with_spinner "正在获取服务状态" _show_service_status "$svc"
+    _show_service_status "$svc"
 }
 
 do_start() {
@@ -59,7 +59,7 @@ do_start() {
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
-    if _with_spinner "正在启动服务 $svc" sudo systemctl start "$svc"; then
+    if sudo systemctl start "$svc"; then
         success "服务 $svc 已启动"
     else
         error "启动失败"
@@ -76,7 +76,7 @@ do_stop() {
     echo ""
     read -p "  确认停止服务 $svc? [y/N]: " confirm
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-    if _with_spinner "正在停止服务 $svc" sudo systemctl stop "$svc"; then
+    if sudo systemctl stop "$svc"; then
         success "服务 $svc 已停止"
     else
         error "停止失败"
@@ -90,7 +90,7 @@ do_restart() {
     [ -n "$svc" ] || { echo ""; read -p "  输入服务名: " svc; }
     [ -z "$svc" ] && info "已取消" && return
     _valid_service_name "$svc" || { error "服务名格式不合法"; return 1; }
-    if _with_spinner "正在重启服务 $svc" sudo systemctl restart "$svc"; then
+    if sudo systemctl restart "$svc"; then
         success "服务 $svc 已重启"
     else
         error "重启失败"
@@ -112,7 +112,7 @@ do_toggle_enable() {
         echo ""
         read -p "  关闭开机自启? [y/N]: " confirm
         [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && info "已取消" && return
-        if _with_spinner "正在关闭开机自启" sudo systemctl disable "$svc"; then
+        if sudo systemctl disable "$svc"; then
             success "已关闭 $svc 开机自启"
         else
             error "关闭开机自启失败"
@@ -123,7 +123,7 @@ do_toggle_enable() {
         echo ""
         read -p "  开启开机自启? [Y/n]: " confirm
         [ "$confirm" = "n" ] || [ "$confirm" = "N" ] && info "已取消" && return
-        if _with_spinner "正在开启开机自启" sudo systemctl enable "$svc"; then
+        if sudo systemctl enable "$svc"; then
             success "已开启 $svc 开机自启"
         else
             error "开启开机自启失败"
