@@ -67,6 +67,30 @@
     [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
 }
 
+@test "Docker 镜像列表按最长名称对齐列" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        clear() { :; }
+        _menu_actions() { :; }
+        C_BOLD="" C_RESET="" C_DIM="" C_GREEN="" C_GRAY=""
+        docker() {
+            case "$1" in
+                info) return 0 ;;
+                images) printf "example/image:very-long-tag\\t122MB\\t22 hours ago\\nexample/image:short\\t127MB\\t6 weeks ago\\n" ;;
+            esac
+        }
+        printf "0\\n" | do_images
+    '
+
+    [ "$status" -eq 0 ]
+    long_line=$(printf '%s\n' "$output" | grep 'example/image:very-long-tag')
+    short_line=$(printf '%s\n' "$output" | grep 'example/image:short')
+    long_prefix=${long_line%%122MB*}
+    short_prefix=${short_line%%127MB*}
+    [ "${#long_prefix}" -eq "${#short_prefix}" ]
+}
+
 @test "已停止的哪吒 Agent 菜单只显示启动" {
     run bash -c '
         source "'$PWD'/lib/core.sh"

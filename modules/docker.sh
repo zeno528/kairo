@@ -506,7 +506,7 @@ _compose_switch_version() {
 
 do_images() {
     _check_docker || return
-    local choice imgs=() img_id repo_tag repo_tag_display size created i img container
+    local choice imgs=() img_displays=() img_sizes=() img_created=() img_id repo_tag repo_tag_display size created i img container name_width display_width
     local -A USED_IMAGES IMAGE_CONTAINER
     while true; do
         # 收集正在被容器使用的镜像
@@ -519,31 +519,19 @@ do_images() {
         done < <(docker ps --format '{{.Image}}\t{{.Names}}' 2>/dev/null)
 
         imgs=()
-        echo ""
-        echo -e "  ${C_BOLD}镜像列表${C_RESET}"
-        printf '          %s  %s  %s\n' \
-            "$(_pad_right "${C_BOLD}镜像名称${C_RESET}" 24)" \
-            "$(_pad_right "${C_BOLD}大小${C_RESET}" 8)" \
-            "${C_BOLD}创建时间${C_RESET}"
-        i=1
+        img_displays=()
+        img_sizes=()
+        img_created=()
+        name_width=24
         while IFS=$'\t' read -r repo_tag size created; do
             imgs+=("$repo_tag")
             created="${created#"${created%%[![:space:]]*}"}"
             repo_tag_display=$(_docker_image_display "$repo_tag" "${IMAGE_CONTAINER[$repo_tag]:-}")
-            if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
-                printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
-                    "$i" \
-                    "$(_pad_right "$repo_tag_display" 24)" \
-                    "$(_pad_right "$size" 8)" \
-                    "$created"
-            else
-                printf '    [%2d] %s  %s  %s\n' \
-                    "$i" \
-                    "$(_pad_right "$repo_tag_display" 24)" \
-                    "$(_pad_right "$size" 8)" \
-                    "$created"
-            fi
-            ((i++))
+            img_displays+=("$repo_tag_display")
+            img_sizes+=("$size")
+            img_created+=("$created")
+            display_width=$(_str_width "$repo_tag_display")
+            [ "$display_width" -gt "$name_width" ] && name_width="$display_width"
         done < <(docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}' 2>/dev/null)
 
         if [ "${#imgs[@]}" -eq 0 ]; then
@@ -551,6 +539,33 @@ do_images() {
             kairo_pause
             return
         fi
+
+        name_width=$((name_width + 2))
+        echo ""
+        echo -e "  ${C_BOLD}镜像列表${C_RESET}"
+        printf '          %s  %s  %s\n' \
+            "$(_pad_right "${C_BOLD}镜像名称${C_RESET}" "$name_width")" \
+            "$(_pad_right "${C_BOLD}大小${C_RESET}" 8)" \
+            "${C_BOLD}创建时间${C_RESET}"
+        for i in "${!imgs[@]}"; do
+            repo_tag="${imgs[$i]}"
+            repo_tag_display="${img_displays[$i]}"
+            size="${img_sizes[$i]}"
+            created="${img_created[$i]}"
+            if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
+                printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
+                    "$((i + 1))" \
+                    "$(_pad_right "$repo_tag_display" "$name_width")" \
+                    "$(_pad_right "$size" 8)" \
+                    "$created"
+            else
+                printf '    [%2d] %s  %s  %s\n' \
+                    "$((i + 1))" \
+                    "$(_pad_right "$repo_tag_display" "$name_width")" \
+                    "$(_pad_right "$size" 8)" \
+                    "$created"
+            fi
+        done
         echo ""
         echo -e "  ${C_GREEN}●${C_RESET} = 运行中"
         divider
