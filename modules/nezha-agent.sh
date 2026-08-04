@@ -178,7 +178,7 @@ do_mgmt() {
 }
 
 menu() {
-    local choice svc svc_name go_home=0
+    local choice svc svc_name go_home=0 action
     while true; do
         clear
         title "🛰 哪吒监控 Agent"
@@ -209,20 +209,24 @@ menu() {
             title "🛰 Agent: $svc_name"
             do_status "$svc"
             divider
-            _menu_actions 20 "${C_BOLD}[1]${C_RESET} 启动"
-            _menu_actions 20 "${C_BOLD}[2]${C_RESET} 停止"
-            _menu_actions 20 "${C_BOLD}[3]${C_RESET} 查看日志"
-            _menu_actions 20 "${C_BOLD}[4]${C_RESET} 卸载此 Agent"
+            if systemctl is-active --quiet "$svc" 2>/dev/null; then
+                _menu_actions 20 "${C_RED}${C_BOLD}[1]${C_RESET}${C_RED} 停止${C_RESET}"
+                action=do_stop
+            else
+                _menu_actions 20 "${C_GREEN}${C_BOLD}[1]${C_RESET}${C_GREEN} 启动${C_RESET}"
+                action=do_start
+            fi
+            _menu_actions 20 "${C_BOLD}[2]${C_RESET} 查看日志"
+            _menu_actions 20 "${C_BOLD}[3]${C_RESET} 卸载此 Agent"
             _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
             _menu_actions 20 "${C_BOLD}[H]${C_RESET} 返回主菜单"
             divider
             echo ""
             read -r -p "  请选择: " choice
             case "$choice" in
-                1) do_start "$svc"; echo ""; kairo_pause ;;
-                2) do_stop "$svc"; echo ""; kairo_pause ;;
-                3) do_logs "$svc"; echo ""; kairo_pause ;;
-                4) do_remove "$svc"; echo ""; kairo_pause; break ;;
+                1) "$action" "$svc"; echo ""; kairo_pause ;;
+                2) do_logs "$svc"; echo ""; kairo_pause ;;
+                3) do_remove "$svc"; echo ""; kairo_pause; break ;;
                 0) break ;;
                 [Hh]) go_home=1; break ;;
                 *) error "无效选项"; sleep 1 ;;

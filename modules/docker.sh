@@ -20,6 +20,22 @@ _docker_installed() {
     p=$(command -v docker 2>/dev/null) && [ -x "$p" ]
 }
 
+_docker_image_display() {
+    local image="$1" repository version
+    [ "${image##*:}" = "latest" ] || { printf '%s\n' "$image"; return; }
+
+    repository=${image%:latest}
+    version=$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image" 2>/dev/null)
+    case "$version" in
+        ""|"<no value>") printf '%s\n' "$image" ;;
+        *) printf '%s:%s\n' "$repository" "$version" ;;
+    esac
+}
+
+_docker_container_running() {
+    [ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null)" = "true" ]
+}
+
 # 添加当前用户到 docker 组，免 sudo
 _docker_join_group() {
     if id -nG "$USER" 2>/dev/null | grep -qw docker; then
@@ -682,7 +698,7 @@ do_overview() {
         done
 
         echo ""
-        local img_tag img_size c_mark i_mark name_col status_col c_status c_img c_idx c_ports
+        local img_tag img_size img_display c_mark i_mark name_col status_col c_status c_img c_idx c_ports
 
         if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
@@ -696,12 +712,13 @@ do_overview() {
 
         for img_tag in "${IMAGE_LIST[@]}"; do
             img_size="${IMG_SIZE[$img_tag]:-}"
+            img_display=$(_docker_image_display "$img_tag")
             if [ -n "${IMG_USED[$img_tag]:-}" ]; then
                 i_mark="${C_GREEN}●${C_RESET}"
             else
                 i_mark=" "
             fi
-            printf "  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_tag}${C_RESET} ${C_DIM}(${img_size})${C_RESET}" 44)"
+            printf "  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_display}${C_RESET} ${C_DIM}(${img_size})${C_RESET}" 44)"
 
             # 显示该镜像下的容器
             local has_ct=0 total_ct=0
@@ -836,26 +853,30 @@ _render_status_cache() {
 
 # 容器操作子菜单（可被总览视图复用）
 _container_ops_menu() {
-    local name="$1" choice
+    local name="$1" choice action
     while true; do
         echo ""
         echo "  ${C_BOLD}${name}${C_RESET}"
-        _menu_actions 18 "[1] 启动"
-        _menu_actions 18 "[2] 停止"
-        _menu_actions 18 "[3] 重启"
-        _menu_actions 18 "[4] 查看日志"
-        _menu_actions 18 "[5] 进入终端"
-        _menu_actions 18 "[6] 删除容器"
+        if _docker_container_running "$name"; then
+            _menu_actions 18 "${C_RED}[1] 停止${C_RESET}"
+            action=do_stop
+        else
+            _menu_actions 18 "${C_GREEN}[1] 启动${C_RESET}"
+            action=do_start
+        fi
+        _menu_actions 18 "[2] 重启"
+        _menu_actions 18 "[3] 查看日志"
+        _menu_actions 18 "[4] 进入终端"
+        _menu_actions 18 "[5] 删除容器"
         _menu_actions 18 "[0] 返回"
         _menu_actions 18 "[H] 返回主菜单"
         read -r -p "  选择操作: " choice
         case "$choice" in
-            1) do_start "$name"; kairo_pause ;;
-            2) do_stop "$name"; kairo_pause ;;
-            3) do_restart "$name"; kairo_pause ;;
-            4) do_logs "$name"; kairo_pause ;;
-            5) do_exec "$name" ;;
-            6) do_remove "$name"; return ;;
+            1) "$action" "$name"; kairo_pause ;;
+            2) do_restart "$name"; kairo_pause ;;
+            3) do_logs "$name"; kairo_pause ;;
+            4) do_exec "$name" ;;
+            5) do_remove "$name"; return ;;
             [Hh]) DOCKER_GO_HOME=1; return ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
