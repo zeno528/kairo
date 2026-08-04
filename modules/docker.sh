@@ -185,7 +185,7 @@ EOF
     _stop_spinner
 
     _start_spinner "正在安装 Docker Engine + Compose"
-    if _docker_sudo_net apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+    if _docker_sudo_net apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null; then
         _stop_spinner
         if [ -d /run/systemd/system ]; then
             if ! sudo systemctl enable --now docker; then
@@ -246,7 +246,7 @@ do_upgrade() {
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
 
     _start_spinner "正在升级 Docker"
-    if sudo apt-get install -y --only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+    if _docker_sudo_net apt-get install -y -qq --only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null; then
         _stop_spinner
         success "Docker 升级完成"
         docker --version 2>/dev/null
@@ -742,10 +742,10 @@ do_uninstall() {
 
     # apt purge 卸载所有 Docker 包
     _start_spinner "正在卸载 Docker 软件包"
-    sudo apt-get purge -y docker-ce docker-ce-cli containerd.io \
+    _docker_sudo_net apt-get purge -y -qq docker-ce docker-ce-cli containerd.io \
         docker-buildx-plugin docker-compose-plugin \
-        docker-ce-rootless-extras 2>/dev/null || true
-    sudo apt-get autoremove -y --purge 2>/dev/null || true
+        docker-ce-rootless-extras &>/dev/null || true
+    _docker_sudo_net apt-get autoremove -y -qq --purge &>/dev/null || true
     _stop_spinner
 
     # 清理 Docker 数据目录
@@ -758,7 +758,7 @@ do_uninstall() {
     sudo rm -f /etc/apt/sources.list.d/docker.list \
         /etc/apt/sources.list.d/docker.sources 2>/dev/null || true
     sudo rm -f /etc/apt/keyrings/docker.asc 2>/dev/null || true
-    sudo apt-get update -qq 2>/dev/null || true
+    _docker_sudo_net apt-get update -qq 2>/dev/null || true
     _stop_spinner
 
     echo ""
