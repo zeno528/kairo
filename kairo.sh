@@ -90,6 +90,15 @@ do_update() {
     kairo_run_installer
 }
 
+kairo_update_next_action() {
+    local choice
+    read -r -p "  回车返回命令行，ka 进入主菜单: " choice
+    [[ "$choice" =~ ^[Kk][Aa]$ ]] || return 0
+    exec "${BIN_DIR}/ka"
+    error "无法启动主菜单"
+    return 1
+}
+
 do_uninstall() {
     local target failed=0
     local -a elevate=()
@@ -380,8 +389,7 @@ while true; do
     case "$choice" in
         [Uu])
             if do_update; then
-                read -r -p "  按回车键返回命令行..." _
-                exit 0
+                kairo_update_next_action && exit 0
             fi
             kairo_pause
             ;;

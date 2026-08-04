@@ -104,6 +104,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "更新后输入 ka 重新进入主菜单，回车返回命令行" {
+    run bash -c '
+        source <(sed -n "/^kairo_update_next_action()/,/^}/p" "'$PWD'/kairo.sh")
+        BIN_DIR=$(mktemp -d)
+        printf "#!/usr/bin/env bash\\nprintf MENU\\n" > "${BIN_DIR}/ka"
+        chmod +x "${BIN_DIR}/ka"
+        printf "ka\\n" | (kairo_update_next_action)
+        printf "\\n" | kairo_update_next_action
+        printf RETURN
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"MENU"* ]]
+    [[ "$output" == *"RETURN"* ]]
+}
+
 # ─── install.sh 关键函数 ──────────────────────────────────────
 
 @test "install.sh 语法 + 不实际执行（-n）" {
