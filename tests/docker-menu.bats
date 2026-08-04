@@ -7,17 +7,19 @@
         docker() {
             case "$1 $2" in
                 "inspect --format") printf "true\n" ;;
-                "image inspect") printf "v2.2.5\n" ;;
+                "image inspect") printf "<no value>\n" ;;
+                "exec nezha-dashboard") printf "v2.2.5\n" ;;
             esac
         }
         _menu_actions() { printf "%s\n" "$2"; }
-        printf "0\n" | _container_ops_menu nezha-dashboard
-        _docker_image_display ghcr.io/nezhahq/nezha:latest
+        printf "00\n" | _container_ops_menu nezha-dashboard
+        _docker_image_display ghcr.io/nezhahq/nezha:latest nezha-dashboard
     '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *$'\033[1;31m[1] 停止'* ]]
     [[ "$output" != *"[1] 启动"* ]]
+    [[ "$output" == *"[00] 返回主菜单"* ]]
     [[ "$output" == *"ghcr.io/nezhahq/nezha:v2.2.5"* ]]
 }
 

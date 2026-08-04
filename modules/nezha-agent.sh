@@ -219,7 +219,7 @@ menu() {
             _menu_actions 20 "${C_BOLD}[2]${C_RESET} 查看日志"
             _menu_actions 20 "${C_BOLD}[3]${C_RESET} 卸载此 Agent"
             _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
-            _menu_actions 20 "${C_BOLD}[H]${C_RESET} 返回主菜单"
+            _menu_actions 20 "${C_BOLD}[00]${C_RESET} 返回主菜单"
             divider
             echo ""
             read -r -p "  请选择: " choice
@@ -228,7 +228,7 @@ menu() {
                 2) do_logs "$svc"; echo ""; kairo_pause ;;
                 3) do_remove "$svc"; echo ""; kairo_pause; break ;;
                 0) break ;;
-                [Hh]) go_home=1; break ;;
+                00) go_home=1; break ;;
                 *) error "无效选项"; sleep 1 ;;
             esac
         done

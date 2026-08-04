@@ -21,11 +21,18 @@ _docker_installed() {
 }
 
 _docker_image_display() {
-    local image="$1" repository version
+    local image="$1" container="${2:-}" repository version
     [ "${image##*:}" = "latest" ] || { printf '%s\n' "$image"; return; }
 
     repository=${image%:latest}
     version=$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image" 2>/dev/null)
+    if [ -z "$version" ] || [ "$version" = "<no value>" ]; then
+        case "$repository" in
+            ghcr.io/nezhahq/nezha)
+                [ -n "$container" ] && version=$(docker exec "$container" /dashboard/app -v 2>/dev/null | head -n 1)
+                ;;
+        esac
+    fi
     case "$version" in
         ""|"<no value>") printf '%s\n' "$image" ;;
         *) printf '%s:%s\n' "$repository" "$version" ;;
@@ -348,7 +355,7 @@ do_compose() {
         _menu_actions 24 "${C_BOLD}[5]${C_RESET} 拉取新镜像 (pull)"
         _menu_actions 24 "${C_BOLD}[6]${C_RESET} 切换镜像版本"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回上级"
-        _menu_actions 24 "${C_BOLD}[H]${C_RESET} 返回主菜单"
+        _menu_actions 24 "${C_BOLD}[00]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择操作: " sub
@@ -365,7 +372,7 @@ do_compose() {
                 _compose_switch_version "$compose_file" "$compose_dir" "$current_img"
                 kairo_pause
                 ;;
-            [Hh]) DOCKER_GO_HOME=1; break ;;
+            00) DOCKER_GO_HOME=1; break ;;
             0) break ;;
             *) error "无效选项"; sleep 1 ;;
         esac
@@ -484,12 +491,12 @@ do_images() {
         _menu_actions 20 "${C_BOLD}[编号]${C_RESET} 删除镜像"
         _menu_actions 20 "${C_BOLD}[p]${C_RESET} 清理未使用的镜像"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回上级"
-        _menu_actions 20 "${C_BOLD}[H]${C_RESET} 返回主菜单"
+        _menu_actions 20 "${C_BOLD}[00]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请选择: " choice
         case "$choice" in
-            [Hh]) DOCKER_GO_HOME=1; return ;;
+            00) DOCKER_GO_HOME=1; return ;;
             0) return ;;
             [Pp])
                 if docker image prune -a -f 2>&1; then
@@ -698,7 +705,7 @@ do_overview() {
         done
 
         echo ""
-        local img_tag img_size img_display c_mark i_mark name_col status_col c_status c_img c_idx c_ports
+        local img_tag img_size img_display img_container c_mark i_mark name_col status_col c_status c_img c_idx c_ports
 
         if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
@@ -712,7 +719,12 @@ do_overview() {
 
         for img_tag in "${IMAGE_LIST[@]}"; do
             img_size="${IMG_SIZE[$img_tag]:-}"
-            img_display=$(_docker_image_display "$img_tag")
+            img_container=""
+            for c_name in "${CONTAINER_LIST[@]}"; do
+                IFS='|' read -r _ c_img _ _ <<< "${CT_META[$c_name]}"
+                [ "$c_img" = "$img_tag" ] && { img_container="$c_name"; break; }
+            done
+            img_display=$(_docker_image_display "$img_tag" "$img_container")
             if [ -n "${IMG_USED[$img_tag]:-}" ]; then
                 i_mark="${C_GREEN}●${C_RESET}"
             else
@@ -869,7 +881,7 @@ _container_ops_menu() {
         _menu_actions 18 "[4] 进入终端"
         _menu_actions 18 "[5] 删除容器"
         _menu_actions 18 "[0] 返回"
-        _menu_actions 18 "[H] 返回主菜单"
+        _menu_actions 18 "[00] 返回主菜单"
         read -r -p "  选择操作: " choice
         case "$choice" in
             1) "$action" "$name"; kairo_pause ;;
@@ -877,7 +889,7 @@ _container_ops_menu() {
             3) do_logs "$name"; kairo_pause ;;
             4) do_exec "$name" ;;
             5) do_remove "$name"; return ;;
-            [Hh]) DOCKER_GO_HOME=1; return ;;
+            00) DOCKER_GO_HOME=1; return ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

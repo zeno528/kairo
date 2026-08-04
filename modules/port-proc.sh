@@ -208,12 +208,12 @@ menu() {
                     _menu_actions 20 "[1] 查看进程详情"
                     _menu_actions 20 "[2] 终止进程"
                     _menu_actions 20 "[0] 返回上级"
-                    _menu_actions 20 "[H] 返回主菜单"
+                    _menu_actions 20 "[00] 返回主菜单"
                     read -r -p "  选择操作: " choice
                     case "$choice" in
                         1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;
                         2) do_kill_process "$pid" ;;
-                        [Hh]) return ;;
+                        00) return ;;
                         0) ;;
                     esac
                     echo ""; kairo_pause "按 Enter 返回进程列表..."
