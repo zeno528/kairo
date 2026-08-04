@@ -23,6 +23,50 @@
     [[ "$output" == *"ghcr.io/nezhahq/nezha:v2.2.5"* ]]
 }
 
+@test "Docker 总览保留状态时长与完整端口，并在窄终端分行" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        tput() { printf "200\\n"; }
+        [ "$(_docker_status_display "Up About an hour")" = "运行中 · 已运行 约 1 小时" ]
+        [ "$(_docker_status_display "Exited (0) 1 minute ago")" = "已退出 · 1 分钟前" ]
+        _docker_print_ports "0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"
+        tput() { printf "60\\n"; }
+        _docker_print_ports "0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
+    [[ "$output" == *$'端口         0.0.0.0:8008->8008/tcp\n                  [::]:8008->8008/tcp'* ]]
+}
+
+@test "Docker 总览按镜像归属显示容器详情" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        clear() { :; }
+        tput() { printf "200\\n"; }
+        _menu_actions() { :; }
+        C_BOLD="" C_RESET="" C_DIM="" C_GREEN="" C_GRAY=""
+        docker() {
+            case "$1" in
+                info) return 0 ;;
+                ps) printf "nezha-dashboard\\tghcr.io/nezhahq/nezha:latest\\tUp About an hour\\t0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp\\n" ;;
+                images) printf "ghcr.io/nezhahq/nezha:latest\\t122MB\\n" ;;
+                image) printf "<no value>\\n" ;;
+                exec) printf "2.3.2\\n" ;;
+            esac
+        }
+        printf "0\\n" | do_overview
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"📦 镜像  ghcr.io/nezhahq/nezha:2.3.2 (122MB)"* ]]
+    [[ "$output" == *"└─"*"[1]"*"容器  nezha-dashboard"* ]]
+    [[ "$output" == *"状态         运行中 · 已运行 约 1 小时"* ]]
+    [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
+}
+
 @test "已停止的哪吒 Agent 菜单只显示启动" {
     run bash -c '
         source "'$PWD'/lib/core.sh"

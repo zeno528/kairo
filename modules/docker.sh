@@ -39,6 +39,68 @@ _docker_image_display() {
     esac
 }
 
+_docker_duration_zh() {
+    local duration="$1"
+    duration=${duration/About an hour/约 1 小时}
+    duration=${duration/Less than a second/少于 1 秒}
+    duration=${duration/ seconds ago/ 秒前}
+    duration=${duration/ minutes ago/ 分钟前}
+    duration=${duration/ hours ago/ 小时前}
+    duration=${duration/ days ago/ 天前}
+    duration=${duration/ weeks ago/ 周前}
+    duration=${duration/ months ago/ 个月前}
+    duration=${duration/ years ago/ 年前}
+    duration=${duration/ second ago/ 秒前}
+    duration=${duration/ minute ago/ 分钟前}
+    duration=${duration/ hour ago/ 小时前}
+    duration=${duration/ day ago/ 天前}
+    duration=${duration/ seconds/ 秒}
+    duration=${duration/ minutes/ 分钟}
+    duration=${duration/ hours/ 小时}
+    duration=${duration/ days/ 天}
+    duration=${duration/ weeks/ 周}
+    duration=${duration/ months/ 个月}
+    duration=${duration/ years/ 年}
+    duration=${duration/ second/ 秒}
+    duration=${duration/ minute/ 分钟}
+    duration=${duration/ hour/ 小时}
+    duration=${duration/ day/ 天}
+    duration=${duration/ ago/前}
+    printf '%s\n' "$duration"
+}
+
+_docker_status_display() {
+    local status="$1" duration
+    case "$status" in
+        Up\ *)
+            duration=${status#Up }
+            duration=${duration%% \(*}
+            printf '运行中 · 已运行 %s\n' "$(_docker_duration_zh "$duration")"
+            ;;
+        Exited\ *)
+            duration=${status#*) }
+            printf '已退出 · %s\n' "$(_docker_duration_zh "$duration")"
+            ;;
+        Created) printf '已创建\n' ;;
+        Paused*) printf '已暂停\n' ;;
+        Restarting*) printf '正在重启\n' ;;
+        Dead*) printf '已停止\n' ;;
+        *) printf '%s\n' "$status" ;;
+    esac
+}
+
+_docker_print_ports() {
+    local ports="$1" width first rest
+    width=$(tput cols 2>/dev/null || echo 80)
+    if [ "$width" -ge $(( ${#ports} + 18 )) ] || [[ "$ports" != *,* ]]; then
+        printf '     端口         %s\n' "$ports"
+        return
+    fi
+    IFS=',' read -r first rest <<< "$ports"
+    printf '     端口         %s\n' "$first"
+    printf '                  %s\n' "${rest# }"
+}
+
 _docker_container_running() {
     [ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null)" = "true" ]
 }
@@ -444,14 +506,17 @@ _compose_switch_version() {
 
 do_images() {
     _check_docker || return
-    local choice imgs=() img_id repo_tag size created i
-    local -A USED_IMAGES
+    local choice imgs=() img_id repo_tag repo_tag_display size created i img container
+    local -A USED_IMAGES IMAGE_CONTAINER
     while true; do
         # 收集正在被容器使用的镜像
         USED_IMAGES=()
-        while IFS= read -r img; do
-            [ -n "$img" ] && USED_IMAGES["$img"]=1
-        done < <(docker ps --format '{{.Image}}' 2>/dev/null)
+        IMAGE_CONTAINER=()
+        while IFS=$'\t' read -r img container; do
+            [ -n "$img" ] || continue
+            USED_IMAGES["$img"]=1
+            IMAGE_CONTAINER["$img"]="$container"
+        done < <(docker ps --format '{{.Image}}\t{{.Names}}' 2>/dev/null)
 
         imgs=()
         echo ""
@@ -464,16 +529,17 @@ do_images() {
         while IFS=$'\t' read -r repo_tag size created; do
             imgs+=("$repo_tag")
             created="${created#"${created%%[![:space:]]*}"}"
+            repo_tag_display=$(_docker_image_display "$repo_tag" "${IMAGE_CONTAINER[$repo_tag]:-}")
             if [ -n "${USED_IMAGES[$repo_tag]:-}" ]; then
                 printf "  ${C_GREEN}●${C_RESET} [%2d] %s  %s  %s\n" \
                     "$i" \
-                    "$(_pad_right "$repo_tag" 24)" \
+                    "$(_pad_right "$repo_tag_display" 24)" \
                     "$(_pad_right "$size" 8)" \
                     "$created"
             else
                 printf '    [%2d] %s  %s  %s\n' \
                     "$i" \
-                    "$(_pad_right "$repo_tag" 24)" \
+                    "$(_pad_right "$repo_tag_display" 24)" \
                     "$(_pad_right "$size" 8)" \
                     "$created"
             fi
@@ -704,17 +770,10 @@ do_overview() {
             [ -z "${img_seen[$img_tag]:-}" ] && IMAGE_LIST+=("$img_tag")
         done
 
-        echo ""
-        local img_tag img_size img_display img_container c_mark i_mark name_col status_col c_status c_img c_idx c_ports
+        local img_tag img_size img_display img_container c_mark i_mark c_status c_img c_idx c_ports
 
         if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
-        fi
-
-        # 列标题
-        if [ "${#IMAGE_LIST[@]}" -gt 0 ]; then
-            printf "  %s %s %s\n" "$(_pad_right "${C_BOLD}镜像/容器${C_RESET}" 32)" "$(_pad_right "${C_BOLD}状态${C_RESET}" 16)" "${C_BOLD}端口${C_RESET}"
-            echo ""
         fi
 
         for img_tag in "${IMAGE_LIST[@]}"; do
@@ -730,7 +789,7 @@ do_overview() {
             else
                 i_mark=" "
             fi
-            printf "  %s\n" "$(_pad_right "${i_mark} ${C_BOLD}${img_display}${C_RESET} ${C_DIM}(${img_size})${C_RESET}" 44)"
+            printf "  %s 📦 ${C_BOLD}镜像${C_RESET}  %s ${C_DIM}(%s)${C_RESET}\n" "$i_mark" "$img_display" "$img_size"
 
             # 显示该镜像下的容器
             local has_ct=0 total_ct=0
@@ -753,14 +812,14 @@ do_overview() {
                 fi
                 # 最后一个容器用 └─，前面的用 ├─
                 if [ "$has_ct" -eq "$total_ct" ]; then
-                    name_col="  ${C_DIM}└─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                    printf "  ${C_DIM}└─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
                 else
-                    name_col="  ${C_DIM}├─${C_RESET} ${c_mark} ${C_BOLD}[${c_idx}]${C_RESET} ${c_name}"
+                    printf "  ${C_DIM}├─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
                 fi
-                status_col="${C_DIM}${c_status:0:14}${C_RESET}"
-                printf "  %s %s  %s\n" "$(_pad_right "$name_col" 32)" "$(_pad_right "$status_col" 16)" "${c_ports}"
+                printf '     状态         %s\n' "$(_docker_status_display "$c_status")"
+                [ -n "$c_ports" ] && _docker_print_ports "$c_ports"
             done
-            [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}  (无容器)${C_RESET}"
+            [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}└─ 容器  无${C_RESET}"
             echo ""
         done
 

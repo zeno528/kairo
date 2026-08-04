@@ -1,6 +1,6 @@
 # Kairo
 
-![Version](https://img.shields.io/badge/version-1.2.15-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+![Version](https://img.shields.io/badge/version-1.2.16-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
 
 轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
 
