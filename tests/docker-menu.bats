@@ -40,6 +40,23 @@
     [[ "$output" == *$'端口     0.0.0.0:8008->8008/tcp\n              [::]:8008->8008/tcp'* ]]
 }
 
+@test "Docker 官方 apt 源按 Debian 和 Ubuntu 选择" {
+    run bash -c '
+        source "'$PWD'/lib/core.sh"
+        source "'$PWD'/modules/docker.sh"
+        os_release=$(mktemp)
+        printf "ID=debian\\nVERSION_CODENAME=bookworm\\n" > "$os_release"
+        DOCKER_OS_RELEASE="$os_release" _docker_apt_source
+        printf "ID=ubuntu\\nVERSION_CODENAME=noble\\nUBUNTU_CODENAME=noble\\n" > "$os_release"
+        DOCKER_OS_RELEASE="$os_release" _docker_apt_source
+        rm -f "$os_release"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'debian\tbookworm'* ]]
+    [[ "$output" == *$'ubuntu\tnoble'* ]]
+}
+
 @test "Docker 总览按镜像归属显示容器详情" {
     run bash -c '
         source "'$PWD'/lib/core.sh"

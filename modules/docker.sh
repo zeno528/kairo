@@ -106,6 +106,16 @@ _docker_container_running() {
     [ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null)" = "true" ]
 }
 
+_docker_apt_source() (
+    # shellcheck disable=SC1090,SC1091 # 运行时由系统提供。
+    . "${DOCKER_OS_RELEASE:-/etc/os-release}" || exit 1
+    case "$ID" in
+        ubuntu) printf 'ubuntu\t%s\n' "${UBUNTU_CODENAME:-$VERSION_CODENAME}" ;;
+        debian) printf 'debian\t%s\n' "$VERSION_CODENAME" ;;
+        *) exit 1 ;;
+    esac
+)
+
 # 添加当前用户到 docker 组，免 sudo
 _docker_join_group() {
     if id -nG "$USER" 2>/dev/null | grep -qw docker; then
@@ -118,6 +128,7 @@ _docker_join_group() {
 }
 
 do_install() {
+    local source_distro source_codename
     echo ""
     if _docker_installed; then
         success "Docker 已安装"
@@ -130,6 +141,10 @@ do_install() {
     fi
     command -v apt-get >/dev/null 2>&1 || { error "仅支持 Debian/Ubuntu"; return 1; }
     sudo -v || { error "安装需要 sudo 权限"; return 1; }
+    if ! IFS=$'\t' read -r source_distro source_codename < <(_docker_apt_source); then
+        error "仅支持 Debian/Ubuntu"
+        return 1
+    fi
 
     info "使用 Docker 官方 apt 源安装"
     _start_spinner "正在添加 Docker GPG key 和 apt 源"
@@ -137,29 +152,44 @@ do_install() {
     # 移除旧版源文件（防止冲突）
     sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources 2>/dev/null
 
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq ca-certificates curl
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-    # 使用官方推荐的 deb822 .sources 格式
-    sudo tee /etc/apt/sources.list.d/docker.sources <<EOF > /dev/null
+    if ! (
+        sudo apt-get update -qq &&
+        sudo apt-get install -y -qq ca-certificates curl &&
+        sudo install -m 0755 -d /etc/apt/keyrings &&
+        sudo curl -fsSL "https://download.docker.com/linux/${source_distro}/gpg" -o /etc/apt/keyrings/docker.asc &&
+        sudo chmod a+r /etc/apt/keyrings/docker.asc &&
+        sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF &&
 Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+URIs: https://download.docker.com/linux/${source_distro}
+Suites: ${source_codename}
 Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
-
-    sudo apt-get update -qq
+        sudo apt-get update -qq
+    ); then
+        _stop_spinner
+        error "Docker 官方 apt 源配置失败"
+        return 1
+    fi
     _stop_spinner
 
     _start_spinner "正在安装 Docker Engine + Compose"
     if sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         _stop_spinner
-        sudo systemctl enable --now docker 2>/dev/null || true
+        if [ -d /run/systemd/system ]; then
+            if ! sudo systemctl enable --now docker; then
+                error "Docker 已安装，但服务启动失败"
+                return 1
+            fi
+        elif ! sudo service docker start; then
+            error "Docker 已安装，但当前环境未启用 systemd 且无法启动服务；WSL2 请启用 systemd 或使用 Docker Desktop 集成"
+            return 1
+        fi
+        if ! sudo docker info > /dev/null 2>&1; then
+            error "Docker 已安装，但 daemon 未就绪"
+            return 1
+        fi
         _docker_join_group
         success "Docker 安装完成"
         docker --version 2>/dev/null
