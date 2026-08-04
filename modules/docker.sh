@@ -133,7 +133,7 @@ _docker_join_group() {
     fi
     if getent group docker &>/dev/null; then
         sudo usermod -aG docker "$USER"
-        info "已将 $USER 加入 docker 组（重新登录后免 sudo）"
+        info "已将 $USER 加入 docker 组"
     fi
 }
 
@@ -184,9 +184,8 @@ EOF
     fi
     _stop_spinner
 
-    _start_spinner "正在安装 Docker Engine + Compose"
-    if _docker_sudo_net apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null; then
-        _stop_spinner
+    info "正在安装 Docker Engine + Compose"
+    if _docker_sudo_net apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         if [ -d /run/systemd/system ]; then
             if ! sudo systemctl enable --now docker; then
                 error "Docker 已安装，但服务启动失败"
@@ -201,12 +200,13 @@ EOF
             return 1
         fi
         _docker_join_group
+        if ! id -nG | grep -qw docker; then
+            warn "当前终端 docker 组权限尚未生效，请重新登录或执行 newgrp docker"
+        fi
         success "Docker 安装完成"
         docker --version 2>/dev/null
         docker compose version 2>/dev/null
-        info "如果 docker 命令需要 sudo，请重新登录以刷新 docker 组权限"
     else
-        _stop_spinner
         error "Docker 安装失败"
         return 1
     fi
@@ -245,13 +245,11 @@ do_upgrade() {
     read -r -p "  确认升级? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
 
-    _start_spinner "正在升级 Docker"
-    if _docker_sudo_net apt-get install -y -qq --only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null; then
-        _stop_spinner
+    info "正在升级 Docker"
+    if _docker_sudo_net apt-get install -y --only-upgrade docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         success "Docker 升级完成"
         docker --version 2>/dev/null
     else
-        _stop_spinner
         error "升级失败"
         return 1
     fi
@@ -741,12 +739,11 @@ do_uninstall() {
     _stop_spinner
 
     # apt purge 卸载所有 Docker 包
-    _start_spinner "正在卸载 Docker 软件包"
-    _docker_sudo_net apt-get purge -y -qq docker-ce docker-ce-cli containerd.io \
+    info "正在卸载 Docker 软件包"
+    _docker_sudo_net apt-get purge -y docker-ce docker-ce-cli containerd.io \
         docker-buildx-plugin docker-compose-plugin \
-        docker-ce-rootless-extras &>/dev/null || true
-    _docker_sudo_net apt-get autoremove -y -qq --purge &>/dev/null || true
-    _stop_spinner
+        docker-ce-rootless-extras || true
+    _docker_sudo_net apt-get autoremove -y --purge || true
 
     # 清理 Docker 数据目录
     _start_spinner "正在清理 Docker 数据目录"
@@ -978,10 +975,15 @@ _render_status_cache() {
         compose_line="${C_DIM}Compose ${compose_ver}${C_RESET}"
     fi
 
-    if ! docker ps &>/dev/null; then
-        echo -e "  ${C_YELLOW}⚠ Docker 服务未运行或当前用户无权限${C_RESET}"
+    local ps_err
+    ps_err=$(docker ps 2>&1) || {
+        if [[ "$ps_err" == *"permission denied"* ]]; then
+            echo -e "  ${C_YELLOW}⚠ 当前用户无 Docker 权限；刚安装请重新登录（或 newgrp docker）${C_RESET}"
+        else
+            echo -e "  ${C_YELLOW}⚠ Docker 服务未运行${C_RESET}"
+        fi
         return
-    fi
+    }
     local containers images
     containers=$(docker ps -aq 2>/dev/null | wc -l)
     images=$(docker images -q 2>/dev/null | wc -l)
