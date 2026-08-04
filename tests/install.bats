@@ -89,6 +89,8 @@ MOCK
     plain_output=$(printf '%s' "$output" | sed -E $'s/\x1B\\[[0-9;]*m//g')
     [[ "$plain_output" =~ "升级完成！v1.1.31" ]]
     [[ "$plain_output" =~ "进入主菜单" ]]
+    [[ "$plain_output" =~ $'  >>> 下载' ]]
+    [[ "$plain_output" =~ $'  >>> 🎉 Kairo' ]]
     [ "$(tr -d '[:space:]' < "${KAIRO_LIB_DIR}/VERSION")" = "1.1.31" ]
 }
 

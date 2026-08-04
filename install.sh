@@ -32,13 +32,13 @@ validate_install_paths() {
         case "$path" in
             /*) ;;
             *)
-                echo ">>> 安装路径必须是绝对路径: $path" >&2
+                echo "  >>> 安装路径必须是绝对路径: $path" >&2
                 exit 1
                 ;;
         esac
         case "${path%/}" in
             ""|/|/usr|/usr/local|/etc|/var|/opt|/home)
-                echo ">>> 拒绝使用过宽的安装路径: $path" >&2
+                echo "  >>> 拒绝使用过宽的安装路径: $path" >&2
                 exit 1
                 ;;
         esac
@@ -57,7 +57,7 @@ require_install_permissions() {
     fi
     [ "$KAIRO_NEEDS_SUDO" -eq 0 ] && return 0
     sudo -v || {
-        echo ">>> 安装需要 sudo 权限" >&2
+        echo "  >>> 安装需要 sudo 权限" >&2
         exit 1
     }
 }
@@ -81,7 +81,7 @@ resolve_release_sha() {
             awk 'NR == 1 { first=$0 } END { print first }')
     fi
     if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-        echo ">>> 无法解析发布提交，已取消安装" >&2
+        echo "  >>> 无法解析发布提交，已取消安装" >&2
         return 1
     fi
     printf '%s' "$sha"
@@ -111,10 +111,10 @@ wait_download_batch() {
     for index in "${!DOWNLOAD_PIDS[@]}"; do
         if wait "${DOWNLOAD_PIDS[$index]}"; then
             COUNT=$((COUNT + 1))
-            printf "\r\033[K>>> 下载 [%d/%d] %s" "$COUNT" "$TOTAL" "${DOWNLOAD_PATHS[$index]}"
+            printf "\r\033[K  >>> 下载 [%d/%d] %s" "$COUNT" "$TOTAL" "${DOWNLOAD_PATHS[$index]}"
         else
             echo ""
-            echo ">>> 下载失败: ${DOWNLOAD_PATHS[$index]}，未修改现有安装" >&2
+            echo "  >>> 下载失败: ${DOWNLOAD_PATHS[$index]}，未修改现有安装" >&2
             failed=1
         fi
     done
@@ -154,7 +154,7 @@ validate_staged_release() {
     [ -s "${runtime_dir}/modules/registry.sh" ] || return 1
 
     if sort "${STAGE_DIR}/manifest.normalized" | uniq -d | grep -q .; then
-        echo ">>> 安装清单包含重复路径" >&2
+        echo "  >>> 安装清单包含重复路径" >&2
         return 1
     fi
     sed -n 's#^modules/\([^/]*\)\.sh$#\1#p' "${STAGE_DIR}/manifest.normalized" |
@@ -164,7 +164,7 @@ validate_staged_release() {
         "${runtime_dir}/modules/registry.sh" |
         sort > "$registry_modules"
     if ! diff -u "$registry_modules" "$manifest_modules" >/dev/null; then
-        echo ">>> 安装清单与模块注册表不一致" >&2
+        echo "  >>> 安装清单与模块注册表不一致" >&2
         return 1
     fi
 
@@ -204,7 +204,7 @@ deploy_staged_release() {
     fi
 
     if ! run_privileged mv -- "$new_runtime" "$LIB_DIR" || ! run_privileged mv -- "$new_bin" "${BIN_DIR}/ka"; then
-        echo ">>> 部署失败，正在恢复上一版本" >&2
+        echo "  >>> 部署失败，正在恢复上一版本" >&2
         run_privileged rm -rf -- "$LIB_DIR"
         [ "$had_runtime" -eq 1 ] && run_privileged mv -- "$backup_runtime" "$LIB_DIR"
         if [ "$had_bin" -eq 1 ]; then
@@ -223,25 +223,25 @@ deploy_staged_release() {
 if [ "${1:-}" = "uninstall" ]; then
     require_install_permissions
     local_ver=$(get_local_version)
-    echo ">>> 卸载 Kairo v${local_ver}..."
+    echo "  >>> 卸载 Kairo v${local_ver}..."
     run_privileged rm -f -- "${BIN_DIR}/ka" || {
-        echo ">>> 删除命令入口失败" >&2
+        echo "  >>> 删除命令入口失败" >&2
         exit 1
     }
     run_privileged rm -rf -- "$LIB_DIR" || {
-        echo ">>> 删除运行库失败" >&2
+        echo "  >>> 删除运行库失败" >&2
         exit 1
     }
     # 清理 Kairo 运行时缓存（发布日期等；丢失会自动重建）
     run_privileged rm -rf -- /var/cache/kairo 2>/dev/null || true
     for target in "${BIN_DIR}/ka" "$LIB_DIR"; do
         if [ -e "$target" ] || [ -L "$target" ]; then
-            echo ">>> 卸载后仍有残留: $target" >&2
+            echo "  >>> 卸载后仍有残留: $target" >&2
             exit 1
         fi
     done
-    echo ">>> 卸载完成，Kairo 运行文件已全部清理"
-    echo ">>> Nginx、SSH、防火墙、证书等业务配置已保留"
+    echo "  >>> 卸载完成，Kairo 运行文件已全部清理"
+    echo "  >>> Nginx、SSH、防火墙、证书等业务配置已保留"
     exit 0
 fi
 
@@ -256,7 +256,7 @@ mkdir -p "$runtime_dir"
 
 fetch_remote_file "$MANIFEST_PATH" "$release_sha" | normalize_manifest > "${STAGE_DIR}/manifest.normalized"
 if [ ! -s "${STAGE_DIR}/manifest.normalized" ]; then
-    echo ">>> 无法获取有效安装清单，已取消安装" >&2
+    echo "  >>> 无法获取有效安装清单，已取消安装" >&2
     exit 1
 fi
 
@@ -264,7 +264,7 @@ TOTAL=$(wc -l < "${STAGE_DIR}/manifest.normalized")
 COUNT=0
 while IFS= read -r path; do
     if ! validate_manifest_path "$path"; then
-        echo ">>> 安装清单包含非法路径: $path" >&2
+        echo "  >>> 安装清单包含非法路径: $path" >&2
         exit 1
     fi
     case "$path" in
@@ -283,19 +283,19 @@ echo ""
 
 remote_ver=$(tr -d '[:space:]' < "${runtime_dir}/VERSION")
 if [[ ! "$remote_ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo ">>> 发布版本号无效，未修改现有安装" >&2
+    echo "  >>> 发布版本号无效，未修改现有安装" >&2
     exit 1
 fi
 
 if ! validate_staged_release "$runtime_dir" "$bin_file"; then
-    echo ">>> 发布文件校验失败，未修改现有安装" >&2
+    echo "  >>> 发布文件校验失败，未修改现有安装" >&2
     exit 1
 fi
 
 if [ "$local_ver" = "未安装" ]; then
-    echo ">>> 首次安装 Kairo v${remote_ver}..."
+    echo "  >>> 首次安装 Kairo v${remote_ver}..."
 elif [ "$local_ver" = "$remote_ver" ]; then
-    echo ">>> 校验并修复 Kairo v${remote_ver}..."
+    echo "  >>> 校验并修复 Kairo v${remote_ver}..."
 fi
 
 chmod 644 "${runtime_dir}/VERSION"
@@ -309,6 +309,6 @@ elif [ "$local_ver" = "$remote_ver" ]; then
 else
     done_msg="升级完成"
 fi
-echo -e ">>> 🎉 \033[1mKairo\033[0m ${done_msg}！\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
+echo -e "  >>> 🎉 \033[1mKairo\033[0m ${done_msg}！\033[1;32mv${remote_ver} (${release_sha:0:7})\033[0m"
 echo ""
-echo -e ">>> \033[1m💡 输入 \033[1;36mka\033[0m\033[1m 进入主菜单\033[0m"
+echo -e "  >>> \033[1m💡 输入 \033[1;36mka\033[0m\033[1m 进入主菜单\033[0m"
