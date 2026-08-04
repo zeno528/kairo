@@ -90,15 +90,16 @@ _docker_status_display() {
 }
 
 _docker_print_ports() {
-    local ports="$1" width first rest
+    local ports="$1" indent="${2:-     }" width first rest label
+    label=$(_pad_right "端口" 8)
     width=$(tput cols 2>/dev/null || echo 80)
     if [ "$width" -ge $(( ${#ports} + 18 )) ] || [[ "$ports" != *,* ]]; then
-        printf '     端口         %s\n' "$ports"
+        printf '%s%s %s\n' "$indent" "$label" "$ports"
         return
     fi
     IFS=',' read -r first rest <<< "$ports"
-    printf '     端口         %s\n' "$first"
-    printf '                  %s\n' "${rest# }"
+    printf '%s%s %s\n' "$indent" "$label" "$first"
+    printf '%*s%s\n' "$(( $(_str_width "$indent") + 9 ))" '' "${rest# }"
 }
 
 _docker_container_running() {
@@ -798,7 +799,7 @@ do_overview() {
             [ -z "${img_seen[$img_tag]:-}" ] && IMAGE_LIST+=("$img_tag")
         done
 
-        local img_tag img_size img_display img_container c_mark i_mark c_status c_img c_idx c_ports
+        local img_tag img_size img_display img_container c_mark i_mark c_status c_img c_idx c_ports label
 
         if [ "${#IMAGE_LIST[@]}" -eq 0 ]; then
             echo -e "  ${C_DIM}(无镜像)${C_RESET}"
@@ -813,41 +814,29 @@ do_overview() {
             done
             img_display=$(_docker_image_display "$img_tag" "$img_container")
             if [ -n "${IMG_USED[$img_tag]:-}" ]; then
-                i_mark="${C_GREEN}●${C_RESET}"
+                i_mark="${C_GREEN}●${C_RESET} "
             else
-                i_mark=" "
+                i_mark="  "
             fi
-            printf "  %s 📦 ${C_BOLD}镜像${C_RESET}  %s ${C_DIM}(%s)${C_RESET}\n" "$i_mark" "$img_display" "$img_size"
+            label=$(_pad_right "${C_BOLD}镜像${C_RESET}" 8)
+            printf "    📦 %s%s%s ${C_DIM}(%s)${C_RESET}\n" "$label" "$i_mark" "$img_display" "$img_size"
 
             # 显示该镜像下的容器
-            local has_ct=0 total_ct=0
-            for c_name in "${CONTAINER_LIST[@]}"; do
-                [ "${CT_META[$c_name]}" = "" ] && continue
-                IFS='|' read -r c_status c_img c_idx _ <<< "${CT_META[$c_name]}"
-                [ "$c_img" != "${IMG_ID[$img_tag]}" ] && continue
-                ((total_ct++))
-            done
-
             for c_name in "${CONTAINER_LIST[@]}"; do
                 [ "${CT_META[$c_name]}" = "" ] && continue
                 IFS='|' read -r c_status c_img c_idx c_ports <<< "${CT_META[$c_name]}"
                 [ "$c_img" != "${IMG_ID[$img_tag]}" ] && continue
-                has_ct=1
                 if [[ "$c_status" =~ ^Up ]]; then
                     c_mark="${C_GREEN}●${C_RESET}"
                 else
                     c_mark="${C_GRAY}○${C_RESET}"
                 fi
-                # 最后一个容器用 └─，前面的用 ├─
-                if [ "$has_ct" -eq "$total_ct" ]; then
-                    printf "  ${C_DIM}└─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
-                else
-                    printf "  ${C_DIM}├─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
-                fi
-                printf '     状态         %s\n' "$(_docker_status_display "$c_status")"
-                [ -n "$c_ports" ] && _docker_print_ports "$c_ports"
+                label=$(_pad_right "${C_BOLD}容器${c_idx}${C_RESET}" 8)
+                printf '         %s %s %s\n' "$label" "$c_mark" "$c_name"
+                label=$(_pad_right "状态" 8)
+                printf '         %s %s\n' "$label" "$(_docker_status_display "$c_status")"
+                [ -n "$c_ports" ] && _docker_print_ports "$c_ports" '         '
             done
-            [ "$has_ct" -eq 0 ] && echo -e "  ${C_DIM}└─ 容器  无${C_RESET}"
             echo ""
         done
 
@@ -856,9 +845,11 @@ do_overview() {
             for c_name in "${ORPHAN_CONTAINERS[@]}"; do
                 IFS='|' read -r c_status _ c_idx c_ports <<< "${CT_META[$c_name]}"
                 if [[ "$c_status" =~ ^Up ]]; then c_mark="${C_GREEN}●${C_RESET}"; else c_mark="${C_GRAY}○${C_RESET}"; fi
-                printf "  ${C_DIM}└─${C_RESET} %s ${C_BOLD}[%s]${C_RESET} ${C_BOLD}容器${C_RESET}  %s\n" "$c_mark" "$c_idx" "$c_name"
-                printf '     状态         %s\n' "$(_docker_status_display "$c_status")"
-                [ -n "$c_ports" ] && _docker_print_ports "$c_ports"
+                label=$(_pad_right "${C_BOLD}容器${c_idx}${C_RESET}" 8)
+                printf '         %s %s %s\n' "$label" "$c_mark" "$c_name"
+                label=$(_pad_right "状态" 8)
+                printf '         %s %s\n' "$label" "$(_docker_status_display "$c_status")"
+                [ -n "$c_ports" ] && _docker_print_ports "$c_ports" '         '
             done
             echo ""
         fi

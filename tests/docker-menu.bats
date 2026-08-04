@@ -36,8 +36,8 @@
     '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
-    [[ "$output" == *$'端口         0.0.0.0:8008->8008/tcp\n                  [::]:8008->8008/tcp'* ]]
+    [[ "$output" == *"端口     0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
+    [[ "$output" == *$'端口     0.0.0.0:8008->8008/tcp\n              [::]:8008->8008/tcp'* ]]
 }
 
 @test "Docker 总览按镜像归属显示容器详情" {
@@ -62,10 +62,10 @@
     '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"📦 镜像  ghcr.io/nezhahq/nezha:2.3.2 (122MB)"* ]]
-    [[ "$output" == *"└─"*"[1]"*"容器  nezha-dashboard"* ]]
-    [[ "$output" == *"状态         运行中 · 已运行 约 1 小时"* ]]
-    [[ "$output" == *"端口         0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
+    [[ "$output" == *"    📦 镜像    ● ghcr.io/nezhahq/nezha:2.3.2 (122MB)"* ]]
+    [[ "$output" == *"         容器1"*"● nezha-dashboard"* ]]
+    [[ "$output" == *"         状态     运行中 · 已运行 约 1 小时"* ]]
+    [[ "$output" == *"         端口     0.0.0.0:8008->8008/tcp, [::]:8008->8008/tcp"* ]]
 }
 
 @test "Docker 总览以完整 Image ID 关联运行、停止和无容器镜像" {
@@ -95,10 +95,11 @@
     '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"● [1] 容器  compose-running"* ]]
-    [[ "$output" == *"○ [2] 容器  stopped-app"* ]]
-    [[ "$output" == *"empty-build:latest (100MB)"*$'\n  └─ 容器  无'* ]]
-    [[ "$output" == *"未关联镜像（原镜像标签已删除或已更新）"*"● [3] 容器  orphan-app"* ]]
+    [[ "$output" == *"容器1"*"● compose-running"* ]]
+    [[ "$output" == *"容器2"*"○ stopped-app"* ]]
+    [[ "$output" == *"empty-build:latest (100MB)"* ]]
+    [[ "$output" != *"容器  无"* ]]
+    [[ "$output" == *"未关联镜像（原镜像标签已删除或已更新）"*"容器3"*"● orphan-app"* ]]
 }
 
 @test "Docker 镜像列表按最长名称对齐列" {
