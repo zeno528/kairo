@@ -63,8 +63,16 @@ show_banner() {
 }
 
 kairo_run_installer() {
-    set -o pipefail
-    fetch_remote_file install.sh | bash
+    local installer rc
+    installer=$(mktemp) || return 1
+    if ! fetch_remote_file install.sh > "$installer"; then
+        rm -f -- "$installer"
+        return 1
+    fi
+    bash "$installer"
+    rc=$?
+    rm -f -- "$installer"
+    return "$rc"
 }
 
 do_update() {
@@ -94,9 +102,10 @@ kairo_update_next_action() {
     local choice
     read -r -p "  回车返回命令行，ka 进入主菜单: " choice
     [[ "$choice" =~ ^[Kk][Aa]$ ]] || return 0
-    exec "${BIN_DIR}/ka"
-    error "无法启动主菜单"
-    return 1
+    exec "${BIN_DIR}/ka" || {
+        error "无法启动主菜单"
+        return 1
+    }
 }
 
 do_uninstall() {

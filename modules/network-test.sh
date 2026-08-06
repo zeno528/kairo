@@ -24,8 +24,7 @@ do_speedtest() (
     trap 'rm -rf -- "$tmp_dir"' EXIT
     cd -- "$tmp_dir" || return 1
 
-    bash -c \
-        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$BENCH_URL"
+    _tool_run_remote_installer "$BENCH_URL"
 )
 
 do_backtrace() (
@@ -169,8 +168,7 @@ do_ip_quality() (
     trap 'rm -rf -- "$tmp_dir"' EXIT
     cd -- "$tmp_dir" || return 1
 
-    bash -c \
-        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$IPQUALITY_URL"
+    _tool_run_remote_installer "$IPQUALITY_URL"
 )
 
 do_streaming() (
@@ -183,15 +181,12 @@ do_streaming() (
     trap 'rm -rf -- "$tmp_dir"' EXIT
     cd -- "$tmp_dir" || return 1
 
-    bash -c \
-        'curl --connect-timeout 10 --max-time 120 --retry 2 -fsSL "$0" | bash' "$STREAMING_URL"
+    _tool_run_remote_installer "$STREAMING_URL"
 )
 
 do_node_quality() (
     echo ""
-    bash -c \
-        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
-        "$NODEQUALITY_URL"
+    _tool_run_remote_installer "$NODEQUALITY_URL"
 )
 
 do_ecs_test() (
@@ -203,9 +198,7 @@ do_ecs_test() (
     }
     trap 'rm -rf -- "$tmp_dir"' EXIT
     cd -- "$tmp_dir" || return 1
-    bash -c \
-        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
-        "$ECS_TEST_URL"
+    _tool_run_remote_installer "$ECS_TEST_URL"
 )
 
 menu() {

@@ -642,13 +642,23 @@ setup() {
         trap "rm -rf -- \"\$test_tmp\"" EXIT
         TMPDIR="$test_tmp"
         original_dir=$PWD
-        curl() { printf "%s\\n" "touch speedtest-artifact"; }
+        curl() {
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "-o" ]; then
+                    printf "%s\\n" "touch speedtest-artifact" "echo MARKER" > "$2"
+                    return
+                fi
+                shift
+            done
+            return 1
+        }
         export -f curl
         do_speedtest
         [ ! -e "$original_dir/speedtest-artifact" ]
         [ -z "$(find "$test_tmp" -mindepth 1 -maxdepth 1 -name "kairo-speedtest.*" -print -quit)" ]
     '
     [ "$status" -eq 0 ]
+    [[ "$output" == *"MARKER"* ]]
 }
 
 @test "回程路由在专用临时目录运行并清理" {

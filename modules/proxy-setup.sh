@@ -11,9 +11,7 @@ do_3xui() {
     info "3x-ui 是 Xray 代理面板，支持多协议、流量统计、订阅管理"
     read -r -p "  确认继续? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    bash -c \
-        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
-        "$_3XUI_INSTALL_URL"
+    _tool_run_remote_installer "$_3XUI_INSTALL_URL"
 }
 
 do_singbox_eooce() {
@@ -22,9 +20,7 @@ do_singbox_eooce() {
     info "轻量方案，基于 Docker 部署"
     read -r -p "  确认继续? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    bash -c \
-        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
-        "$_SINGBOX_EOOCE_URL"
+    _tool_run_remote_installer "$_SINGBOX_EOOCE_URL"
 }
 
 do_singbox_yonggekkk() {
@@ -33,9 +29,7 @@ do_singbox_yonggekkk() {
     info "功能丰富：reality / hysteria2 / vless / 订阅生成"
     read -r -p "  确认继续? [Y/n]: " confirm
     [[ "$confirm" =~ ^([Nn]|[Nn][Oo])$ ]] && { info "已取消"; return 0; }
-    bash -c \
-        'curl --connect-timeout 10 --max-time 300 --retry 2 -fsSL "$0" | bash' \
-        "$_SINGBOX_YONGGEKKK_URL"
+    _tool_run_remote_installer "$_SINGBOX_YONGGEKKK_URL"
 }
 
 menu() {

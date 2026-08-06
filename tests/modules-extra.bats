@@ -222,14 +222,13 @@
     [[ ! "$output" == *"BASH_CALLED"* ]]
 }
 
-@test "节点搭建确认时执行对应官方脚本" {
+@test "节点搭建确认时调用统一安装执行器并传入官方脚本地址" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/proxy-setup.sh"
-        bash() { printf "BASH_CALLED %s\n" "$*"; }
+        _tool_run_remote_installer() { printf "RUN %s\n" "$1"; }
         printf "%s\n" y | do_3xui
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"BASH_CALLED"* ]]
-    [[ "$output" == *"mhsanaei/3x-ui"* ]]
+    [[ "$output" == *"RUN https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh"* ]]
 }

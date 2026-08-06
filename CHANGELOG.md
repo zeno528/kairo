@@ -1,5 +1,12 @@
 # 更新日志
 
+## v1.2.29 (2026-08-07)
+- 🐛 fix(modules): 第三方脚本改为临时文件执行，修复交互输入被管道占用
+  - proxy-setup 与 network-test 的远程安装/测试脚本统一改用 _tool_run_remote_installer 下载后执行，避免 curl | bash 占用 stdin 导致脚本内 read 无法交互
+  - ka update 拉取 install.sh 同样改为下载到临时文件后执行
+  - kairo.sh exec 改为 || 形式，消除 shellcheck SC2093，保证 CI 通过
+  - 同步更新网络测速与节点搭建相关 bats 断言
+
 ## v1.2.28 (2026-08-04)
 - ✨ feat: 移除多个模块中的 spinner 功能，简化命令输出
 
