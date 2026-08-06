@@ -1,5 +1,13 @@
 # 更新日志
 
+## v1.2.31 (2026-08-07)
+- ✨ feat(proxy-setup): 节点搭建改为注册表驱动并新增 fscarmen/233boy 一键脚本
+  - PROXY_INSTALLERS 统一管理第三方一键脚本，菜单自动生成，新增脚本只需追加一行并注册 action
+  - 新增 singbox_fscarmen（全家桶 10+ 协议）与 singbox_233boy（多配置管理）
+  - 统一走 _tool_run_remote_installer 下载后执行，第三方脚本自身接管全部交互，Kairo 不干预
+  - CLI 入口统一为 ka proxy-setup install <key>
+  - 补充注册表项格式完整性测试
+
 ## v1.2.30 (2026-08-07)
 - ✨ feat: 优化网络测试和代理节点搭建菜单，增加功能描述，提升用户体验
 

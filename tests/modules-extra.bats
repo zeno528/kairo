@@ -215,7 +215,7 @@
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/proxy-setup.sh"
         bash() { printf "BASH_CALLED %s\n" "$*"; }
-        printf "%s\n" n | do_3xui
+        printf "%s\n" n | do_install 3xui
     '
     [ "$status" -eq 0 ]
     [[ "$output" == *"已取消"* ]]
@@ -227,8 +227,20 @@
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/proxy-setup.sh"
         _tool_run_remote_installer() { printf "RUN %s\n" "$1"; }
-        printf "%s\n" y | do_3xui
+        printf "%s\n" y | do_install 3xui
     '
     [ "$status" -eq 0 ]
     [[ "$output" == *"RUN https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh"* ]]
+}
+
+@test "节点搭建注册表项 key/描述/URL 完整" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/proxy-setup.sh"
+        for entry in "${PROXY_INSTALLERS[@]}"; do
+            IFS="|" read -r key label desc url <<< "$entry"
+            [ -n "$key" ] && [ -n "$label" ] && [ -n "$desc" ] && [[ "$url" == https://* ]]
+        done
+    '
+    [ "$status" -eq 0 ]
 }

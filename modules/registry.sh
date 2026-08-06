@@ -79,7 +79,7 @@ kairo_register_module ssl-check network "SSL 证书检查" "local_check remote_c
 kairo_register_module optimize network "网络与BBR内核优化" "status apply restore launch bbrv3"
 kairo_register_module security-update network "软件更新" "check security_update full_update full_update_preview cleanup"
 kairo_register_module nginx network "Nginx 管理" "install uninstall status start stop restart reload toggle_enable test_conf list_sites view_conf add_proxy del_proxy cert cert_list logs security_scan enable_site disable_site snapshot restore log_top"
-kairo_register_module proxy-setup network "节点搭建✨" "3xui singbox_eooce singbox_yonggekkk"
+kairo_register_module proxy-setup network "节点搭建✨" "install"
 kairo_register_module claude agents "Claude Code" "status install upgrade" "Anthropic AI 编程助手"
 kairo_register_module kimi agents "Kimi Code" "status install upgrade" "Kimi AI 编程助手"
 kairo_register_module github-cli tools "GitHub CLI" "status install upgrade auth" "GitHub 命令行工具"
