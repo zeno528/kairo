@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.2.30 (2026-08-07)
+- ✨ feat: 优化网络测试和代理节点搭建菜单，增加功能描述，提升用户体验
+
 ## v1.2.29 (2026-08-07)
 - 🐛 fix(modules): 第三方脚本改为临时文件执行，修复交互输入被管道占用
   - proxy-setup 与 network-test 的远程安装/测试脚本统一改用 _tool_run_remote_installer 下载后执行，避免 curl | bash 占用 stdin 导致脚本内 read 无法交互

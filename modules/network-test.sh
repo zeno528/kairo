@@ -206,13 +206,13 @@ menu() {
         clear
         title "🌐 网络测试"
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 网络测速"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 三网回程路由"
-        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Ping 延迟测试"
-        _menu_actions 20 "${C_BOLD}[4]${C_RESET} IP 质量体检"
-        _menu_actions 20 "${C_BOLD}[5]${C_RESET} 流媒体解锁"
-        _menu_actions 20 "${C_BOLD}[6]${C_RESET} NodeQuality 节点测速"
-        _menu_actions 20 "${C_BOLD}[7]${C_RESET} 融合怪测评"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 网络测速 ${C_DIM}— 网络+硬件性能测试${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 三网回程路由 ${C_DIM}— 三网回程线路测试${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[3]${C_RESET} Ping 延迟测试 ${C_DIM}— 三网节点延迟排行${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[4]${C_RESET} IP 质量体检 ${C_DIM}— IP 原生/风控/风险检测${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[5]${C_RESET} 流媒体解锁 ${C_DIM}— 主流流媒体解锁检测${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[6]${C_RESET} NodeQuality 节点测速 ${C_DIM}— 节点综合质量评测${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[7]${C_RESET} 融合怪测评 ${C_DIM}— 一键聚合全能测评${C_RESET}"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""

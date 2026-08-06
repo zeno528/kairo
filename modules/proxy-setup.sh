@@ -38,9 +38,9 @@ menu() {
         clear
         title "🚀 节点搭建"
         divider
-        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 3x-ui 面板"
-        _menu_actions 24 "${C_BOLD}[2]${C_RESET} sing-box（eooce 版）"
-        _menu_actions 24 "${C_BOLD}[3]${C_RESET} sing-box（yonggekkk 版）"
+        _menu_actions 24 "${C_BOLD}[1]${C_RESET} 3x-ui 面板 ${C_DIM}— Xray 面板，多协议/流量统计/订阅${C_RESET}"
+        _menu_actions 24 "${C_BOLD}[2]${C_RESET} sing-box（eooce 版） ${C_DIM}— 四合一协议一键安装（reality/vmess/hy2/tuic5）${C_RESET}"
+        _menu_actions 24 "${C_BOLD}[3]${C_RESET} sing-box（yonggekkk 版） ${C_DIM}— 五合一协议+订阅生成/Argo 隧道${C_RESET}"
         _menu_actions 24 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
