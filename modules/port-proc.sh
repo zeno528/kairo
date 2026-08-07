@@ -71,14 +71,19 @@ do_find_by_name() {
     ps aux | grep -i "$name" | grep -v grep || warn "未找到进程: $name"
 }
 
-do_list_memory() {
-    local limit="${1:-15}" output line pid user rss pmem name memory_mib i=0
+do_list_memory() { _list_top_processes memory "${1:-20}"; }
+
+do_list_cpu() { _list_top_processes cpu "${1:-20}"; }
+
+# 内存/CPU Top 排行共用实现；view 为 memory 或 cpu。
+_list_top_processes() {
+    local view="$1" limit="${2:-20}" sort_col output line pid user rss pmem name cpu memory_mib i=0
     local mem_total mem_available mem_used mem_percent
     PORT_PROCESS_PIDS=()
     kairo_is_positive_integer "$limit" || { error "显示数量必须是正整数"; return 1; }
     command -v ps &>/dev/null || { error "未找到 ps 命令"; return 1; }
 
-    if [ -r /proc/meminfo ]; then
+    if [ "$view" = memory ] && [ -r /proc/meminfo ]; then
         read -r mem_total mem_available < <(awk '
             /^MemTotal:/ { total = $2 }
             /^MemAvailable:/ { available = $2 }
@@ -93,28 +98,43 @@ do_list_memory() {
         fi
     fi
 
-    if ! output=$(ps -eo pid=,user=,rss=,pmem=,comm= --sort=-rss 2>/dev/null); then
+    sort_col=-rss
+    [ "$view" = cpu ] && sort_col=-%cpu
+    if ! output=$(ps -eo pid=,user=,rss=,pmem=,comm=,%cpu= --sort="$sort_col" 2>/dev/null); then
         error "无法读取进程内存占用"
         return 1
     fi
 
     echo ""
-    echo -e "  ${C_BOLD}内存占用 Top ${limit}${C_RESET}"
-    printf "  ${C_DIM}%s %s %s %s %s %s${C_RESET}\n" \
-        "$(_pad_right "编号" 6)" "$(_pad_right "PID" 8)" "$(_pad_right "内存" 10)" \
-        "$(_pad_right "占比" 8)" "$(_pad_right "用户" 12)" "进程"
+    if [ "$view" = cpu ]; then
+        echo -e "  ${C_BOLD}CPU 占用 Top ${limit}${C_RESET}"
+        printf "  ${C_DIM}%s %s %s %s %s %s${C_RESET}\n" \
+            "$(_pad_right "编号" 6)" "$(_pad_right "PID" 8)" "$(_pad_right "CPU" 8)" \
+            "$(_pad_right "内存" 8)" "$(_pad_right "用户" 12)" "进程"
+    else
+        echo -e "  ${C_BOLD}内存占用 Top ${limit}${C_RESET}"
+        printf "  ${C_DIM}%s %s %s %s %s %s${C_RESET}\n" \
+            "$(_pad_right "编号" 6)" "$(_pad_right "PID" 8)" "$(_pad_right "内存" 10)" \
+            "$(_pad_right "占比" 8)" "$(_pad_right "用户" 12)" "进程"
+    fi
     while IFS= read -r line; do
-        read -r pid user rss pmem name <<< "$line"
+        read -r pid user rss pmem name cpu <<< "$line"
         [[ "$pid" =~ ^[0-9]+$ && "$rss" =~ ^[0-9]+$ ]] || continue
         memory_mib=$((rss / 1024))
         i=$((i + 1))
         PORT_PROCESS_PIDS+=("$pid")
-        printf "  %s %s %s %s %s %s\n" \
-            "$(_pad_right "[$i]" 6)" "$(_pad_right "$pid" 8)" "$(_pad_right "${memory_mib} MiB" 10)" \
-            "$(_pad_right "${pmem}%" 8)" "$(_pad_right "$user" 12)" "$name"
+        if [ "$view" = cpu ]; then
+            printf "  %s %s %s %s %s %s\n" \
+                "$(_pad_right "[$i]" 6)" "$(_pad_right "$pid" 8)" "$(_pad_right "${cpu:-0}%" 8)" \
+                "$(_pad_right "${pmem:-0}%" 8)" "$(_pad_right "$user" 12)" "$name"
+        else
+            printf "  %s %s %s %s %s %s\n" \
+                "$(_pad_right "[$i]" 6)" "$(_pad_right "$pid" 8)" "$(_pad_right "${memory_mib} MiB" 10)" \
+                "$(_pad_right "${pmem}%" 8)" "$(_pad_right "$user" 12)" "$name"
+        fi
         [ "$i" -ge "$limit" ] && break
     done <<< "$output"
-    [ "$i" -eq 0 ] && warn "未找到可读取内存的进程"
+    [ "$i" -eq 0 ] && warn "未找到可读取的进程信息"
 }
 
 do_kill_process() {
@@ -168,7 +188,7 @@ _process_action_menu() {
     _menu_actions 20 "[00] 返回主菜单"
     read -r -p "  选择操作: " choice
     case "$choice" in
-        1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;
+        1) ps -ww -p "$pid" -o pid,ppid,user,stat,lstart,%cpu,%mem,rss,args ;;
         2) do_kill_process "$pid" ;;
         00) return 2 ;;
         0) ;;
@@ -215,14 +235,19 @@ port_menu() {
 
 # 二级页面：进入模块默认显示任务管理器（内存占用排行）
 menu() {
-    local choice pid rc
+    local choice pid rc view=memory
     while true; do
         clear
         title "📊 任务管理器"
-        do_list_memory
+        if [ "$view" = cpu ]; then
+            do_list_cpu
+        else
+            do_list_memory
+        fi
         divider
         _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[P]${C_RESET} 监听端口列表"
+        _menu_actions 20 "${C_BOLD}[T]${C_RESET} 切换 CPU/内存排行"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新排行"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
@@ -237,6 +262,7 @@ menu() {
         else
             case "$choice" in
                 [Pp]) port_menu; rc=$?; [ "$rc" = 2 ] && return ;;
+                [Tt]) if [ "$view" = cpu ]; then view=memory; else view=cpu; fi ;;
                 [Rr]) ;;
                 0) return ;;
                 *) error "无效选项"; sleep 1 ;;
