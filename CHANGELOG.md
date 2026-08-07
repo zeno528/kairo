@@ -1,5 +1,10 @@
 # 更新日志
 
+## v1.2.36 (2026-08-08)
+- 🗑️ refactor(proxy-setup): 移除未使用的 fscarmen/233boy 一键脚本
+  - 删除 singbox_fscarmen 与 singbox_233boy 两个安装项，菜单与 CLI 均不再展示
+  - 注册表与 manifest 无需改动，测试全量通过
+
 ## v1.2.35 (2026-08-07)
 - ✨ feat: 添加许可证和安全策略文档
 

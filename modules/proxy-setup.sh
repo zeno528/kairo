@@ -7,8 +7,6 @@ PROXY_INSTALLERS=(
     "3xui|3x-ui 面板|Xray 面板，多协议/流量统计/订阅|https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh"
     "singbox_eooce|sing-box（eooce 版）|四合一协议一键安装（reality/vmess/hy2/tuic5）|https://raw.githubusercontent.com/eooce/sing-box/main/sing-box.sh"
     "singbox_yonggekkk|sing-box（yonggekkk 版）|五合一协议+订阅生成/Argo 隧道|https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh"
-    "singbox_fscarmen|sing-box（fscarmen 版）|全家桶 10+ 协议（reality/hy2/tuic/trojan/ss 等）|https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh"
-    "singbox_233boy|sing-box（233boy 版）|多配置管理，支持 8+ 协议|https://raw.githubusercontent.com/233boy/sing-box/main/install.sh"
 )
 
 do_install() {
