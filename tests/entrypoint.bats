@@ -585,7 +585,7 @@ setup() {
             printf x >> "$count_file"
             printf "%s\\n" "101 root 4096 0.1 init"
         }
-        printf "m\\nr\\n0\\n0\\n" | menu
+        printf "r\\n0\\n" | menu
         [ "$(wc -c < "$count_file")" -eq 2 ]
     '
     [ "$status" -eq 0 ]

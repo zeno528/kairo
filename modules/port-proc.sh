@@ -158,71 +158,89 @@ do_kill_process() {
     fi
 }
 
-menu() {
-    local choice port_filter="" name_filter="" pid
+# 进程操作子菜单；返回 2 表示返回主菜单，其余返回 0
+_process_action_menu() {
+    local pid="$1" choice
+    echo ""
+    _menu_actions 20 "[1] 查看进程详情"
+    _menu_actions 20 "[2] 终止进程"
+    _menu_actions 20 "[0] 返回上级"
+    _menu_actions 20 "[00] 返回主菜单"
+    read -r -p "  选择操作: " choice
+    case "$choice" in
+        1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;
+        2) do_kill_process "$pid" ;;
+        00) return 2 ;;
+        0) ;;
+        *) error "无效选项" ;;
+    esac
+    return 0
+}
+
+# 三级页面：监听端口列表
+port_menu() {
+    local choice port_filter="" name_filter="" pid rc
     while true; do
         clear
-        title "📡 端口/任务管理"
+        title "🔌 监听端口"
         do_listen_ports "$port_filter" "$name_filter"
         divider
         _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[P]${C_RESET} 按端口筛选"
         _menu_actions 20 "${C_BOLD}[N]${C_RESET} 按名称筛选"
-        _menu_actions 20 "${C_BOLD}[M]${C_RESET} 内存占用排行"
         _menu_actions 20 "${C_BOLD}[R]${C_RESET} 清除筛选"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回任务管理器"
+        _menu_actions 20 "${C_BOLD}[00]${C_RESET} 返回主菜单"
+        divider
+        echo ""
+        read -r -p "  选择进程或操作: " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
+            pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
+            _process_action_menu "$pid"
+            rc=$?
+            echo ""; kairo_pause "按 Enter 返回端口列表..."
+            [ "$rc" = 2 ] && return
+        else
+            case "$choice" in
+                [Pp]) read -r -p "  输入端口号: " port_filter; kairo_is_port "$port_filter" || { error "端口必须是 1-65535"; port_filter=""; sleep 1; }; name_filter="" ;;
+                [Nn]) read -r -p "  输入进程名称: " name_filter; port_filter="" ;;
+                [Rr]) port_filter=""; name_filter="" ;;
+                00) return 2 ;;
+                0) return ;;
+                *) error "无效选项"; sleep 1 ;;
+            esac
+        fi
+    done
+}
+
+# 二级页面：进入模块默认显示任务管理器（内存占用排行）
+menu() {
+    local choice pid rc
+    while true; do
+        clear
+        title "📊 任务管理器"
+        do_list_memory
+        divider
+        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
+        _menu_actions 20 "${C_BOLD}[P]${C_RESET} 监听端口列表"
+        _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新排行"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  选择进程或操作: " choice
-        case "$choice" in
-            [Pp]) read -r -p "  输入端口号: " port_filter; kairo_is_port "$port_filter" || { error "端口必须是 1-65535"; port_filter=""; sleep 1; }; name_filter="" ;;
-            [Nn]) read -r -p "  输入进程名称: " name_filter; port_filter="" ;;
-            [Mm])
-                while true; do
-                    clear
-                    title "📊 内存占用排行"
-                    do_list_memory
-                    divider
-                    _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${#PORT_PROCESS_PIDS[@]}" "选择进程")${C_RESET}"
-                    _menu_actions 20 "${C_BOLD}[R]${C_RESET} 刷新排行"
-                    _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回端口/任务管理"
-                    divider
-                    echo ""
-                    read -r -p "  选择进程或操作: " choice
-                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
-                        pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
-                        do_kill_process "$pid" yes
-                        echo ""; kairo_pause "按 Enter 返回内存排行..."
-                    elif [ "$choice" = "0" ]; then
-                        break
-                    elif [[ ! "$choice" =~ ^[Rr]$ ]]; then
-                        error "无效选项"; sleep 1
-                    fi
-                done
-                ;;
-            [Rr]) port_filter=""; name_filter="" ;;
-            *)
-                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
-                    pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
-                    echo ""
-                    _menu_actions 20 "[1] 查看进程详情"
-                    _menu_actions 20 "[2] 终止进程"
-                    _menu_actions 20 "[0] 返回上级"
-                    _menu_actions 20 "[00] 返回主菜单"
-                    read -r -p "  选择操作: " choice
-                    case "$choice" in
-                        1) ps -p "$pid" -o pid,ppid,user,stat,comm,args ;;
-                        2) do_kill_process "$pid" ;;
-                        00) return ;;
-                        0) ;;
-                    esac
-                    echo ""; kairo_pause "按 Enter 返回进程列表..."
-                elif [ "$choice" = "0" ]; then
-                    return
-                else
-                    error "无效选项"; sleep 1
-                fi
-                ;;
-        esac
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#PORT_PROCESS_PIDS[@]} ]; then
+            pid="${PORT_PROCESS_PIDS[$((choice - 1))]}"
+            _process_action_menu "$pid"
+            rc=$?
+            echo ""; kairo_pause "按 Enter 返回任务管理器..."
+            [ "$rc" = 2 ] && return
+        else
+            case "$choice" in
+                [Pp]) port_menu; rc=$?; [ "$rc" = 2 ] && return ;;
+                [Rr]) ;;
+                0) return ;;
+                *) error "无效选项"; sleep 1 ;;
+            esac
+        fi
     done
 }

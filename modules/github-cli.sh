@@ -57,8 +57,11 @@ do_status() {
     else
         printf '  方式    非 apt 安装\n'
     fi
-    if gh auth status &>/dev/null; then
-        printf "  认证    ${C_GREEN}已登录${C_RESET} (%s)\n" "$(gh auth status 2>&1 | head -1)"
+    # 读本地 gh 配置判断登录状态，避免每次进页面都等 gh auth status 的线上校验
+    auth_host=$(sed -n 's/^\([^#[:space:]][^:]*\):$/\1/p' "$HOME/.config/gh/hosts.yml" 2>/dev/null | head -1)
+    auth_user=$(sed -n 's/^[[:space:]]*user:[[:space:]]*//p' "$HOME/.config/gh/hosts.yml" 2>/dev/null | head -1)
+    if [ -n "$auth_host" ] && [ -n "$auth_user" ]; then
+        printf "  认证    ${C_GREEN}已登录${C_RESET} (%s/%s)\n" "$auth_host" "$auth_user"
     else
         printf "  认证    ${C_RED}未认证${C_RESET}，请运行 [A] 认证登录\n"
     fi
