@@ -31,6 +31,14 @@ _ensure_ufw() {
     return 1
 }
 
+# 实际监听中的 SSH 端口（以 ss 为准，避免 sshd_config 含 include 时解析遗漏）
+_fw_ssh_ports() {
+    sudo ss -tlnpH 2>/dev/null | awk '/sshd/ {
+        split($4, a, ":")
+        print a[length(a)]
+    }' | sort -un
+}
+
 do_install() {
     command -v ufw &>/dev/null && { info "ufw 已安装"; return 0; }
     _ensure_ufw
@@ -60,7 +68,7 @@ do_open_port() {
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -r -p "  协议 (tcp/udp，默认 tcp): " proto
+    read -r -p "  协议 (tcp/udp，默认 tcp；网页/SSH 用 tcp，Hysteria2 用 udp): " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将放行入站端口 $port/$proto"
@@ -75,7 +83,7 @@ do_close_port() {
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -r -p "  协议 (tcp/udp，默认 tcp): " proto
+    read -r -p "  协议 (tcp/udp，默认 tcp；网页/SSH 用 tcp，Hysteria2 用 udp): " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将关闭 $port/$proto，可能中断现有服务"
@@ -120,12 +128,23 @@ do_block_ip() {
 do_enable() {
     _ensure_ufw || return 1
     echo ""
+    local -a ssh_ports
+    local port_list=""
+    mapfile -t ssh_ports < <(_fw_ssh_ports)
+    if [ "${#ssh_ports[@]}" -eq 0 ]; then
+        error "未检测到 SSH 监听端口，已取消开启（防止把自己锁在门外）"
+        return 1
+    fi
+    printf -v port_list '%s ' "${ssh_ports[@]}"
+    port_list=${port_list% }
     warn "开启后，未明确放行的入站连接将被阻止"
-    warn "将自动放行 SSH (22)；若 SSH 为非标准端口，请先手动放行"
+    warn "将自动放行 SSH 监听端口: $port_list"
     read -r -p "  确认开启? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    sudo ufw allow ssh 2>/dev/null
-    sudo ufw --force enable && success "防火墙已开启，已放行 SSH"
+    for port in "${ssh_ports[@]}"; do
+        sudo ufw allow "$port/tcp" || { error "放行 SSH 端口 $port/tcp 失败，已取消开启"; return 1; }
+    done
+    sudo ufw --force enable && success "防火墙已开启，已放行 SSH 端口 $port_list"
 }
 
 do_disable() {

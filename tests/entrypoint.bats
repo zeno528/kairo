@@ -311,17 +311,31 @@ setup() {
     [[ "$output" == *"ufw delete allow 8080/tcp"* ]]
 }
 
-@test "ufw 开启防火墙自动放行 SSH" {
+@test "ufw 开启防火墙自动放行实际 SSH 端口" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
         sudo() { "$@"; }
         ufw() { printf "ufw %s\n" "$*"; }
+        _fw_ssh_ports() { printf "2222\n"; }
         printf "%s\n" y | do_enable
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"ufw allow ssh"* ]]
+    [[ "$output" == *"ufw allow 2222/tcp"* ]]
     [[ "$output" == *"ufw --force enable"* ]]
+}
+
+@test "检测不到 SSH 监听端口时拒绝开启防火墙" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        _fw_ssh_ports() { :; }
+        printf "%s\n" y | do_enable
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"未检测到 SSH 监听端口"* ]]
 }
 
 @test "IP 黑名单拒绝非法格式" {
