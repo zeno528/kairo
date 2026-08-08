@@ -156,10 +156,14 @@ do_status() {
         done
     fi
     for key in "${!listener_names[@]}"; do
-        [ -z "${allowed_ports[$key]:-}" ] && unallowed+=("$key(${listener_names[$key]})")
+        [ -z "${allowed_ports[$key]:-}" ] && unallowed+=("$key (${listener_names[$key]})")
     done
     if [ "${#unallowed[@]}" -gt 0 ]; then
-        warn "以下端口在监听但未放行: $(printf '%s\n' "${unallowed[@]}" | sort -V | paste -sd ' ' -)"
+        echo ""
+        warn "以下端口在监听但未放行:"
+        while IFS= read -r item; do
+            echo "    - $item"
+        done < <(printf '%s\n' "${unallowed[@]}" | sort -V)
     fi
 }
 

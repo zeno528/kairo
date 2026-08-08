@@ -384,8 +384,8 @@ setup() {
     [[ "$output" == *"ALLOW"* ]]
     [[ "$output" == *"Anywhere"* ]]
     [[ "$output" == *"(sshd)"* ]]
-    [[ "$output" == *"8080/tcp(nginx)"* ]]
-    [[ "$output" == *"9000/tcp(app)"* ]]
+    [[ "$output" == *"8080/tcp (nginx)"* ]]
+    [[ "$output" == *"9000/tcp (app)"* ]]
     [[ ! "$output" == *"62789"* ]]
 }
 
