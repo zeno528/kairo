@@ -360,7 +360,7 @@ setup() {
         ufw() {
             if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
             if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
-                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 22/tcp                     ALLOW IN    Anywhere\n"
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 22/tcp                     ALLOW IN    Anywhere\n[ 2] 1.2.3.4                     DENY IN     Anywhere\n"
                 return
             fi
             return 1
@@ -386,7 +386,37 @@ setup() {
     [[ "$output" == *"(sshd)"* ]]
     [[ "$output" == *"8080/tcp (nginx)"* ]]
     [[ "$output" == *"9000/tcp (app)"* ]]
+    [[ "$output" == *"1.2.3.4"* ]]
+    [[ "$output" == *"放行入站"* ]]
+    [[ "$output" == *"拒绝入站"* ]]
     [[ ! "$output" == *"62789"* ]]
+}
+
+@test "批量放行未放行监听端口支持编号和范围" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        sudo() { "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 22/tcp                     ALLOW IN    Anywhere\n"
+                return
+            fi
+            printf "ufw %s\n" "$*"
+        }
+        ss() {
+            printf "%s\n" \
+                "tcp LISTEN 0 4096 0.0.0.0:22 0.0.0.0:* users:((\"sshd\",pid=1,fd=3))" \
+                "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=2,fd=6))" \
+                "udp UNCONN 0 0 0.0.0.0:8443 0.0.0.0:* users:((\"xray-linux-amd64\",pid=3,fd=7))"
+        }
+        printf "%s\n" "1-2" y | do_allow_listeners
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ufw allow 8080/tcp"* ]]
+    [[ "$output" == *"ufw allow 8443/udp"* ]]
 }
 
 @test "IP 黑名单拒绝非法格式" {

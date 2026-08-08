@@ -72,6 +72,18 @@ _fw_listeners() {
     done < <(ss -H -ltunp 2>/dev/null)
 }
 
+# 正在对外监听但未放行的端口，输出 "port/proto 进程名"
+_fw_unallowed_listeners() {
+    local -A allowed=()
+    local key name
+    while read -r key; do
+        [ -n "$key" ] && allowed["$key"]=1
+    done < <(ufw status numbered 2>/dev/null | grep -oE '[0-9]+/(tcp|udp)' | sort -u)
+    while read -r key name; do
+        [ -z "${allowed[$key]:-}" ] && printf '%s %s\n' "$key" "$name"
+    done < <(_fw_listeners | sort -u)
+}
+
 do_install() {
     command -v ufw &>/dev/null && { info "ufw 已安装"; return 0; }
     _ensure_ufw
@@ -95,10 +107,10 @@ do_status() {
         info "开启时会自动放行 SSH 监听端口；未放行的端口将被拒绝，再选择 [E] 开启防火墙"
     fi
     echo ""
-    local -A allowed_ports=() listener_names=()
+    local -A listener_names=() seen_actions=()
     local key name line num pp rest action from proc
     local w_num w_pp w_action w_from cell_width i col_gap="   "
-    local -a unallowed=() rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=()
+    local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=()
     w_num=$(_str_width "编号")
     w_pp=$(_str_width "端口/协议")
     w_action=$(_str_width "动作")
@@ -106,14 +118,11 @@ do_status() {
     while read -r key name; do
         [ -n "$key" ] && listener_names["$key"]="$name"
     done < <(_fw_listeners | sort -u)
-    while read -r key; do
-        [ -n "$key" ] && allowed_ports["$key"]=1
-    done < <(ufw status numbered 2>/dev/null | grep -oE '[0-9]+/(tcp|udp)' | sort -u)
     while IFS= read -r line; do
-        [[ "$line" =~ ^\[[[:space:]]*([0-9]+)\][[:space:]]+([0-9]+/(tcp|udp))(.*)$ ]] || continue
+        [[ "$line" =~ ^\[[[:space:]]*([0-9]+)\][[:space:]]+([^[:space:]]+)(.*)$ ]] || continue
         num=${BASH_REMATCH[1]}
         pp=${BASH_REMATCH[2]}
-        rest=${BASH_REMATCH[4]}
+        rest=${BASH_REMATCH[3]}
         [[ "$rest" == *"(v6)"* ]] && pp="$pp (v6)"
         rest=$(sed -E 's/^[[:space:]]*\(v6\)//; s/^[[:space:]]+//; s/[[:space:]]+$//' <<< "$rest")
         if [[ "$rest" =~ ^([A-Z]+)[[:space:]]+IN[[:space:]]+(.*)$ ]]; then
@@ -123,8 +132,9 @@ do_status() {
             action=$rest
             from=""
         fi
+        seen_actions["$action"]=1
         proc=""
-        if [ -n "${listener_names[${pp%% *}]:-}" ]; then
+        if [[ "${pp%% *}" =~ ^[0-9]+/(tcp|udp)$ ]] && [ -n "${listener_names[${pp%% *}]:-}" ]; then
             proc="(${listener_names[${pp%% *}]})"
         fi
         rows_num+=("[$num]")
@@ -154,16 +164,20 @@ do_status() {
                 "$(_pad_right "${rows_action[$i]}" "$w_action")" "$col_gap" \
                 "$(_pad_right "${rows_from[$i]}" "$w_from")" "$col_gap" "${rows_proc[$i]}"
         done
+        local legend="" entry label
+        for entry in "ALLOW IN:放行入站" "DENY IN:拒绝入站" "ALLOW OUT:放行出站" "DENY OUT:拒绝出站"; do
+            label=${entry%%:*}
+            [ -n "${seen_actions[$label]:-}" ] || continue
+            legend+="${legend:+   }$label=${entry#*:}"
+        done
+        [ -n "$legend" ] && echo -e "  ${C_DIM}${legend}${C_RESET}"
     fi
-    for key in "${!listener_names[@]}"; do
-        [ -z "${allowed_ports[$key]:-}" ] && unallowed+=("$key (${listener_names[$key]})")
-    done
-    if [ "${#unallowed[@]}" -gt 0 ]; then
+    if _fw_unallowed_listeners | grep -q .; then
         echo ""
         warn "以下端口在监听但未放行:"
-        while IFS= read -r item; do
-            echo "    - $item"
-        done < <(printf '%s\n' "${unallowed[@]}" | sort -V)
+        while read -r key name; do
+            echo "    - $key ($name)"
+        done < <(_fw_unallowed_listeners)
     fi
 }
 
@@ -173,7 +187,8 @@ do_open_port() {
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -r -p "  协议 (tcp/udp，默认 tcp；网页/SSH 用 tcp，Hysteria2 用 udp): " proto
+    echo "  协议选项: tcp（网页/SSH/面板）  udp（Hysteria2）"
+    read -r -p "  协议（默认 tcp，直接回车）: " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将放行入站端口 $port/$proto"
@@ -191,7 +206,8 @@ do_close_port() {
     read -r -p "  输入端口号: " port
     [ -z "$port" ] && info "已取消" && return
     kairo_is_port "$port" || { error "端口必须是 1-65535"; return 1; }
-    read -r -p "  协议 (tcp/udp，默认 tcp；网页/SSH 用 tcp，Hysteria2 用 udp): " proto
+    echo "  协议选项: tcp（网页/SSH/面板）  udp（Hysteria2）"
+    read -r -p "  协议（默认 tcp，直接回车）: " proto
     proto=${proto:-tcp}
     [[ "$proto" =~ ^(tcp|udp)$ ]] || { error "协议只能是 tcp 或 udp"; return 1; }
     warn "即将关闭 $port/$proto，可能中断现有服务"
@@ -236,6 +252,57 @@ do_block_ip() {
     sudo ufw deny from "$ip" && success "已封锁 IP $ip"
 }
 
+do_allow_listeners() {
+    local -a ports=() items=() to_allow=() idx=()
+    local key name line token start end i confirm port_proto choice
+    while read -r key name; do
+        ports+=("$key")
+        items+=("$key ($name)")
+    done < <(_fw_unallowed_listeners)
+    echo ""
+    if [ "${#ports[@]}" -eq 0 ]; then
+        info "没有需要放行的监听端口"
+        return 0
+    fi
+    for i in "${!ports[@]}"; do
+        echo "  $((i + 1))) ${items[$i]}"
+    done
+    echo ""
+    read -r -p "  选择编号（如 1 3 或 1-3；全部放行输入 a）: " choice
+    [ -z "$choice" ] && info "已取消" && return 0
+    local -A pick=()
+    for token in ${choice//,/ }; do
+        if [[ "$token" =~ ^[Aa](ll)?$ ]]; then
+            for i in "${!ports[@]}"; do pick[$i]=1; done
+        elif [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            start=${BASH_REMATCH[1]}
+            end=${BASH_REMATCH[2]}
+            for ((i = start; i <= end; i++)); do
+                (( i >= 1 && i <= ${#ports[@]} )) && pick[$((i - 1))]=1
+            done
+        elif [[ "$token" =~ ^[0-9]+$ ]] && (( token >= 1 && token <= ${#ports[@]} )); then
+            pick[$((token - 1))]=1
+        fi
+    done
+    if [ "${#pick[@]}" -eq 0 ]; then
+        info "没有有效的编号，已取消"
+        return 0
+    fi
+    for i in "${!pick[@]}"; do idx+=("$i"); done
+    mapfile -t idx < <(printf '%s\n' "${idx[@]}" | sort -n)
+    for i in "${idx[@]}"; do to_allow+=("${ports[$i]}"); done
+    warn "即将放行:"
+    for port_proto in "${to_allow[@]}"; do
+        echo "    - $port_proto"
+    done
+    read -r -p "  确认放行? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    for port_proto in "${to_allow[@]}"; do
+        sudo ufw allow "$port_proto" || { error "放行 $port_proto 失败"; return 1; }
+    done
+    success "已放行: ${to_allow[*]}"
+}
+
 do_enable() {
     _ensure_ufw || return 1
     echo ""
@@ -276,6 +343,7 @@ menu() {
         divider
         _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$(ufw status numbered 2>/dev/null | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')" "删除规则")${C_RESET}"
         _menu_actions 20 "${C_BOLD}[O]${C_RESET} 开放端口"
+        _menu_actions 20 "${C_BOLD}[U]${C_RESET} 放行未放行端口"
         _menu_actions 20 "${C_BOLD}[C]${C_RESET} 按端口关闭"
         _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单"
         _menu_actions 20 "${C_BOLD}[B]${C_RESET} IP 黑名单"
@@ -288,6 +356,7 @@ menu() {
         read -r -p "  选择规则或操作: " choice
         case "$choice" in
             [Oo]) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Uu]) do_allow_listeners; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Cc]) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Aa]) do_allow_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Bb]) do_block_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
