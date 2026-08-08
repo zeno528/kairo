@@ -367,13 +367,15 @@ setup() {
         }
         ss() {
             printf "%s\n" \
-                "LISTEN 0 4096 0.0.0.0:22 0.0.0.0:* users:((\"sshd\",pid=1,fd=3))" \
-                "LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=2,fd=6))" \
-                "LISTEN 0 4096 127.0.0.1:62789 0.0.0.0:* users:((\"x-ui\",pid=3,fd=4))"
+                "tcp LISTEN 0 4096 0.0.0.0:22 0.0.0.0:* users:((\"sshd\",pid=1,fd=3))" \
+                "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=2,fd=6))" \
+                "LISTEN 0 4096 0.0.0.0:9000 0.0.0.0:* users:((\"app\",pid=5,fd=9))" \
+                "tcp LISTEN 0 4096 127.0.0.1:62789 0.0.0.0:* users:((\"x-ui\",pid=3,fd=4))"
         }
         do_status
     '
     [ "$status" -eq 0 ]
+    [[ "$output" == *"●"* ]]
     [[ "$output" == *"编号"* ]]
     [[ "$output" == *"端口/协议"* ]]
     [[ "$output" == *"动作"* ]]
@@ -383,6 +385,7 @@ setup() {
     [[ "$output" == *"Anywhere"* ]]
     [[ "$output" == *"(sshd)"* ]]
     [[ "$output" == *"8080/tcp(nginx)"* ]]
+    [[ "$output" == *"9000/tcp(app)"* ]]
     [[ ! "$output" == *"62789"* ]]
 }
 

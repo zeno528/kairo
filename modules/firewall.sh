@@ -42,14 +42,25 @@ _fw_ssh_ports() {
 # 对外监听（非 127.0.0.1）的端口 -> 进程名，供状态区标注
 _fw_listeners() {
     command -v ss &>/dev/null || return 0
-    local line state addr port proto name
+    local line addr port proto name state field
     local -a fields=()
     while IFS= read -r line; do
         read -r -a fields <<< "$line"
-        state=${fields[0]:-}
-        addr=${fields[3]:-}
-        [[ "$state" =~ ^(LISTEN|UNCONN)$ ]] || continue
-        [[ "$addr" =~ ^(\*|0\.0\.0\.0|\[::\]|::):[0-9]+$ ]] || continue
+        addr=""
+        proto=""
+        state=""
+        for field in "${fields[@]}"; do
+            case "$field" in
+                tcp|udp) proto=$field ;;
+                LISTEN|UNCONN) state=$field ;;
+                *:*) [[ "$field" =~ ^(\*|0\.0\.0\.0|\[::\]|::):[0-9]+$ ]] && addr=$field ;;
+            esac
+        done
+        [ -n "$addr" ] || continue
+        [ -n "$state" ] || continue
+        if [ -z "$proto" ]; then
+            if [ "$state" = UNCONN ]; then proto=udp; else proto=tcp; fi
+        fi
         port=${addr##*:}
         if [[ "$line" == *'users:(("'* ]]; then
             name=${line#*'users:(("'}
@@ -57,7 +68,6 @@ _fw_listeners() {
         else
             name="?"
         fi
-        if [ "$state" = UNCONN ]; then proto=udp; else proto=tcp; fi
         printf '%s/%s %s\n' "$port" "$proto" "$name"
     done < <(ss -H -ltunp 2>/dev/null)
 }
@@ -76,6 +86,9 @@ do_status() {
     fi
     local status
     status=$(ufw status | head -1 | sed 's/Status: //')
+    if [ "$status" = "active" ]; then
+        status="${C_GREEN}●${C_RESET} $status"
+    fi
     echo -e "  ${C_BOLD}防火墙状态${C_RESET}  $status"
     if [ "$status" = "inactive" ]; then
         warn "防火墙未启用；放行规则会保存，但暂不会拦截流量"
@@ -83,8 +96,13 @@ do_status() {
     fi
     echo ""
     local -A allowed_ports=() listener_names=()
-    local key name line num pp rest action from proc printed_header=0
-    local -a unallowed=()
+    local key name line num pp rest action from proc
+    local w_num w_pp w_action w_from cell_width i col_gap="   "
+    local -a unallowed=() rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=()
+    w_num=$(_str_width "编号")
+    w_pp=$(_str_width "端口/协议")
+    w_action=$(_str_width "动作")
+    w_from=$(_str_width "来源")
     while read -r key name; do
         [ -n "$key" ] && listener_names["$key"]="$name"
     done < <(_fw_listeners | sort -u)
@@ -109,16 +127,34 @@ do_status() {
         if [ -n "${listener_names[${pp%% *}]:-}" ]; then
             proc="(${listener_names[${pp%% *}]})"
         fi
-        if [ "$printed_header" -eq 0 ]; then
-            printf "  %s%s%s%s%s\n" \
-                "$(_pad_right "编号" 6)" "$(_pad_right "端口/协议" 14)" \
-                "$(_pad_right "动作" 10)" "$(_pad_right "来源" 18)" "进程"
-            printed_header=1
-        fi
-        printf "  %s%s%s%s%s\n" \
-            "$(_pad_right "[$num]" 6)" "$(_pad_right "$pp" 14)" \
-            "$(_pad_right "$action" 10)" "$(_pad_right "$from" 18)" "$proc"
+        rows_num+=("[$num]")
+        rows_pp+=("$pp")
+        rows_action+=("$action")
+        rows_from+=("$from")
+        rows_proc+=("$proc")
+        cell_width=$(_str_width "[$num]")
+        (( cell_width > w_num )) && w_num=$cell_width
+        cell_width=$(_str_width "$pp")
+        (( cell_width > w_pp )) && w_pp=$cell_width
+        cell_width=$(_str_width "$action")
+        (( cell_width > w_action )) && w_action=$cell_width
+        cell_width=$(_str_width "$from")
+        (( cell_width > w_from )) && w_from=$cell_width
     done < <(ufw status numbered 2>/dev/null | tail -n +4)
+    if [ "${#rows_num[@]}" -gt 0 ]; then
+        printf "  %s%s%s%s%s%s%s%s%s\n" \
+            "$(_pad_right "编号" "$w_num")" "$col_gap" \
+            "$(_pad_right "端口/协议" "$w_pp")" "$col_gap" \
+            "$(_pad_right "动作" "$w_action")" "$col_gap" \
+            "$(_pad_right "来源" "$w_from")" "$col_gap" "进程"
+        for i in "${!rows_num[@]}"; do
+            printf "  %s%s%s%s%s%s%s%s%s\n" \
+                "$(_pad_right "${rows_num[$i]}" "$w_num")" "$col_gap" \
+                "$(_pad_right "${rows_pp[$i]}" "$w_pp")" "$col_gap" \
+                "$(_pad_right "${rows_action[$i]}" "$w_action")" "$col_gap" \
+                "$(_pad_right "${rows_from[$i]}" "$w_from")" "$col_gap" "${rows_proc[$i]}"
+        done
+    fi
     for key in "${!listener_names[@]}"; do
         [ -z "${allowed_ports[$key]:-}" ] && unallowed+=("$key(${listener_names[$key]})")
     done
