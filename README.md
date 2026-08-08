@@ -1,10 +1,22 @@
-![Kairo icon](./bookmark250_icon.svg)
+<p align="center">
+  <img src="./bookmark250_icon.svg" alt="Kairo icon" width="64" height="64">
+</p>
 
-# Kairo
+<h1 align="center">Kairo</h1>
 
-![Version](https://img.shields.io/badge/version-1.2.37-blue) ![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&logoColor=white) ![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&logoColor=white) ![GitHub last commit](https://img.shields.io/github/last-commit/zeno528/kairo?color=orange) ![GitHub repo size](https://img.shields.io/github/repo-size/zeno528/kairo?color=teal)
+<p align="center">
+  轻量 Linux 服务器运维工具箱<br>
+  纯 Bash · 菜单驱动 · 一行命令安装<br>
+  覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
+</p>
 
-轻量 Linux 服务器运维工具箱 — 纯 Bash，菜单驱动，一行命令安装。覆盖 SSH、防火墙、Docker、Nginx、SSL 证书、系统监控等日常运维场景。
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.2.37-blue" alt="Version">
+  <img src="https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&amp;logoColor=white" alt="Shell: Bash">
+  <img src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&amp;logoColor=white" alt="Platform: Debian and Ubuntu">
+  <img src="https://img.shields.io/github/last-commit/zeno528/kairo?color=orange" alt="GitHub last commit">
+  <img src="https://img.shields.io/github/repo-size/zeno528/kairo?color=teal" alt="GitHub repository size">
+</p>
 
 ## 一键安装/升级
 
