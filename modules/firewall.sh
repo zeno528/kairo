@@ -96,15 +96,16 @@ do_status() {
         info "选择 [I] 安装 ufw，或任意操作也会引导安装"
         return
     fi
-    local status
+    local status status_raw
     status=$(ufw status | head -1 | sed 's/Status: //')
+    status_raw=$status
     if [ "$status" = "active" ]; then
         status="${C_GREEN}●${C_RESET} $status"
     elif [ "$status" = "inactive" ]; then
         status="${C_RED}●${C_RESET} $status"
     fi
     echo -e "  ${C_BOLD}防火墙状态${C_RESET}  $status"
-    if [ "$status" = "inactive" ]; then
+    if [ "$status_raw" = "inactive" ]; then
         warn "防火墙未启用；放行规则会保存，但暂不会拦截流量"
         info "开启时会自动放行 SSH 监听端口；未放行的端口将被拒绝，再选择 [E] 开启防火墙"
     fi
@@ -174,6 +175,9 @@ do_status() {
             legend+="${legend:+   }$label=${entry#*:}"
         done
         [ -n "$legend" ] && echo -e "  ${C_DIM}${legend}${C_RESET}"
+    fi
+    if [ "$status_raw" = "inactive" ] && [ "${#rows_num[@]}" -gt 0 ]; then
+        info "已保存 ${#rows_num[@]} 条放行规则，开启防火墙后生效"
     fi
     if _fw_unallowed_listeners | grep -q .; then
         [ "$printed_table" -eq 1 ] && echo ""

@@ -48,7 +48,7 @@ jobs:
           echo "Bats ✅"
 
   deploy-sg:
-    name: 部署到新加坡
+    name: 部署到 sg
     if: github.ref == 'refs/heads/main'
     needs: lint
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
       deployments: write
 
     steps:
-      - name: 部署 Kairo 到新加坡
+      - name: 部署 Kairo 到 sg
         env:
           SSH_KEY: ${{ secrets.SG_SSH_KEY }}
           SSH_HOST: ${{ secrets.SG_SSH_HOST }}
