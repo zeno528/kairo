@@ -476,6 +476,49 @@ setup() {
     [[ ! "$output" == *"关闭防火墙"* ]]
 }
 
+@test "防火墙 inactive 状态显示红点" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: inactive\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: inactive\n\n     To                         Action      From\n     --                         ------      ----\n"
+                return
+            fi
+            return 1
+        }
+        ss() { :; }
+        do_status
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"●"* ]]
+    [[ "$output" == *"inactive"* ]]
+}
+
+@test "IP 白名单子菜单预览并删除" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        sudo() { "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 1.2.3.4                     ALLOW IN    Anywhere\n"
+                return
+            fi
+            printf "ufw %s\n" "$*"
+        }
+        ss() { :; }
+        printf "%s\n" 2 1 y 0 | _fw_ip_submenu allow
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"1.2.3.4"* ]]
+    [[ "$output" == *"ufw delete allow from 1.2.3.4"* ]]
+}
+
 @test "IP 黑名单拒绝非法格式" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

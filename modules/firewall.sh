@@ -100,6 +100,8 @@ do_status() {
     status=$(ufw status | head -1 | sed 's/Status: //')
     if [ "$status" = "active" ]; then
         status="${C_GREEN}●${C_RESET} $status"
+    elif [ "$status" = "inactive" ]; then
+        status="${C_RED}●${C_RESET} $status"
     fi
     echo -e "  ${C_BOLD}防火墙状态${C_RESET}  $status"
     if [ "$status" = "inactive" ]; then
@@ -109,7 +111,7 @@ do_status() {
     echo ""
     local -A listener_names=() seen_actions=()
     local key name line num pp rest action from proc
-    local w_num w_pp w_action w_from cell_width i col_gap="   "
+    local w_num w_pp w_action w_from cell_width i col_gap="   " printed_table=0
     local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=()
     w_num=$(_str_width "编号")
     w_pp=$(_str_width "端口/协议")
@@ -152,6 +154,7 @@ do_status() {
         (( cell_width > w_from )) && w_from=$cell_width
     done < <(ufw status numbered 2>/dev/null | tail -n +4)
     if [ "${#rows_num[@]}" -gt 0 ]; then
+        printed_table=1
         printf "  %s%s%s%s%s%s%s%s%s\n" \
             "$(_pad_right "编号" "$w_num")" "$col_gap" \
             "$(_pad_right "端口/协议" "$w_pp")" "$col_gap" \
@@ -173,7 +176,7 @@ do_status() {
         [ -n "$legend" ] && echo -e "  ${C_DIM}${legend}${C_RESET}"
     fi
     if _fw_unallowed_listeners | grep -q .; then
-        echo ""
+        [ "$printed_table" -eq 1 ] && echo ""
         warn "以下端口在监听但未放行:"
         while read -r key name; do
             echo "    - $key ($name)"
@@ -250,6 +253,82 @@ do_block_ip() {
     read -r -p "  确认封锁? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
     sudo ufw deny from "$ip" && success "已封锁 IP $ip"
+}
+
+# 列出 ALLOW/DENY 的 IP 规则，输出 "ufw编号 IP"
+_fw_ip_list() {
+    local action="$1" line num target
+    while IFS= read -r line; do
+        [[ "$line" =~ ^\[[[:space:]]*([0-9]+)\][[:space:]]+([^[:space:]]+)[[:space:]]+(ALLOW|DENY)[[:space:]]+IN(.*)$ ]] || continue
+        [ "${BASH_REMATCH[3]}" = "$action" ] || continue
+        num=${BASH_REMATCH[1]}
+        target=${BASH_REMATCH[2]}
+        _fw_is_ip "$target" || continue
+        printf '%s %s\n' "$num" "$target"
+    done < <(ufw status numbered 2>/dev/null | tail -n +4)
+}
+
+# 白/黑名单子菜单：先预览现有规则，再选择添加或删除
+_fw_ip_submenu() {
+    local mode="$1" label action_cmd
+    local -a nums=() ips=()
+    local choice num ip i confirm
+    if [ "$mode" = allow ]; then
+        label="IP 白名单"
+        action_cmd="allow from"
+    else
+        label="IP 黑名单"
+        action_cmd="deny from"
+    fi
+    while true; do
+        echo ""
+        title "$label"
+        nums=()
+        ips=()
+        while read -r num ip; do
+            nums+=("$num")
+            ips+=("$ip")
+        done < <(_fw_ip_list "$([ "$mode" = allow ] && echo ALLOW || echo DENY)")
+        echo ""
+        if [ "${#ips[@]}" -eq 0 ]; then
+            info "当前没有${label#IP }记录"
+        else
+            for i in "${!ips[@]}"; do
+                echo "  [$((i + 1))] ${ips[$i]}"
+            done
+        fi
+        echo ""
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 添加"
+        [ "${#ips[@]}" -gt 0 ] && _menu_actions 20 "${C_BOLD}[2]${C_RESET} 删除"
+        _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回"
+        echo ""
+        read -r -p "  请选择: " choice
+        case "$choice" in
+            1)
+                if [ "$mode" = allow ]; then do_allow_ip; else do_block_ip; fi
+                ;;
+            2)
+                if [ "${#ips[@]}" -eq 0 ]; then
+                    error "没有可删除的 $label"
+                    sleep 1
+                    continue
+                fi
+                read -r -p "  输入要删除的编号: " num
+                if ! [[ "$num" =~ ^[1-9][0-9]*$ ]] || (( num > ${#ips[@]} )); then
+                    error "编号无效"
+                    sleep 1
+                    continue
+                fi
+                ip=${ips[$((num - 1))]}
+                warn "即将删除 $label: $ip"
+                read -r -p "  确认删除? [y/N]: " confirm
+                [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; continue; }
+                sudo ufw delete "$action_cmd" "$ip" && success "已删除 $ip"
+                ;;
+            0) return ;;
+            *) error "无效选项"; sleep 1 ;;
+        esac
+    done
 }
 
 do_allow_listeners() {
@@ -363,8 +442,8 @@ menu() {
             [Oo]) do_open_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Uu]) do_allow_listeners; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Cc]) do_close_port; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
-            [Aa]) do_allow_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
-            [Bb]) do_block_ip; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
+            [Aa]) _fw_ip_submenu allow ;;
+            [Bb]) _fw_ip_submenu block ;;
             [Ee]) do_enable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Dd]) do_disable; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             [Ii]) do_install; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
