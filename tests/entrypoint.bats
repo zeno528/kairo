@@ -419,6 +419,30 @@ setup() {
     [[ "$output" == *"ufw allow 8443/udp"* ]]
 }
 
+@test "批量放行时防火墙未启用提示暂不生效" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        sudo() { "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: inactive\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: inactive\n\n     To                         Action      From\n     --                         ------      ----\n"
+                return
+            fi
+            printf "ufw %s\n" "$*"
+        }
+        ss() {
+            printf "%s\n" \
+                "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=1,fd=3))"
+        }
+        printf "%s\n" 1 y | do_allow_listeners
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"规则已保存但暂不生效"* ]]
+}
+
 @test "防火墙菜单 active 时只显示关闭防火墙" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

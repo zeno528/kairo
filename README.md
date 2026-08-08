@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.46-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.2.47-blue" alt="Version">
   <img src="https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&amp;logoColor=white" alt="Shell: Bash">
   <img src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&amp;logoColor=white" alt="Platform: Debian and Ubuntu">
   <img src="https://img.shields.io/github/last-commit/zeno528/kairo?color=orange" alt="GitHub last commit">

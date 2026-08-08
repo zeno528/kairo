@@ -380,6 +380,7 @@ do_allow_listeners() {
         sudo ufw allow "$port_proto" || { error "放行 $port_proto 失败"; return 1; }
     done
     success "已放行: ${to_allow[*]}"
+    [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
 }
 
 do_enable() {
