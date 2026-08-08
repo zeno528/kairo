@@ -142,12 +142,14 @@ do_status() {
     echo ""
     local -A listener_names=() seen_actions=()
     local key name line num pp rest action from proc
-    local w_num w_pp w_action w_from cell_width i col_gap="   " printed_table=0
-    local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=()
+    local w_num w_pp w_action w_from w_proc w_status cell_width i col_gap="   " saved_count=0 status_cell
+    local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=() rows_status=()
     w_num=$(_str_width "编号")
     w_pp=$(_str_width "端口/协议")
     w_action=$(_str_width "动作")
     w_from=$(_str_width "来源")
+    w_proc=$(_str_width "进程")
+    w_status=$(_str_width "状态")
     while read -r key name; do
         [ -n "$key" ] && listener_names["$key"]="$name"
     done < <(_fw_listeners | sort -u)
@@ -175,6 +177,8 @@ do_status() {
         rows_action+=("$action")
         rows_from+=("$from")
         rows_proc+=("$proc")
+        rows_status+=("已放行")
+        saved_count=$((saved_count + 1))
         cell_width=$(_str_width "[$num]")
         (( cell_width > w_num )) && w_num=$cell_width
         cell_width=$(_str_width "$pp")
@@ -183,20 +187,45 @@ do_status() {
         (( cell_width > w_action )) && w_action=$cell_width
         cell_width=$(_str_width "$from")
         (( cell_width > w_from )) && w_from=$cell_width
+        cell_width=$(_str_width "$proc")
+        (( cell_width > w_proc )) && w_proc=$cell_width
+        cell_width=$(_str_width "已放行")
+        (( cell_width > w_status )) && w_status=$cell_width
     done < <(_fw_rule_lines)
+    while read -r key name; do
+        rows_num+=("-")
+        rows_pp+=("$key")
+        rows_action+=("-")
+        rows_from+=("-")
+        rows_proc+=("($name)")
+        rows_status+=("未放行")
+        cell_width=$(_str_width "$key")
+        (( cell_width > w_pp )) && w_pp=$cell_width
+        cell_width=$(_str_width "($name)")
+        (( cell_width > w_proc )) && w_proc=$cell_width
+        cell_width=$(_str_width "未放行")
+        (( cell_width > w_status )) && w_status=$cell_width
+    done < <(_fw_unallowed_listeners)
     if [ "${#rows_num[@]}" -gt 0 ]; then
-        printed_table=1
-        printf "  %s%s%s%s%s%s%s%s%s\n" \
+        printf "  %s%s%s%s%s%s%s%s%s%s%s\n" \
             "$(_pad_right "编号" "$w_num")" "$col_gap" \
             "$(_pad_right "端口/协议" "$w_pp")" "$col_gap" \
             "$(_pad_right "动作" "$w_action")" "$col_gap" \
-            "$(_pad_right "来源" "$w_from")" "$col_gap" "进程"
+            "$(_pad_right "来源" "$w_from")" "$col_gap" \
+            "$(_pad_right "进程" "$w_proc")" "$col_gap" "状态"
         for i in "${!rows_num[@]}"; do
-            printf "  %s%s%s%s%s%s%s%s%s\n" \
+            status_cell=$(_pad_right "${rows_status[$i]}" "$w_status")
+            if [ "${rows_status[$i]}" = "未放行" ]; then
+                status_cell="${C_RED}${status_cell}${C_RESET}"
+            else
+                status_cell="${C_GREEN}${status_cell}${C_RESET}"
+            fi
+            printf "  %s%s%s%s%s%s%s%s%s%s%s\n" \
                 "$(_pad_right "${rows_num[$i]}" "$w_num")" "$col_gap" \
                 "$(_pad_right "${rows_pp[$i]}" "$w_pp")" "$col_gap" \
                 "$(_pad_right "${rows_action[$i]}" "$w_action")" "$col_gap" \
-                "$(_pad_right "${rows_from[$i]}" "$w_from")" "$col_gap" "${rows_proc[$i]}"
+                "$(_pad_right "${rows_from[$i]}" "$w_from")" "$col_gap" \
+                "$(_pad_right "${rows_proc[$i]}" "$w_proc")" "$col_gap" "$status_cell"
         done
         local legend="" entry label
         for entry in "ALLOW IN:放行入站" "DENY IN:拒绝入站" "ALLOW OUT:放行出站" "DENY OUT:拒绝出站"; do
@@ -206,15 +235,8 @@ do_status() {
         done
         [ -n "$legend" ] && echo -e "  ${C_DIM}${legend}${C_RESET}"
     fi
-    if [ "$status_raw" = "inactive" ] && [ "${#rows_num[@]}" -gt 0 ]; then
-        info "已保存 ${#rows_num[@]} 条放行规则，开启防火墙后生效"
-    fi
-    if _fw_unallowed_listeners | grep -q .; then
-        [ "$printed_table" -eq 1 ] && echo ""
-        warn "以下端口在监听但未放行:"
-        while read -r key name; do
-            echo "    - $key ($name)"
-        done < <(_fw_unallowed_listeners)
+    if [ "$status_raw" = "inactive" ] && [ "$saved_count" -gt 0 ]; then
+        info "已保存 $saved_count 条放行规则，开启防火墙后生效"
     fi
 }
 
@@ -254,12 +276,44 @@ do_close_port() {
 }
 
 do_delete_rule() {
-    local rule="$1"
-    [[ "$rule" =~ ^[1-9][0-9]*$ ]] || { error "规则编号无效"; return 1; }
-    warn "即将删除 ufw 规则 #$rule"
+    local choice="$1" token start end i n rule_count
+    local -a nums=()
+    local -a rule_lines=()
+    rule_count=$(_fw_rule_lines | awk '/^\[/ { c++ } END { print c + 0 }')
+    [ "$rule_count" -gt 0 ] || { error "没有规则可删除"; return 1; }
+    mapfile -t rule_lines < <(_fw_rule_lines | grep '^\[')
+    local -A pick=()
+    for token in ${choice//,/ }; do
+        if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            start=${BASH_REMATCH[1]}
+            end=${BASH_REMATCH[2]}
+            for ((i = start; i <= end; i++)); do
+                (( i >= 1 && i <= rule_count )) && pick[$i]=1
+            done
+        elif [[ "$token" =~ ^[0-9]+$ ]] && (( token >= 1 && token <= rule_count )); then
+            pick[$token]=1
+        fi
+    done
+    if [ "${#pick[@]}" -eq 0 ]; then
+        error "规则编号无效"
+        return 1
+    fi
+    for n in "${!pick[@]}"; do nums+=("$n"); done
+    mapfile -t nums < <(printf '%s\n' "${nums[@]}" | sort -nr)
+    # ponytail: 只保护固定 22/tcp；若 SSH 改到其他端口需同步此保护
+    for n in "${nums[@]}"; do
+        if [[ "${rule_lines[$((n - 1))]}" =~ ^\[[[:space:]]*[0-9]+\][[:space:]]+22/tcp([[:space:]]|$) ]]; then
+            error "规则 #$n 是 SSH 端口 (22/tcp)，禁止删除"
+            return 1
+        fi
+    done
+    warn "即将删除规则: ${nums[*]}"
     read -r -p "  确认删除? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    sudo ufw --force delete "$rule" && success "已删除规则 #$rule"
+    for n in "${nums[@]}"; do
+        sudo ufw --force delete "$n" || { error "删除规则 #$n 失败"; return 1; }
+    done
+    success "已删除规则: ${nums[*]}"
 }
 
 do_allow_ip() {
@@ -487,7 +541,7 @@ menu() {
             [Ii]) do_install; echo ""; kairo_pause "按 Enter 返回防火墙规则..." ;;
             0) return ;;
             *)
-                if [[ "$choice" =~ ^[1-9][0-9]*$ ]]; then
+                if [[ "$choice" =~ ^[0-9]+([[:space:],-]+[0-9]+)*$ ]]; then
                     do_delete_rule "$choice"
                     echo ""; kairo_pause "按 Enter 返回防火墙规则..."
                 else

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.50-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.2.51-blue" alt="Version">
   <img src="https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&amp;logoColor=white" alt="Shell: Bash">
   <img src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&amp;logoColor=white" alt="Platform: Debian and Ubuntu">
   <img src="https://img.shields.io/github/last-commit/zeno528/kairo?color=orange" alt="GitHub last commit">
@@ -67,7 +67,7 @@ ka  # 进入主菜单
 ### 系统工具
 - **系统信息** — 主机名、系统、内核、CPU、内存、磁盘、网络信息查看
 - **端口/任务管理** — 任务管理器查看内存/CPU 占用排行并终止进程；监听端口按端口/名称筛选查找进程
-- **防火墙** — 支持 ufw / iptables，端口开关、批量放行监听端口、防火墙启停（开启时自动放行实际 SSH 端口）
+- **防火墙** — 支持 ufw / iptables，端口开关、批量放行/删除规则、防火墙启停（开启时自动放行实际 SSH 端口）
 - **服务管理** — systemctl 服务状态查看、启停、重启、开关自启
 - **定时任务** — 查看/添加/删除/编辑 crontab 定时任务
 - **SSL 证书** — 自动发现本机 Let's Encrypt 证书、远程域名证书检查、批量到期检测
