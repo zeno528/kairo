@@ -39,6 +39,29 @@ _fw_ssh_ports() {
     }' | sort -un
 }
 
+# 对外监听（非 127.0.0.1）的端口 -> 进程名，供状态区标注
+_fw_listeners() {
+    command -v ss &>/dev/null || return 0
+    local line state addr port proto name
+    local -a fields=()
+    while IFS= read -r line; do
+        read -r -a fields <<< "$line"
+        state=${fields[0]:-}
+        addr=${fields[3]:-}
+        [[ "$state" =~ ^(LISTEN|UNCONN)$ ]] || continue
+        [[ "$addr" =~ ^(\*|0\.0\.0\.0|\[::\]|::):[0-9]+$ ]] || continue
+        port=${addr##*:}
+        if [[ "$line" == *'users:(("'* ]]; then
+            name=${line#*'users:(("'}
+            name=${name%%'"'*}
+        else
+            name="?"
+        fi
+        if [ "$state" = UNCONN ]; then proto=udp; else proto=tcp; fi
+        printf '%s/%s %s\n' "$port" "$proto" "$name"
+    done < <(ss -H -ltunp 2>/dev/null)
+}
+
 do_install() {
     command -v ufw &>/dev/null && { info "ufw 已安装"; return 0; }
     _ensure_ufw
@@ -59,7 +82,49 @@ do_status() {
         info "开启时会自动放行 SSH 监听端口；未放行的端口将被拒绝，再选择 [E] 开启防火墙"
     fi
     echo ""
-    ufw status numbered 2>/dev/null | tail -n +4
+    local -A allowed_ports=() listener_names=()
+    local key name line num pp rest action from proc printed_header=0
+    local -a unallowed=()
+    while read -r key name; do
+        [ -n "$key" ] && listener_names["$key"]="$name"
+    done < <(_fw_listeners | sort -u)
+    while read -r key; do
+        [ -n "$key" ] && allowed_ports["$key"]=1
+    done < <(ufw status numbered 2>/dev/null | grep -oE '[0-9]+/(tcp|udp)' | sort -u)
+    while IFS= read -r line; do
+        [[ "$line" =~ ^\[[[:space:]]*([0-9]+)\][[:space:]]+([0-9]+/(tcp|udp))(.*)$ ]] || continue
+        num=${BASH_REMATCH[1]}
+        pp=${BASH_REMATCH[2]}
+        rest=${BASH_REMATCH[4]}
+        [[ "$rest" == *"(v6)"* ]] && pp="$pp (v6)"
+        rest=$(sed -E 's/^[[:space:]]*\(v6\)//; s/^[[:space:]]+//; s/[[:space:]]+$//' <<< "$rest")
+        if [[ "$rest" =~ ^([A-Z]+)[[:space:]]+IN[[:space:]]+(.*)$ ]]; then
+            action="${BASH_REMATCH[1]} IN"
+            from=${BASH_REMATCH[2]}
+        else
+            action=$rest
+            from=""
+        fi
+        proc=""
+        if [ -n "${listener_names[${pp%% *}]:-}" ]; then
+            proc="(${listener_names[${pp%% *}]})"
+        fi
+        if [ "$printed_header" -eq 0 ]; then
+            printf "  %s%s%s%s%s\n" \
+                "$(_pad_right "编号" 6)" "$(_pad_right "端口/协议" 14)" \
+                "$(_pad_right "动作" 10)" "$(_pad_right "来源" 18)" "进程"
+            printed_header=1
+        fi
+        printf "  %s%s%s%s%s\n" \
+            "$(_pad_right "[$num]" 6)" "$(_pad_right "$pp" 14)" \
+            "$(_pad_right "$action" 10)" "$(_pad_right "$from" 18)" "$proc"
+    done < <(ufw status numbered 2>/dev/null | tail -n +4)
+    for key in "${!listener_names[@]}"; do
+        [ -z "${allowed_ports[$key]:-}" ] && unallowed+=("$key(${listener_names[$key]})")
+    done
+    if [ "${#unallowed[@]}" -gt 0 ]; then
+        warn "以下端口在监听但未放行: $(printf '%s\n' "${unallowed[@]}" | sort -V | paste -sd ' ' -)"
+    fi
 }
 
 do_open_port() {

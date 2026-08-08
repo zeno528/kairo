@@ -352,6 +352,40 @@ setup() {
     [[ "$output" == *"规则已保存但暂不生效"* ]]
 }
 
+@test "防火墙状态用中文表头标注进程并提示未放行监听端口" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 22/tcp                     ALLOW IN    Anywhere\n"
+                return
+            fi
+            return 1
+        }
+        ss() {
+            printf "%s\n" \
+                "LISTEN 0 4096 0.0.0.0:22 0.0.0.0:* users:((\"sshd\",pid=1,fd=3))" \
+                "LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=2,fd=6))" \
+                "LISTEN 0 4096 127.0.0.1:62789 0.0.0.0:* users:((\"x-ui\",pid=3,fd=4))"
+        }
+        do_status
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"编号"* ]]
+    [[ "$output" == *"端口/协议"* ]]
+    [[ "$output" == *"动作"* ]]
+    [[ "$output" == *"来源"* ]]
+    [[ "$output" == *"进程"* ]]
+    [[ "$output" == *"ALLOW"* ]]
+    [[ "$output" == *"Anywhere"* ]]
+    [[ "$output" == *"(sshd)"* ]]
+    [[ "$output" == *"8080/tcp(nginx)"* ]]
+    [[ ! "$output" == *"62789"* ]]
+}
+
 @test "IP 黑名单拒绝非法格式" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
