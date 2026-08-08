@@ -392,8 +392,6 @@ setup() {
     [[ "$output" == *"状态"* ]]
     [[ "$output" == *"已放行"* ]]
     [[ "$output" == *"未放行"* ]]
-    [[ "$output" == *"放行入站"* ]]
-    [[ "$output" == *"拒绝入站"* ]]
     [[ ! "$output" == *"以下端口在监听但未放行"* ]]
     [[ ! "$output" == *"62789"* ]]
 }
@@ -594,7 +592,28 @@ setup() {
         printf "y\n" | do_delete_rule "1-3"
     '
     [ "$status" -eq 0 ]
-    [[ "$output" == *"ufw --force delete 3"*"ufw --force delete 2"*"ufw --force delete 1"* ]]
+    [[ "$output" == *"ufw --force delete allow 8080/tcp"*"ufw --force delete allow 443/tcp"*"ufw --force delete allow 80/tcp"* ]]
+}
+
+@test "批量删除对 v4/v6 同端口只执行一次" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        sudo() { "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 80/tcp                      ALLOW IN    Anywhere\n[ 2] 80/tcp (v6)                 ALLOW IN    Anywhere (v6)\n"
+                return
+            fi
+            printf "ufw %s\n" "$*"
+        }
+        printf "y\n" | do_delete_rule "1-2"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ufw --force delete allow 80/tcp"* ]]
+    [[ ! "$output" == *"ufw --force delete allow 80/tcp"*"ufw --force delete allow 80/tcp"* ]]
 }
 
 @test "SSH 端口 22 规则禁止删除" {
@@ -615,7 +634,7 @@ setup() {
     '
     [ "$status" -ne 0 ]
     [[ "$output" == *"禁止删除"* ]]
-    [[ ! "$output" == *"ufw --force delete 2"* ]]
+    [[ ! "$output" == *"ufw --force delete allow 22/tcp"* ]]
 }
 
 @test "IP 黑名单拒绝非法格式" {

@@ -140,8 +140,8 @@ do_status() {
         info "开启时会自动放行 SSH 监听端口；未放行的端口将被拒绝，再选择 [E] 开启防火墙"
     fi
     echo ""
-    local -A listener_names=() seen_actions=()
-    local key name line num pp rest action from proc
+    local -A listener_names=()
+    local key name line num pp rest action from proc status_text
     local w_num w_pp w_action w_from w_proc w_status cell_width i col_gap="   " saved_count=0 status_cell
     local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=() rows_status=()
     w_num=$(_str_width "编号")
@@ -167,7 +167,6 @@ do_status() {
             action=$rest
             from=""
         fi
-        seen_actions["$action"]=1
         proc=""
         if [[ "${pp%% *}" =~ ^[0-9]+/(tcp|udp)$ ]] && [ -n "${listener_names[${pp%% *}]:-}" ]; then
             proc="(${listener_names[${pp%% *}]})"
@@ -177,7 +176,8 @@ do_status() {
         rows_action+=("$action")
         rows_from+=("$from")
         rows_proc+=("$proc")
-        rows_status+=("已放行")
+        if [ "$status_raw" = "inactive" ]; then status_text="已保存"; else status_text="已放行"; fi
+        rows_status+=("$status_text")
         saved_count=$((saved_count + 1))
         cell_width=$(_str_width "[$num]")
         (( cell_width > w_num )) && w_num=$cell_width
@@ -189,7 +189,7 @@ do_status() {
         (( cell_width > w_from )) && w_from=$cell_width
         cell_width=$(_str_width "$proc")
         (( cell_width > w_proc )) && w_proc=$cell_width
-        cell_width=$(_str_width "已放行")
+        cell_width=$(_str_width "$status_text")
         (( cell_width > w_status )) && w_status=$cell_width
     done < <(_fw_rule_lines)
     while read -r key name; do
@@ -217,6 +217,8 @@ do_status() {
             status_cell=$(_pad_right "${rows_status[$i]}" "$w_status")
             if [ "${rows_status[$i]}" = "未放行" ]; then
                 status_cell="${C_RED}${status_cell}${C_RESET}"
+            elif [ "${rows_status[$i]}" = "已保存" ]; then
+                status_cell="${C_YELLOW}${status_cell}${C_RESET}"
             else
                 status_cell="${C_GREEN}${status_cell}${C_RESET}"
             fi
@@ -227,13 +229,6 @@ do_status() {
                 "$(_pad_right "${rows_from[$i]}" "$w_from")" "$col_gap" \
                 "$(_pad_right "${rows_proc[$i]}" "$w_proc")" "$col_gap" "$status_cell"
         done
-        local legend="" entry label
-        for entry in "ALLOW IN:放行入站" "DENY IN:拒绝入站" "ALLOW OUT:放行出站" "DENY OUT:拒绝出站"; do
-            label=${entry%%:*}
-            [ -n "${seen_actions[$label]:-}" ] || continue
-            legend+="${legend:+   }$label=${entry#*:}"
-        done
-        [ -n "$legend" ] && echo -e "  ${C_DIM}${legend}${C_RESET}"
     fi
     if [ "$status_raw" = "inactive" ] && [ "$saved_count" -gt 0 ]; then
         info "已保存 $saved_count 条放行规则，开启防火墙后生效"
@@ -275,14 +270,22 @@ do_close_port() {
     sudo ufw delete allow "$port/$proto" && success "已关闭 $port/$proto"
 }
 
+_fw_ufw_delete() {
+    local action="$1" target="$2"
+    if _fw_is_ip "$target"; then
+        sudo ufw --force delete "$action" from "$target"
+    else
+        sudo ufw --force delete "$action" "$target"
+    fi
+}
+
 do_delete_rule() {
-    local choice="$1" token start end i n rule_count
-    local -a nums=()
-    local -a rule_lines=()
+    local choice="$1" token start end i n rule_count line target action key
+    local -a nums=() rule_lines=() delete_actions=() delete_targets=()
+    local -A pick=() seen=()
     rule_count=$(_fw_rule_lines | awk '/^\[/ { c++ } END { print c + 0 }')
     [ "$rule_count" -gt 0 ] || { error "没有规则可删除"; return 1; }
     mapfile -t rule_lines < <(_fw_rule_lines | grep '^\[')
-    local -A pick=()
     for token in ${choice//,/ }; do
         if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
             start=${BASH_REMATCH[1]}
@@ -302,18 +305,34 @@ do_delete_rule() {
     mapfile -t nums < <(printf '%s\n' "${nums[@]}" | sort -nr)
     # ponytail: 只保护固定 22/tcp；若 SSH 改到其他端口需同步此保护
     for n in "${nums[@]}"; do
-        if [[ "${rule_lines[$((n - 1))]}" =~ ^\[[[:space:]]*[0-9]+\][[:space:]]+22/tcp([[:space:]]|$) ]]; then
+        line=${rule_lines[$((n - 1))]:-}
+        [[ "$line" =~ ^\[[[:space:]]*[0-9]+\][[:space:]]+([^[:space:]]+)([[:space:]]+\(v6\))?[[:space:]]+(ALLOW|DENY)[[:space:]]+IN ]] || continue
+        target=${BASH_REMATCH[1]}
+        action=${BASH_REMATCH[3]}
+        if [ "$target" = "22/tcp" ]; then
             error "规则 #$n 是 SSH 端口 (22/tcp)，禁止删除"
             return 1
         fi
+        key="$action $target"
+        [ -n "${seen[$key]:-}" ] && continue
+        seen[$key]=1
+        delete_actions+=("${action,,}")
+        delete_targets+=("$target")
     done
-    warn "即将删除规则: ${nums[*]}"
+    if [ "${#delete_targets[@]}" -eq 0 ]; then
+        error "规则编号无效"
+        return 1
+    fi
+    warn "即将删除规则:"
+    for target in "${delete_targets[@]}"; do
+        echo "    - $target"
+    done
     read -r -p "  确认删除? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    for n in "${nums[@]}"; do
-        sudo ufw --force delete "$n" || { error "删除规则 #$n 失败"; return 1; }
+    for i in "${!delete_actions[@]}"; do
+        _fw_ufw_delete "${delete_actions[$i]}" "${delete_targets[$i]}" || { error "删除 ${delete_targets[$i]} 失败"; return 1; }
     done
-    success "已删除规则: ${nums[*]}"
+    success "已删除规则: ${delete_targets[*]}"
 }
 
 do_allow_ip() {
