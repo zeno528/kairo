@@ -280,7 +280,7 @@ _fw_ufw_delete() {
 }
 
 do_delete_rule() {
-    local choice="$1" token start end i n rule_count line target action key
+    local choice="$1" token start end i n rule_count line target action key ssh_skipped=0
     local -a nums=() rule_lines=() delete_actions=() delete_targets=()
     local -A pick=() seen=()
     rule_count=$(_fw_rule_lines | awk '/^\[/ { c++ } END { print c + 0 }')
@@ -310,8 +310,8 @@ do_delete_rule() {
         target=${BASH_REMATCH[1]}
         action=${BASH_REMATCH[3]}
         if [ "$target" = "22/tcp" ]; then
-            error "规则 #$n 是 SSH 端口 (22/tcp)，禁止删除"
-            return 1
+            ssh_skipped=1
+            continue
         fi
         key="$action $target"
         [ -n "${seen[$key]:-}" ] && continue
@@ -320,9 +320,10 @@ do_delete_rule() {
         delete_targets+=("$target")
     done
     if [ "${#delete_targets[@]}" -eq 0 ]; then
-        error "规则编号无效"
-        return 1
+        info "SSH 端口 (22/tcp) 不可删除，没有其他可删除的规则"
+        return 0
     fi
+    [ "$ssh_skipped" -eq 1 ] && info "已跳过 SSH 端口 22/tcp"
     warn "即将删除规则:"
     for target in "${delete_targets[@]}"; do
         echo "    - $target"

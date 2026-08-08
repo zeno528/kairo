@@ -584,15 +584,17 @@ setup() {
         ufw() {
             if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
             if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
-                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 80/tcp                      ALLOW IN    Anywhere\n[ 2] 443/tcp                     ALLOW IN    Anywhere\n[ 3] 8080/tcp                    ALLOW IN    Anywhere\n"
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 80/tcp                      ALLOW IN    Anywhere\n[ 2] 22/tcp                      ALLOW IN    Anywhere\n[ 3] 443/tcp                     ALLOW IN    Anywhere\n[ 4] 8080/tcp                    ALLOW IN    Anywhere\n"
                 return
             fi
             printf "ufw %s\n" "$*"
         }
-        printf "y\n" | do_delete_rule "1-3"
+        printf "y\n" | do_delete_rule "1-4"
     '
     [ "$status" -eq 0 ]
     [[ "$output" == *"ufw --force delete allow 8080/tcp"*"ufw --force delete allow 443/tcp"*"ufw --force delete allow 80/tcp"* ]]
+    [[ ! "$output" == *"ufw --force delete allow 22/tcp"* ]]
+    [[ "$output" == *"已跳过 SSH 端口 22/tcp"* ]]
 }
 
 @test "批量删除对 v4/v6 同端口只执行一次" {
@@ -616,7 +618,7 @@ setup() {
     [[ ! "$output" == *"ufw --force delete allow 80/tcp"*"ufw --force delete allow 80/tcp"* ]]
 }
 
-@test "SSH 端口 22 规则禁止删除" {
+@test "只选 SSH 端口时跳过删除" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
         source "'"$PWD"'/modules/firewall.sh"
@@ -632,8 +634,8 @@ setup() {
         }
         printf "y\n" | do_delete_rule "2"
     '
-    [ "$status" -ne 0 ]
-    [[ "$output" == *"禁止删除"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"不可删除"* ]]
     [[ ! "$output" == *"ufw --force delete allow 22/tcp"* ]]
 }
 
