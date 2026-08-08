@@ -56,7 +56,7 @@ do_status() {
     echo -e "  ${C_BOLD}防火墙状态${C_RESET}  $status"
     if [ "$status" = "inactive" ]; then
         warn "防火墙未启用；放行规则会保存，但暂不会拦截流量"
-        info "启用前请确认 SSH 端口已放行，再选择 [E] 开启防火墙"
+        info "开启时会自动放行 SSH 监听端口；未放行的端口将被拒绝，再选择 [E] 开启防火墙"
     fi
     echo ""
     ufw status numbered 2>/dev/null | tail -n +4
@@ -74,7 +74,10 @@ do_open_port() {
     warn "即将放行入站端口 $port/$proto"
     read -r -p "  确认放行? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    sudo ufw allow "$port/$proto" && success "已开放 $port/$proto"
+    if sudo ufw allow "$port/$proto"; then
+        success "已开放 $port/$proto"
+        [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
+    fi
 }
 
 do_close_port() {
@@ -110,7 +113,10 @@ do_allow_ip() {
     warn "即将放行来自 $ip 的所有入站连接"
     read -r -p "  确认放行? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
-    sudo ufw allow from "$ip" && success "已放行 IP $ip"
+    if sudo ufw allow from "$ip"; then
+        success "已放行 IP $ip"
+        [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
+    fi
 }
 
 do_block_ip() {

@@ -338,6 +338,20 @@ setup() {
     [[ "$output" == *"未检测到 SSH 监听端口"* ]]
 }
 
+@test "防火墙未启用时开放端口提示规则暂不生效" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        sudo() { "$@"; }
+        ufw() { printf "ufw %s\n" "$*"; }
+        printf "%s\n" 8080 tcp y | do_open_port
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ufw allow 8080/tcp"* ]]
+    [[ "$output" == *"规则已保存但暂不生效"* ]]
+}
+
 @test "IP 黑名单拒绝非法格式" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
