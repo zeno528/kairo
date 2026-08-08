@@ -78,10 +78,40 @@ _fw_unallowed_listeners() {
     local key name
     while read -r key; do
         [ -n "$key" ] && allowed["$key"]=1
-    done < <(ufw status numbered 2>/dev/null | grep -oE '[0-9]+/(tcp|udp)' | sort -u)
+    done < <(_fw_rule_lines | grep -oE '[0-9]+/(tcp|udp)' | sort -u)
     while read -r key name; do
         [ -z "${allowed[$key]:-}" ] && printf '%s %s\n' "$key" "$name"
     done < <(_fw_listeners | sort -u)
+}
+
+# inactive 时 ufw status 不显示规则，改用 show added 渲染成统一格式
+_fw_show_added_rules() {
+    local line action target i=0
+    while IFS= read -r line; do
+        [[ "$line" == ufw\ * ]] || continue
+        line=${line#ufw }
+        if [[ "$line" =~ ^(allow|deny)[[:space:]]+from[[:space:]]+([^[:space:]]+) ]]; then
+            action=${BASH_REMATCH[1]}
+            target=${BASH_REMATCH[2]}
+        elif [[ "$line" =~ ^(allow|deny)[[:space:]]+([^[:space:]]+) ]]; then
+            action=${BASH_REMATCH[1]}
+            target=${BASH_REMATCH[2]}
+        else
+            continue
+        fi
+        if [ "$action" = "allow" ]; then action="ALLOW"; else action="DENY"; fi
+        i=$((i + 1))
+        printf '[%s] %s %s IN Anywhere\n' "$i" "$target" "$action"
+    done < <(ufw show added 2>/dev/null)
+}
+
+# 统一规则来源：active 用 status numbered（含 v6），inactive 用 show added
+_fw_rule_lines() {
+    if ufw status 2>/dev/null | head -1 | grep -q '^Status: active'; then
+        ufw status numbered 2>/dev/null | tail -n +4
+    else
+        _fw_show_added_rules
+    fi
 }
 
 do_install() {
@@ -153,7 +183,7 @@ do_status() {
         (( cell_width > w_action )) && w_action=$cell_width
         cell_width=$(_str_width "$from")
         (( cell_width > w_from )) && w_from=$cell_width
-    done < <(ufw status numbered 2>/dev/null | tail -n +4)
+    done < <(_fw_rule_lines)
     if [ "${#rows_num[@]}" -gt 0 ]; then
         printed_table=1
         printf "  %s%s%s%s%s%s%s%s%s\n" \
@@ -269,7 +299,7 @@ _fw_ip_list() {
         target=${BASH_REMATCH[2]}
         _fw_is_ip "$target" || continue
         printf '%s %s\n' "$num" "$target"
-    done < <(ufw status numbered 2>/dev/null | tail -n +4)
+    done < <(_fw_rule_lines)
 }
 
 # 白/黑名单子菜单：先预览现有规则，再选择添加或删除
@@ -425,7 +455,7 @@ menu() {
         title "🛡 防火墙管理"
         do_status
         divider
-        rule_count=$(ufw status numbered 2>/dev/null | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')
+        rule_count=$(_fw_rule_lines | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')
         if [ "$rule_count" -gt 0 ]; then
             _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$rule_count" "删除规则")${C_RESET}"
         fi

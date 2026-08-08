@@ -532,8 +532,8 @@ setup() {
         command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
         ufw() {
             if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: inactive\n"; return; fi
-            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
-                printf "Status: inactive\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 8080/tcp                    ALLOW IN    Anywhere\n"
+            if [ "$1" = "show" ] && [ "$2" = "added" ]; then
+                printf "ufw allow 8080/tcp\n"
                 return
             fi
             return 1
@@ -546,6 +546,7 @@ setup() {
     [[ "$output" == *"inactive"* ]]
     [[ "$output" == *"防火墙未启用；放行规则会保存"* ]]
     [[ "$output" == *"已保存 1 条放行规则"* ]]
+    [[ "$output" == *"8080/tcp"* ]]
 }
 
 @test "IP 白名单子菜单预览并删除" {
