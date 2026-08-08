@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.2.37 (2026-08-08)
+- ✨ feat: 添加 Kairo 图标 SVG 文件并更新 README.md
+
 ## v1.2.36 (2026-08-08)
 - 🗑️ refactor(proxy-setup): 移除未使用的 fscarmen/233boy 一键脚本
   - 删除 singbox_fscarmen 与 singbox_233boy 两个安装项，菜单与 CLI 均不再展示
