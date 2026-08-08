@@ -199,7 +199,7 @@ do_open_port() {
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
     if sudo ufw allow "$port/$proto"; then
         success "已开放 $port/$proto"
-        [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
+        [[ "$(ufw status | head -1)" == "Status: active" ]] || info "防火墙未启用，规则已保存但暂不生效"
     fi
 }
 
@@ -239,7 +239,7 @@ do_allow_ip() {
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
     if sudo ufw allow from "$ip"; then
         success "已放行 IP $ip"
-        [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
+        [[ "$(ufw status | head -1)" == "Status: active" ]] || info "防火墙未启用，规则已保存但暂不生效"
     fi
 }
 
@@ -380,7 +380,7 @@ do_allow_listeners() {
         sudo ufw allow "$port_proto" || { error "放行 $port_proto 失败"; return 1; }
     done
     success "已放行: ${to_allow[*]}"
-    [[ "$(ufw status | head -1)" =~ active ]] || info "防火墙未启用，规则已保存但暂不生效"
+    [[ "$(ufw status | head -1)" == "Status: active" ]] || info "防火墙未启用，规则已保存但暂不生效"
 }
 
 do_enable() {
