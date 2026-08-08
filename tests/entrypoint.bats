@@ -419,6 +419,63 @@ setup() {
     [[ "$output" == *"ufw allow 8443/udp"* ]]
 }
 
+@test "防火墙菜单 active 时只显示关闭防火墙" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        ufw() { [ "$1" = "status" ] && printf "Status: active\n"; }
+        clear() { :; }
+        title() { :; }
+        do_status() { :; }
+        divider() { :; }
+        _menu_actions() { printf "%s\n" "$2"; }
+        printf "0\n" | menu
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"关闭防火墙"* ]]
+    [[ ! "$output" == *"开启防火墙"* ]]
+    [[ ! "$output" == *"安装 ufw"* ]]
+}
+
+@test "防火墙菜单 inactive 时只显示开启防火墙" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        ufw() { [ "$1" = "status" ] && printf "Status: inactive\n"; }
+        clear() { :; }
+        title() { :; }
+        do_status() { :; }
+        divider() { :; }
+        _menu_actions() { printf "%s\n" "$2"; }
+        printf "0\n" | menu
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"开启防火墙"* ]]
+    [[ ! "$output" == *"关闭防火墙"* ]]
+    [[ ! "$output" == *"安装 ufw"* ]]
+}
+
+@test "防火墙菜单未安装 ufw 时只显示安装入口" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 1; builtin command "$@"; }
+        ufw() { :; }
+        clear() { :; }
+        title() { :; }
+        do_status() { :; }
+        divider() { :; }
+        _menu_actions() { printf "%s\n" "$2"; }
+        printf "0\n" | menu
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"安装 ufw"* ]]
+    [[ ! "$output" == *"开启防火墙"* ]]
+    [[ ! "$output" == *"关闭防火墙"* ]]
+}
+
 @test "IP 黑名单拒绝非法格式" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"

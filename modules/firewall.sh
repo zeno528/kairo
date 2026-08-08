@@ -335,7 +335,7 @@ do_disable() {
 }
 
 menu() {
-    local choice
+    local choice fw_status
     while true; do
         clear
         title "🛡 防火墙管理"
@@ -347,9 +347,14 @@ menu() {
         _menu_actions 20 "${C_BOLD}[C]${C_RESET} 按端口关闭"
         _menu_actions 20 "${C_BOLD}[A]${C_RESET} IP 白名单"
         _menu_actions 20 "${C_BOLD}[B]${C_RESET} IP 黑名单"
-        _menu_actions 20 "${C_BOLD}[E]${C_RESET} 开启防火墙"
-        _menu_actions 20 "${C_BOLD}[D]${C_RESET} 关闭防火墙"
-        _menu_actions 20 "${C_BOLD}[I]${C_RESET} 安装 ufw"
+        fw_status=$(ufw status 2>/dev/null | head -1 | sed 's/Status: //')
+        if ! command -v ufw &>/dev/null; then
+            _menu_actions 20 "${C_BOLD}[I]${C_RESET} 安装 ufw"
+        elif [ "$fw_status" = "active" ]; then
+            _menu_actions 20 "${C_RED}${C_BOLD}[D]${C_RESET}${C_RED} 关闭防火墙${C_RESET}"
+        else
+            _menu_actions 20 "${C_GREEN}${C_BOLD}[E]${C_RESET}${C_GREEN} 开启防火墙${C_RESET}"
+        fi
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
