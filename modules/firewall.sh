@@ -121,6 +121,7 @@ do_install() {
 
 do_status() {
     echo ""
+    FIREWALL_RULE_COUNT=0
     if ! command -v ufw &>/dev/null; then
         error "未检测到 ufw"
         info "选择 [I] 安装 ufw，或任意操作也会引导安装"
@@ -143,7 +144,8 @@ do_status() {
     local -A listener_names=()
     local key name line num pp rest action from proc status_text
     local w_num w_pp w_action w_from w_proc w_status cell_width i col_gap="   " saved_count=0 status_cell
-    local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=() rows_status=()
+    local -a rows_num=() rows_pp=() rows_action=() rows_from=() rows_proc=() rows_status=() rule_lines=()
+    local -A allowed_ports=()
     w_num=$(_str_width "编号")
     w_pp=$(_str_width "端口/协议")
     w_action=$(_str_width "动作")
@@ -153,12 +155,19 @@ do_status() {
     while read -r key name; do
         [ -n "$key" ] && listener_names["$key"]="$name"
     done < <(_fw_listeners | sort -u)
-    while IFS= read -r line; do
+    if [ "$status_raw" = "active" ]; then
+        mapfile -t rule_lines < <(ufw status numbered 2>/dev/null | tail -n +4)
+    else
+        mapfile -t rule_lines < <(_fw_show_added_rules)
+    fi
+    for line in "${rule_lines[@]}"; do
         [[ "$line" =~ ^\[[[:space:]]*([0-9]+)\][[:space:]]+([^[:space:]]+)(.*)$ ]] || continue
+        FIREWALL_RULE_COUNT=$((FIREWALL_RULE_COUNT + 1))
         num=${BASH_REMATCH[1]}
         pp=${BASH_REMATCH[2]}
         rest=${BASH_REMATCH[3]}
         [[ "$rest" == *"(v6)"* ]] && pp="$pp (v6)"
+        [[ "${pp%% *}" =~ ^[0-9]+/(tcp|udp)$ ]] && allowed_ports["${pp%% *}"]=1
         rest=$(sed -E 's/^[[:space:]]*\(v6\)//; s/^[[:space:]]+//; s/[[:space:]]+$//' <<< "$rest")
         if [[ "$rest" =~ ^([A-Z]+)[[:space:]]+IN[[:space:]]+(.*)$ ]]; then
             action="${BASH_REMATCH[1]} IN"
@@ -191,8 +200,10 @@ do_status() {
         (( cell_width > w_proc )) && w_proc=$cell_width
         cell_width=$(_str_width "$status_text")
         (( cell_width > w_status )) && w_status=$cell_width
-    done < <(_fw_rule_lines)
-    while read -r key name; do
+    done
+    while read -r key; do
+        [ -n "${allowed_ports[$key]:-}" ] && continue
+        name=${listener_names[$key]}
         rows_num+=("-")
         rows_pp+=("$key")
         rows_action+=("-")
@@ -205,7 +216,7 @@ do_status() {
         (( cell_width > w_proc )) && w_proc=$cell_width
         cell_width=$(_str_width "未放行")
         (( cell_width > w_status )) && w_status=$cell_width
-    done < <(_fw_unallowed_listeners)
+    done < <(printf '%s\n' "${!listener_names[@]}" | sort -V)
     if [ "${#rows_num[@]}" -gt 0 ]; then
         printf "  %s%s%s%s%s%s%s%s%s%s%s\n" \
             "$(_pad_right "编号" "$w_num")" "$col_gap" \
@@ -482,8 +493,11 @@ do_allow_listeners() {
     for port_proto in "${to_allow[@]}"; do
         echo "    - $port_proto"
     done
-    read -r -p "  确认放行? [y/N]: " confirm
-    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    read -r -p "  确认放行? [Y/n]: " confirm
+    if [[ "$confirm" =~ ^[Nn]$ ]]; then
+        info "已取消"
+        return 0
+    fi
     for port_proto in "${to_allow[@]}"; do
         sudo ufw allow "$port_proto" || { error "放行 $port_proto 失败"; return 1; }
     done
@@ -523,15 +537,14 @@ do_disable() {
 }
 
 menu() {
-    local choice fw_status rule_count
+    local choice fw_status
     while true; do
         clear
         title "🛡 防火墙管理"
         do_status
         divider
-        rule_count=$(_fw_rule_lines | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')
-        if [ "$rule_count" -gt 0 ]; then
-            _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$rule_count" "删除规则")${C_RESET}"
+        if [ "${FIREWALL_RULE_COUNT:-0}" -gt 0 ]; then
+            _menu_actions 20 "${C_BOLD}$(kairo_menu_range "${FIREWALL_RULE_COUNT:-0}" "删除规则")${C_RESET}"
         fi
         _menu_actions 20 "${C_BOLD}[O]${C_RESET} 开放端口"
         _menu_actions 20 "${C_BOLD}[U]${C_RESET} 放行未放行端口"

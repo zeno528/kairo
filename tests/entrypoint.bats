@@ -416,7 +416,7 @@ setup() {
                 "tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:((\"nginx\",pid=2,fd=6))" \
                 "udp UNCONN 0 0 0.0.0.0:8443 0.0.0.0:* users:((\"xray-linux-amd64\",pid=3,fd=7))"
         }
-        printf "%s\n" "1-2" y | do_allow_listeners
+        printf "%s\n" "1-2" | do_allow_listeners
     '
     [ "$status" -eq 0 ]
     [[ "$output" == *"ufw allow 8080/tcp"* ]]
@@ -520,7 +520,7 @@ setup() {
         }
         clear() { :; }
         title() { :; }
-        do_status() { :; }
+        do_status() { FIREWALL_RULE_COUNT=1; }
         divider() { :; }
         _menu_actions() { printf "%s\n" "$2"; }
         printf "0\n" | menu
