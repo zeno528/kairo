@@ -414,13 +414,16 @@ do_disable() {
 }
 
 menu() {
-    local choice fw_status
+    local choice fw_status rule_count
     while true; do
         clear
         title "🛡 防火墙管理"
         do_status
         divider
-        _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$(ufw status numbered 2>/dev/null | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')" "删除规则")${C_RESET}"
+        rule_count=$(ufw status numbered 2>/dev/null | awk '/^\[[[:space:]]*[0-9]+\]/ { count++ } END { print count + 0 }')
+        if [ "$rule_count" -gt 0 ]; then
+            _menu_actions 20 "${C_BOLD}$(kairo_menu_range "$rule_count" "删除规则")${C_RESET}"
+        fi
         _menu_actions 20 "${C_BOLD}[O]${C_RESET} 开放端口"
         _menu_actions 20 "${C_BOLD}[U]${C_RESET} 放行未放行端口"
         _menu_actions 20 "${C_BOLD}[C]${C_RESET} 按端口关闭"

@@ -436,6 +436,7 @@ setup() {
     [[ "$output" == *"关闭防火墙"* ]]
     [[ ! "$output" == *"开启防火墙"* ]]
     [[ ! "$output" == *"安装 ufw"* ]]
+    [[ ! "$output" == *"删除规则"* ]]
 }
 
 @test "防火墙菜单 inactive 时只显示开启防火墙" {
@@ -474,6 +475,30 @@ setup() {
     [[ "$output" == *"安装 ufw"* ]]
     [[ ! "$output" == *"开启防火墙"* ]]
     [[ ! "$output" == *"关闭防火墙"* ]]
+}
+
+@test "防火墙菜单有规则时显示删除规则编号" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/firewall.sh"
+        command() { [ "$1" = "-v" ] && [ "$2" = "ufw" ] && return 0; builtin command "$@"; }
+        ufw() {
+            if [ "$1" = "status" ] && [ $# -eq 1 ]; then printf "Status: active\n"; return; fi
+            if [ "$1" = "status" ] && [ "$2" = "numbered" ]; then
+                printf "Status: active\n\n     To                         Action      From\n     --                         ------      ----\n[ 1] 22/tcp                     ALLOW IN    Anywhere\n"
+                return
+            fi
+            return 1
+        }
+        clear() { :; }
+        title() { :; }
+        do_status() { :; }
+        divider() { :; }
+        _menu_actions() { printf "%s\n" "$2"; }
+        printf "0\n" | menu
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[1-1] 删除规则"* ]]
 }
 
 @test "防火墙 inactive 状态显示红点" {
