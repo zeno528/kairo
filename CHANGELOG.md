@@ -1,5 +1,8 @@
 # 更新日志
 
+## v1.2.56 (2026-08-28)
+- 👷 ci(lint): 移除部署到 sg 环境的 workflow 任务
+
 ## v1.2.55 (2026-08-28)
 - ✨ feat(ssh-passwd): 新增 root 免密（公钥）与 root 密码登录一键开启
   - 新增 `do_root_key`：将当前用户的公钥安装到 root，支持
