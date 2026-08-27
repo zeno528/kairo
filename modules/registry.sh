@@ -63,7 +63,7 @@ kairo_register_group network "🌐 网络与代理"
 kairo_register_group tools "🧰 工具"
 kairo_register_group agents "🤖 AI Agent" "right_column"
 
-kairo_register_module ssh-passwd ssh "密码登录管理" "on off status"
+kairo_register_module ssh-passwd ssh "密码登录管理" "root_key root_login on off status"
 kairo_register_module ssh-keys ssh "公钥管理" "list add remove view rename"
 kairo_register_module fail2ban ssh "fail2ban 防暴破" "status install bans uninstall"
 kairo_register_module sys-info system "系统信息查看✨" "overview cpu memory disk network"

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.54-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.2.55-blue" alt="Version">
   <img src="https://img.shields.io/badge/shell-bash-4EAA25?logo=gnome-terminal&amp;logoColor=white" alt="Shell: Bash">
   <img src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu-A800D6?logo=ubuntu&amp;logoColor=white" alt="Platform: Debian and Ubuntu">
   <img src="https://img.shields.io/github/last-commit/zeno528/kairo?color=orange" alt="GitHub last commit">
@@ -61,7 +61,7 @@ ka  # 进入主菜单
 ## 功能列表
 
 ### SSH 管理
-- **密码登录管理** — 开启/关闭密码登录、Root 登录状态查看
+- **密码登录管理** — 一键开启 root 免密（公钥）/密码登录、开启/关闭密码登录、状态查看
 - **公钥管理** — 添加/删除/查看/重命名 authorized_keys 公钥
 
 ### 系统工具

@@ -83,6 +83,69 @@ set_password_auth() {
     rm -f -- "$candidate" "$backup"
 }
 
+do_root_key() {
+    local src="$HOME/.ssh/authorized_keys" keys effective pw
+    if [ ! -s "$src" ]; then
+        error "当前用户 (${USER:-$(id -un)}) 没有可用公钥，请先用「公钥管理」添加"
+        return 1
+    fi
+    warn "即将把当前用户的公钥安装到 root，实现 root 免密（公钥）登录"
+    read -r -p "  确认开启? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    if ! sudo -v; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+
+    # 剥离 AWS/OCI 风格的 command=/限制前缀，否则复制过去的 key 仍会拒绝 root 登录
+    keys=$(mktemp)
+    awk '{
+        if ($1 ~ /^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-|sk-)/) print
+        else { $1 = ""; sub(/^ +/, ""); if (length($0) > 0) print }
+    }' "$src" > "$keys"
+    if [ ! -s "$keys" ]; then
+        rm -f -- "$keys"
+        error "未从 authorized_keys 解析到有效公钥"
+        return 1
+    fi
+    if ! sudo install -d -m 0700 -o root -g root /root/.ssh ||
+       ! sudo install -m 0600 -o root -g root "$keys" /root/.ssh/authorized_keys; then
+        rm -f -- "$keys"
+        error "安装 root 公钥失败"
+        return 1
+    fi
+    rm -f -- "$keys"
+
+    # 默认 prohibit-password 已允许 root 公钥登录，只有被显式禁成 no 时才需要改配置
+    effective=$(get_effective_sshd_option permitrootlogin)
+    if [ "$effective" = "no" ]; then
+        pw=$(get_effective_sshd_option passwordauthentication)
+        if ! set_password_auth "${pw:-yes}" prohibit-password || ! restart_ssh; then
+            error "root 公钥已安装，但放开 root 公钥登录失败"
+            return 1
+        fi
+    fi
+    success "root 免密登录已就绪，可直接 ssh root@服务器IP"
+}
+
+do_root_login() {
+    warn "即将开启 root 直接登录：先设置 root 密码，再允许 root 密码登录"
+    read -r -p "  确认开启? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "已取消"; return 0; }
+    if ! sudo -v; then
+        error "此操作需要 sudo 权限"
+        return 1
+    fi
+    info "请输入 root 的新密码（需要输入两次）："
+    sudo passwd root || { error "设置 root 密码失败"; return 1; }
+    if set_password_auth yes yes && restart_ssh; then
+        success "root 直接登录已开启，可用 ssh root@服务器IP 登录"
+    else
+        error "开启 root 直接登录失败"
+        return 1
+    fi
+}
+
 do_on() {
     warn "即将开启 SSH 密码登录，并允许 root 使用密码登录"
     read -r -p "  确认开启? [y/N]: " confirm
@@ -112,9 +175,16 @@ do_status() {
         error "未找到 sshd 命令"
         return 1
     fi
-    local current root_login label_w=12
+    local current root_login root_pw label_w=12
     current=$(get_effective_sshd_option passwordauthentication)
     root_login=$(get_effective_sshd_option permitrootlogin)
+    root_pw=$(sudo passwd -S root 2>/dev/null | awk '{print $2}')
+    local root_key=""
+    if sudo -n test -s /root/.ssh/authorized_keys 2>/dev/null; then
+        root_key="yes"
+    elif sudo -n true 2>/dev/null; then
+        root_key="no"
+    fi
 
     case "$current" in
         no) echo -e "  $(_pad_right "密码登录:" $label_w) ${C_RED}关闭${C_RESET}" ;;
@@ -128,24 +198,38 @@ do_status() {
             ;;
         *) echo -e "  $(_pad_right "Root 登录:" $label_w) ${C_YELLOW}未知${C_RESET}" ;;
     esac
+    case "$root_pw" in
+        P) echo -e "  $(_pad_right "Root 密码:" $label_w) ${C_GREEN}已设置${C_RESET}" ;;
+        L) echo -e "  $(_pad_right "Root 密码:" $label_w) ${C_RED}未设置（锁定）${C_RESET}，无法用密码登录 root" ;;
+        *) echo -e "  $(_pad_right "Root 密码:" $label_w) ${C_YELLOW}未知${C_RESET}" ;;
+    esac
+    case "$root_key" in
+        yes) echo -e "  $(_pad_right "Root 公钥:" $label_w) ${C_GREEN}已安装${C_RESET}，可免密登录" ;;
+        no) echo -e "  $(_pad_right "Root 公钥:" $label_w) ${C_RED}未安装${C_RESET}，无法免密登录 root" ;;
+        *) echo -e "  $(_pad_right "Root 公钥:" $label_w) ${C_YELLOW}未知${C_RESET}（需要 sudo 免密缓存）" ;;
+    esac
 }
 
 menu() {
     while true; do
         clear
-        title "🔑 SSH 密码登录管理"
+        title "🔑 SSH 密码/root 登录管理"
         echo ""
         do_status
         divider
-        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 开启密码登录"
-        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 关闭密码登录"
+        _menu_actions 20 "${C_BOLD}[1]${C_RESET} 一键开启 root 免密（公钥）登录"
+        _menu_actions 20 "${C_BOLD}[2]${C_RESET} 一键开启 root 密码登录"
+        _menu_actions 20 "${C_BOLD}[3]${C_RESET} 开启密码登录"
+        _menu_actions 20 "${C_BOLD}[4]${C_RESET} 关闭密码登录"
         _menu_actions 20 "${C_BOLD}[0]${C_RESET} 返回主菜单"
         divider
         echo ""
         read -r -p "  请输入选项: " choice
         case "$choice" in
-            1) do_on; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
-            2) do_off; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            1) do_root_key; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            2) do_root_login; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            3) do_on; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
+            4) do_off; echo ""; kairo_pause "按 Enter 返回当前菜单..." ;;
             0) return ;;
             *) error "无效选项"; sleep 1 ;;
         esac

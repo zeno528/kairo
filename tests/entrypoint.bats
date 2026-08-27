@@ -299,6 +299,102 @@ setup() {
     [[ ! "$output" =~ "RESTARTED" ]]
 }
 
+@test "root 直接登录取消时不做任何变更" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        sudo() { echo "SUDO $*"; }
+        passwd() { echo "PASSWD $*"; }
+        set_password_auth() { echo "CHANGED"; }
+        restart_ssh() { echo "RESTARTED"; }
+        printf "%s\n" n | do_root_login
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "已取消" ]]
+    [[ ! "$output" =~ "PASSWD" ]]
+    [[ ! "$output" =~ "CHANGED" ]]
+}
+
+@test "root 直接登录在 passwd 失败时中止且不改 SSH 配置" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        sudo() { [ "$1" = "-v" ] && return 0; "$@"; }
+        passwd() { return 1; }
+        set_password_auth() { echo "CHANGED"; }
+        restart_ssh() { echo "RESTARTED"; }
+        printf "%s\n" y | do_root_login
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "设置 root 密码失败" ]]
+    [[ ! "$output" =~ "CHANGED" ]]
+}
+
+@test "root 免密登录在无公钥时直接报错" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        tmp=$(mktemp -d)
+        HOME="$tmp" do_root_key; st=$?
+        rm -rf "$tmp"
+        exit "$st"
+    '
+    [ "$status" -ne 0 ]
+    [[ "$output" =~ "没有可用公钥" ]]
+}
+
+@test "root 免密登录安装公钥并剥离限制前缀" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        tmp=$(mktemp -d)
+        mkdir -p "$tmp/.ssh"
+        printf "%s\n" "command=\"echo Please login as ubuntu\",no-pty ssh-ed25519 AAAAOPT restricted" "ssh-ed25519 AAAAROOT user@host" > "$tmp/.ssh/authorized_keys"
+        HOME="$tmp"
+        sudo() { [ "$1" = "-v" ] && return 0; "$@"; }
+        install() {
+            [ "$1" = "-d" ] && return 0
+            cat "${@: -2:1}"
+        }
+        get_effective_sshd_option() { echo "prohibit-password"; }
+        set_password_auth() { echo "CHANGED $1 $2"; }
+        restart_ssh() { echo "RESTARTED"; }
+        printf "%s\n" y | do_root_key
+        rm -rf "$tmp"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "AAAAROOT" ]]
+    [[ ! "$output" =~ "command=" ]]
+    [[ "$output" =~ "免密登录已就绪" ]]
+    [[ ! "$output" =~ "CHANGED" ]]
+}
+
+@test "root 免密登录在 root 被禁时恢复公钥登录并保留密码开关" {
+    run bash -c '
+        source "'"$PWD"'/lib/core.sh"
+        source "'"$PWD"'/modules/ssh-passwd.sh"
+        tmp=$(mktemp -d)
+        mkdir -p "$tmp/.ssh"
+        printf "%s\n" "ssh-ed25519 AAAAROOT user@host" > "$tmp/.ssh/authorized_keys"
+        HOME="$tmp"
+        sudo() { [ "$1" = "-v" ] && return 0; "$@"; }
+        install() { return 0; }
+        get_effective_sshd_option() {
+            case "$1" in
+                permitrootlogin) echo "no" ;;
+                passwordauthentication) echo "no" ;;
+            esac
+        }
+        set_password_auth() { echo "CHANGED $1 $2"; }
+        restart_ssh() { echo "RESTARTED"; }
+        printf "%s\n" y | do_root_key
+        rm -rf "$tmp"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "CHANGED no prohibit-password" ]]
+    [[ "$output" =~ "免密登录已就绪" ]]
+}
+
 @test "ufw 关闭端口调用 delete allow" {
     run bash -c '
         source "'"$PWD"'/lib/core.sh"
